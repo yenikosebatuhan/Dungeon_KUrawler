@@ -1,0 +1,15 @@
+# Build output
+out/
+
+# JavaFX SDK (downloaded dependency)
+lib/
+
+# IDE files
+.cursor/
+.idea/
+*.iml
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
