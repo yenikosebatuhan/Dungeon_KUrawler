@@ -1,0 +1,125 @@
+@startuml Enemy AI Turn - Sequence Diagram
+!theme plain
+title **UC-5: Enemy AI Turn – Sequence Diagram**
+
+participant ":GameEngine"     as engine  #LightCoral
+participant ":GameController" as ctrl    #LightGreen
+participant ":EnemyAI"        as ai      #Thistle
+participant ":MoveAction"     as ma      #LightYellow
+participant ":MoveEffect"     as me      #Orange
+participant ":GameSession"    as sess    #White
+participant ":Hero"           as hero    #Pink
+participant ":Enemy\n(Knight)" as enemy  #Red
+participant ":Map"            as map     #LightGray
+participant ":GridCell"       as cell    #LightGray
+
+== Game Engine Processes Enemy Turn ==
+
+[-> engine : tick(null)
+activate engine
+
+note right of engine
+  After player's turn,
+  engine processes each
+  enemy's AI decision.
+end note
+
+engine -> sess : getEnemies()
+activate sess
+sess --> engine : List<Enemy>
+deactivate sess
+
+loop for each enemy in enemies
+
+  engine -> ai : decideAction(enemy, session)
+  activate ai
+
+  ai -> sess : getHero()
+  activate sess
+  sess --> ai : hero
+  deactivate sess
+
+  ai -> hero : getRow(), getCol()
+  activate hero
+  hero --> ai : heroRow, heroCol
+  deactivate hero
+
+  ai -> enemy : getRow(), getCol()
+  activate enemy
+  enemy --> ai : enemyRow, enemyCol
+  deactivate enemy
+
+  note right of ai
+    **EnemyAI** calculates direction
+    toward hero (signum of delta).
+    Returns a MoveAction.
+  end note
+
+  ai -> ma ** : <<create>> MoveAction(dRow, dCol)
+  ai --> engine : action (MoveAction)
+  deactivate ai
+
+  engine -> ctrl : executeAction(action)
+  activate ctrl
+
+  ctrl -> ma : resolve(session)
+  activate ma
+
+  note right of ma
+    MoveAction resolves for the
+    enemy (reuses same Action class
+    as hero movement — **Polymorphism**).
+  end note
+
+  ma -> sess : getHero()
+  activate sess
+  sess --> ma : hero
+  deactivate sess
+
+  ma -> hero : getRow(), getCol()
+  activate hero
+  hero --> ma : row, col
+  deactivate hero
+
+  ma -> sess : getMap()
+  activate sess
+  sess --> ma : map
+  deactivate sess
+
+  ma -> map : getCell(newRow, newCol)
+  activate map
+  map --> ma : targetCell
+  deactivate map
+
+  ma -> cell : isWalkable()
+  activate cell
+  cell --> ma : true
+  deactivate cell
+
+  ma -> me ** : <<create>> MoveEffect(enemy, newRow, newCol)
+  ma --> ctrl : List<Effect> [moveEffect]
+  deactivate ma
+
+  ctrl -> me : apply(session)
+  activate me
+  me -> enemy : setPosition(newRow, newCol)
+  activate enemy
+  enemy --> me
+  deactivate enemy
+  me --> ctrl
+  deactivate me
+
+  ctrl -> sess : advanceTurn()
+  activate sess
+  sess --> ctrl
+  deactivate sess
+
+  ctrl --> engine
+  deactivate ctrl
+
+end
+
+[<-- engine
+deactivate engine
+
+@enduml

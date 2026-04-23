@@ -1,0 +1,60 @@
+@startuml Enemy AI Turn - Communication Diagram
+!theme plain
+title **UC-5: Enemy AI Turn – Communication Diagram**
+
+object ":GameEngine" as engine #LightCoral
+object ":GameController" as ctrl #LightGreen
+object ":EnemyAI" as ai #Thistle
+object ":MoveAction" as ma #LightYellow
+object ":MoveEffect" as me #Orange
+object ":GameSession" as sess #White
+object ":Hero" as hero #Pink
+object ":Enemy (Knight)" as enemy #Red
+object ":Map" as map #LightGray
+object ":GridCell" as cell #LightGray
+
+engine -- sess
+engine -- ai
+engine -- ctrl
+ai -- sess
+ai -- hero
+ai -- enemy
+ai -- ma
+ctrl -- ma
+ctrl -- me
+ctrl -- sess
+ma -- sess
+ma -- hero
+ma -- map
+ma -- me
+map -- cell
+me -- enemy
+
+engine -> sess : 1: getEnemies()
+engine -> ai : 2: decideAction(enemy, session)
+ai -> sess : 2.1: getHero()
+ai -> hero : 2.2: getRow(), getCol()
+ai -> enemy : 2.3: getRow(), getCol()
+ai -> ma : 2.4: <<create>> MoveAction(dRow, dCol)
+engine -> ctrl : 3: executeAction(action)
+ctrl -> ma : 3.1: resolve(session)
+ma -> sess : 3.1.1: getHero()
+ma -> hero : 3.1.2: getRow(), getCol()
+ma -> sess : 3.1.3: getMap()
+ma -> map : 3.1.4: getCell(newRow, newCol)
+ma -> cell : 3.1.5: isWalkable()
+ma -> me : 3.1.6: <<create>> MoveEffect(enemy, newRow, newCol)
+ctrl -> me : 3.2: apply(session)
+me -> enemy : 3.2.1: setPosition(newRow, newCol)
+ctrl -> sess : 3.3: advanceTurn()
+
+note bottom of engine
+  **GRASP Controller**: GameController handles execution.
+  **Polymorphism**: MoveAction works for both Hero and Enemy.
+  **Low Coupling**: EnemyAI only creates Actions, not Effects.
+  **High Cohesion**: AI logic is separated from game loop.
+  **Indirection**: GameEngine delegates to EnemyAI for decisions
+  and to GameController for execution.
+end note
+
+@enduml
