@@ -67,12 +67,11 @@ public class Hero extends Character {
         int targetRow = getRow() + dRow;
         int targetCol = getCol() + dCol;
 
-        GridCell targetCell = map.getCell(targetRow, targetCol);
-        if (targetCell == null || !targetCell.isWalkable()) {
-            return false;
-        }
-        // Don't walk into an enemy
-        if (session != null && session.getEnemyAt(targetRow, targetCol) != null) {
+        // Use Caner's API: getCellAt(x, y) where x=col, y=row
+        GridCell targetCell = map.getCellAt(targetCol, targetRow);
+        
+        // Caner's isBlocked() automatically handles BOTH walls AND occupying characters/enemies!
+        if (targetCell == null || targetCell.isBlocked()) {
             return false;
         }
 
