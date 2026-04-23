@@ -1,14 +1,12 @@
 package com.kurawler.editor;
 
 import com.kurawler.model.GridCell;
+import com.kurawler.model.character.Character;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
 import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
 
-/**
- * Encapsulates editor placement rules.
- */
 public class PlacementValidator {
 
     public boolean isValidPlacement(GameObject obj, GridCell cell) {
@@ -24,27 +22,14 @@ public class PlacementValidator {
             return cell.isWalkable();
         }
 
-        return true;
+        return cell.isWalkable();
+    }
+
+    public boolean isValidCharacterPlacement(Character character, GridCell cell) {
+        return character != null && cell != null && cell.isWalkable() && !cell.hasObjects();
     }
 
     public boolean canDeleteObject(GridCell cell) {
-        return cell != null && cell.hasObjects();
-    }
-
-    public boolean blocksMovement(GameObject obj) {
-        return obj instanceof StaticObject || obj instanceof StaticContainer;
-    }
-
-    public boolean containsBlockingObject(GridCell cell) {
-        if (cell == null) {
-            return false;
-        }
-
-        for (GameObject obj : cell.getObjects()) {
-            if (blocksMovement(obj)) {
-                return true;
-            }
-        }
-        return false;
+        return cell != null && (!cell.getObjects().isEmpty() || !cell.isWalkable());
     }
 }
