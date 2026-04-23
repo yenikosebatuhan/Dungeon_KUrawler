@@ -1,0 +1,45 @@
+@startuml Move Player - Communication Diagram
+!theme plain
+title **UC-1: Move Player – Communication Diagram**
+
+object ":GameView" as ui #LightBlue
+object ":GameController" as ctrl #LightGreen
+object ":MoveAction" as ma #LightYellow
+object ":MoveEffect" as me #Orange
+object ":Hero" as hero #Pink
+object ":Map" as map #LightGray
+object ":GridCell" as cell #LightGray
+object ":GameSession" as sess #White
+
+ui -- ctrl
+ctrl -- ma
+ctrl -- me
+ctrl -- sess
+ma -- sess
+ma -- hero
+ma -- map
+ma -- me
+map -- cell
+me -- hero
+
+ui -> ctrl : 1: moveHero(deltaRow, deltaCol)
+ctrl -> ma : 1.1: <<create>> MoveAction(deltaRow, deltaCol)
+ctrl -> ma : 1.2: resolve(session)
+ma -> sess : 1.2.1: getHero()
+ma -> hero : 1.2.2: getRow(), getCol()
+ma -> sess : 1.2.3: getMap()
+ma -> map  : 1.2.4: getCell(newRow, newCol)
+ma -> cell : 1.2.5: isWalkable()
+ma -> me   : 1.2.6: <<create>> MoveEffect(hero, newRow, newCol)
+ctrl -> me : 1.3: apply(session)
+me -> hero : 1.3.1: setPosition(newRow, newCol)
+ctrl -> sess : 1.4: advanceTurn()
+
+note bottom of ctrl
+  **GRASP Controller**: Handles system event.
+  **Creator**: Controller creates MoveAction.
+  MoveAction creates MoveEffect (Information Expert –
+  it knows target position validity).
+end note
+
+@enduml

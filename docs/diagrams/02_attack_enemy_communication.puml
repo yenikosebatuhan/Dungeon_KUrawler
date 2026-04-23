@@ -1,0 +1,46 @@
+@startuml Attack Enemy - Communication Diagram
+!theme plain
+title **UC-2: Attack Enemy – Communication Diagram**
+
+object ":GameView" as ui #LightBlue
+object ":GameController" as ctrl #LightGreen
+object ":CombatEngine" as combat #Salmon
+object ":AttackAction" as aa #LightYellow
+object ":DamageEffect" as de #Orange
+object ":Hero" as hero #Pink
+object ":Enemy" as enemy #Red
+object ":GameSession" as sess #White
+
+ui -- ctrl
+ctrl -- combat
+ctrl -- aa
+ctrl -- de
+ctrl -- sess
+combat -- aa
+aa -- hero
+aa -- enemy
+aa -- de
+de -- enemy
+
+ui -> ctrl : 1: executeAction(attackAction)
+ctrl -> combat : 1.1: performAttack(hero, enemy)
+combat -> aa : 1.1.1: <<create>> AttackAction(hero, enemy)
+combat -> ctrl : 1.1.2: executeAction(attackAction)
+ctrl -> aa : 1.1.2.1: resolve(session)
+aa -> hero : 1.1.2.1.1: isAlive()
+aa -> enemy : 1.1.2.1.2: isAlive()
+aa -> hero : 1.1.2.1.3: calculateDamage()
+aa -> de : 1.1.2.1.4: <<create>> DamageEffect(enemy, damage)
+ctrl -> de : 1.1.2.2: apply(session)
+de -> enemy : 1.1.2.2.1: takeDamage(damage)
+ctrl -> sess : 1.1.2.3: advanceTurn()
+
+note bottom of ctrl
+  **GRASP Controller**: GameController orchestrates.
+  **Creator**: CombatEngine creates AttackAction
+  (it has initializing data: attacker & defender).
+  **Information Expert**: Hero.calculateDamage()
+  includes weapon bonus.
+end note
+
+@enduml

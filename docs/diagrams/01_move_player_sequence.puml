@@ -1,0 +1,84 @@
+@startuml Move Player - Sequence Diagram
+!theme plain
+title **UC-1: Move Player – Sequence Diagram**
+
+actor       Player       as player
+participant ":GameView"  as ui       #LightBlue
+participant ":GameController" as ctrl #LightGreen
+participant ":MoveAction"     as ma   #LightYellow
+participant ":MoveEffect"     as me   #Orange
+participant ":Hero"           as hero #Pink
+participant ":Map"            as map  #LightGray
+participant ":GridCell"       as cell #LightGray
+participant ":GameSession"    as sess #White
+
+== Player Presses Movement Key ==
+
+player -> ui : keyPress(W/A/S/D)
+activate ui
+
+ui -> ctrl : moveHero(deltaRow, deltaCol)
+activate ctrl
+
+note right of ctrl
+  **GRASP Controller**: GameController
+  handles system event from UI.
+end note
+
+ctrl -> ma ** : <<create>> MoveAction(deltaRow, deltaCol)
+
+ctrl -> ma : resolve(session)
+activate ma
+
+ma -> sess : getHero()
+activate sess
+sess --> ma : hero
+deactivate sess
+
+ma -> hero : getRow(), getCol()
+activate hero
+hero --> ma : currentRow, currentCol
+deactivate hero
+
+ma -> sess : getMap()
+activate sess
+sess --> ma : map
+deactivate sess
+
+ma -> map : getCell(newRow, newCol)
+activate map
+map --> ma : targetCell
+deactivate map
+
+ma -> cell : isWalkable()
+activate cell
+cell --> ma : true
+deactivate cell
+
+ma -> me ** : <<create>> MoveEffect(hero, newRow, newCol)
+ma --> ctrl : List<Effect> [moveEffect]
+deactivate ma
+
+loop for each effect in effects
+  ctrl -> me : apply(session)
+  activate me
+  me -> hero : setPosition(newRow, newCol)
+  activate hero
+  hero --> me
+  deactivate hero
+  me --> ctrl
+  deactivate me
+end
+
+ctrl -> sess : advanceTurn()
+activate sess
+sess --> ctrl
+deactivate sess
+
+ctrl --> ui
+deactivate ctrl
+
+ui -> ui : render()
+deactivate ui
+
+@enduml

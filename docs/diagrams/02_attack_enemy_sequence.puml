@@ -1,0 +1,86 @@
+@startuml Attack Enemy - Sequence Diagram
+!theme plain
+title **UC-2: Attack Enemy – Sequence Diagram**
+
+actor       Player            as player
+participant ":GameView"       as ui       #LightBlue
+participant ":GameController" as ctrl     #LightGreen
+participant ":CombatEngine"   as combat   #Salmon
+participant ":AttackAction"   as aa       #LightYellow
+participant ":DamageEffect"   as de       #Orange
+participant ":Hero"           as hero     #Pink
+participant ":Enemy"          as enemy    #Red
+participant ":GameSession"    as sess     #White
+
+== Player Initiates Attack ==
+
+player -> ui : keyPress(Attack)
+activate ui
+
+ui -> ctrl : executeAction(attackAction)
+activate ctrl
+
+note right of ctrl
+  **GRASP Controller**: UI delegates
+  combat to GameController.
+end note
+
+ctrl -> combat : performAttack(hero, enemy)
+activate combat
+
+combat -> aa ** : <<create>> AttackAction(hero, enemy)
+
+combat -> ctrl : executeAction(attackAction)
+activate ctrl #LightGreen
+
+ctrl -> aa : resolve(session)
+activate aa
+
+aa -> hero : isAlive()
+activate hero
+hero --> aa : true
+deactivate hero
+
+aa -> enemy : isAlive()
+activate enemy
+enemy --> aa : true
+deactivate enemy
+
+aa -> hero : calculateDamage()
+activate hero
+hero --> aa : damage
+deactivate hero
+
+aa -> de ** : <<create>> DamageEffect(enemy, damage)
+aa --> ctrl : List<Effect> [damageEffect]
+deactivate aa
+
+loop for each effect in effects
+  ctrl -> de : apply(session)
+  activate de
+  de -> enemy : takeDamage(damage)
+  activate enemy
+  enemy --> de
+  deactivate enemy
+  de --> ctrl
+  deactivate de
+end
+
+ctrl -> sess : advanceTurn()
+activate sess
+sess --> ctrl
+deactivate sess
+
+ctrl --> combat
+deactivate ctrl
+
+combat --> ctrl
+deactivate combat
+
+ctrl --> ui
+deactivate ctrl
+
+ui -> ui : render()
+deactivate ui
+
+@enduml
