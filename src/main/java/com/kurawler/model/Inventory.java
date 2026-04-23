@@ -1,90 +1,99 @@
 package com.kurawler.model;
 
-import com.kurawler.model.object.Item;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * 2x4 inventory grid.
- * Information Expert: Inventory manages items (knows capacity, contents).
+ * Manages the Hero's item inventory with a maximum capacity of 8 slots.
  */
 public class Inventory {
 
-    private static final int ROWS = 2;
-    private static final int COLS = 4;
-    private final Item[][] slots;
+    private static final int MAX_CAPACITY = 8;
+    private List<Item> items;
+    private int itemCount;
 
+    /**
+     * Creates a new empty Inventory.
+     */
     public Inventory() {
-        this.slots = new Item[ROWS][COLS];
+        this.items = new ArrayList<>(MAX_CAPACITY);
+        this.itemCount = 0;
     }
 
+    /**
+     * Adds an item to the inventory if there is space.
+     * @param item The item to add
+     * @return true if successfully added, false if inventory is full or item is null
+     */
     public boolean addItem(Item item) {
-        for (int r = 0; r < ROWS; r++) {
-            for (int c = 0; c < COLS; c++) {
-                if (slots[r][c] == null) {
-                    slots[r][c] = item;
-                    return true;
-                }
-            }
+        if (item == null) {
+            return false;
         }
-        return false; // inventory full
+        if (itemCount >= MAX_CAPACITY) {
+            return false;
+        }
+        items.add(item);
+        itemCount++;
+        return true;
     }
 
+    /**
+     * Removes a specific item from the inventory.
+     * @param item The item to remove
+     * @return true if item was found and removed, false otherwise
+     */
     public boolean removeItem(Item item) {
-        for (int r = 0; r < ROWS; r++) {
-            for (int c = 0; c < COLS; c++) {
-                if (slots[r][c] == item) {
-                    slots[r][c] = null;
-                    return true;
-                }
-            }
+        if (item == null) {
+            return false;
+        }
+        if (items.remove(item)) {
+            itemCount--;
+            return true;
         }
         return false;
     }
 
-    public Item getItem(int row, int col) {
-        if (row < 0 || row >= ROWS || col < 0 || col >= COLS) {
-            return null;
-        }
-        return slots[row][col];
+    /**
+     * Returns the list of all items in the inventory.
+     * @return list of items
+     */
+    public List<Item> getItems() {
+        return items;
     }
 
-    public boolean isFull() {
-        for (int r = 0; r < ROWS; r++) {
-            for (int c = 0; c < COLS; c++) {
-                if (slots[r][c] == null) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
+    /**
+     * Returns the current number of items in inventory.
+     * @return item count
+     */
     public int getItemCount() {
-        int count = 0;
-        for (int r = 0; r < ROWS; r++) {
-            for (int c = 0; c < COLS; c++) {
-                if (slots[r][c] != null) {
-                    count++;
-                }
-            }
-        }
-        return count;
+        return itemCount;
     }
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder("Inventory (" + getItemCount() + "/" + (ROWS * COLS) + "):\n");
-        for (int r = 0; r < ROWS; r++) {
-            sb.append("  [");
-            for (int c = 0; c < COLS; c++) {
-                if (slots[r][c] != null) {
-                    sb.append(slots[r][c].getName());
-                } else {
-                    sb.append("empty");
-                }
-                if (c < COLS - 1) sb.append(" | ");
-            }
-            sb.append("]\n");
+    /**
+     * Returns whether the inventory is at maximum capacity.
+     * @return true if full
+     */
+    public boolean isFull() {
+        return itemCount >= MAX_CAPACITY;
+    }
+
+    /**
+     * Checks whether the inventory contains a specific item.
+     * @param item The item to search for
+     * @return true if item is in inventory
+     */
+    public boolean hasItem(Item item) {
+        if (item == null) {
+            return false;
         }
-        return sb.toString();
+        return items.contains(item);
+    }
+
+    /**
+     * Returns the maximum capacity of this inventory.
+     * @return max capacity (8)
+     */
+    public int getMaxCapacity() {
+        return MAX_CAPACITY;
     }
 }
