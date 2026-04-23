@@ -1,12 +1,16 @@
 package com.kurawler.controller;
 
 import com.kurawler.action.Action;
+import com.kurawler.action.AttackAction;
+import com.kurawler.action.EatAction;
 import com.kurawler.action.MoveAction;
 import com.kurawler.action.TakeAction;
 import com.kurawler.effect.Effect;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
+import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
 import java.util.List;
@@ -68,6 +72,42 @@ public class GameController {
                 }
             }
         }
+    }
+
+    /**
+     * Called by the UI when the player attacks an adjacent enemy.
+     * Finds the enemy at the target cell and creates an AttackAction.
+     */
+    public boolean attackEnemy(int deltaRow, int deltaCol) {
+        Hero hero = session.getHero();
+        int targetRow = hero.getRow() + deltaRow;
+        int targetCol = hero.getCol() + deltaCol;
+
+        Enemy enemy = session.getEnemyAt(targetRow, targetCol);
+        if (enemy == null || !enemy.isAlive()) {
+            return false;
+        }
+
+        AttackAction attack = new AttackAction(hero, enemy);
+        executeAction(attack);
+
+        if (!enemy.isAlive()) {
+            session.removeEnemy(enemy);
+        }
+        return true;
+    }
+
+    /**
+     * Called by the UI when the player uses a consumable from inventory.
+     * Creates an EatAction that heals the hero.
+     */
+    public boolean useItem(Consumable consumable) {
+        if (consumable == null) {
+            return false;
+        }
+        EatAction eat = new EatAction(consumable);
+        executeAction(eat);
+        return true;
     }
 
     public GameSession getSession() {

@@ -69,7 +69,7 @@ public class GameView {
         inventoryLabel.setTextFill(Color.LIGHTGRAY);
         inventoryLabel.setWrapText(true);
 
-        messageLabel = new Label("Use WASD or Arrow Keys to move.\nWalk over items to pick them up.");
+        messageLabel = new Label("WASD/Arrows: move | SPACE: attack | E: use item");
         messageLabel.setFont(Font.font("Monospaced", 11));
         messageLabel.setTextFill(Color.web("#aaaaaa"));
         messageLabel.setWrapText(true);
@@ -94,25 +94,55 @@ public class GameView {
         render();
     }
 
+    private int lastDeltaRow = 0;
+    private int lastDeltaCol = 1;
+
     /** Capture key input and delegate to controller. No logic here. */
     private void handleKeyPress(KeyEvent event) {
         switch (event.getCode()) {
             case W: case UP:
+                lastDeltaRow = -1; lastDeltaCol = 0;
                 controller.moveHero(-1, 0);
                 break;
             case S: case DOWN:
+                lastDeltaRow = 1; lastDeltaCol = 0;
                 controller.moveHero(1, 0);
                 break;
             case A: case LEFT:
+                lastDeltaRow = 0; lastDeltaCol = -1;
                 controller.moveHero(0, -1);
                 break;
             case D: case RIGHT:
+                lastDeltaRow = 0; lastDeltaCol = 1;
                 controller.moveHero(0, 1);
+                break;
+            case SPACE:
+                controller.attackEnemy(lastDeltaRow, lastDeltaCol);
+                break;
+            case E:
+                useFirstConsumable();
                 break;
             default:
                 return;
         }
         render();
+    }
+
+    /**
+     * Finds the first Consumable in the hero's inventory and delegates to controller.
+     * UI contains no game logic — just reads inventory to find a valid target.
+     */
+    private void useFirstConsumable() {
+        Inventory inv = controller.getSession().getHero().getInventory();
+        for (int r = 0; r < 2; r++) {
+            for (int c = 0; c < 4; c++) {
+                Item item = inv.getItem(r, c);
+                if (item instanceof Consumable) {
+                    controller.useItem((Consumable) item);
+                    return;
+                }
+            }
+        }
     }
 
     /** Render the entire game state by reading the model. */
