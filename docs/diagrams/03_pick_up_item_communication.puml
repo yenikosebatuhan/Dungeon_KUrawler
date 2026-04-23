@@ -1,0 +1,65 @@
+@startuml Pick Up Item - Communication Diagram
+!theme plain
+title **UC-3: Pick Up Item – Communication Diagram**
+
+object ":GameView" as ui #LightBlue
+object ":GameController" as ctrl #LightGreen
+object ":TakeAction" as ta #LightYellow
+object ":RemoveFromCellEffect" as rce #Orange
+object ":AddToInventoryEffect" as aie #Orange
+object ":Hero" as hero #Pink
+object ":Map" as map #LightGray
+object ":GridCell" as cell #LightGray
+object ":Inventory" as inv #Wheat
+object ":GameSession" as sess #White
+
+ui -- ctrl
+ctrl -- ta
+ctrl -- rce
+ctrl -- aie
+ctrl -- sess
+ta -- sess
+ta -- hero
+ta -- map
+ta -- cell
+ta -- inv
+ta -- rce
+ta -- aie
+rce -- sess
+rce -- map
+rce -- cell
+aie -- sess
+aie -- hero
+aie -- inv
+hero -- inv
+
+ui -> ctrl : 1: moveHero(deltaRow, deltaCol)
+ctrl -> ctrl : 1.1: [ref] UC-1 Move Player
+ctrl -> sess : 1.2: getHero()
+ctrl -> hero : 1.3: getRow(), getCol()
+ctrl -> map : 1.4: getCell(row, col)
+ctrl -> cell : 1.5: getObjects()
+ctrl -> ta : 1.6: <<create>> TakeAction(item)
+ctrl -> ta : 1.7: resolve(session)
+ta -> sess : 1.7.1: getHero()
+ta -> hero : 1.7.2: getRow(), getCol()
+ta -> sess : 1.7.3: getMap()
+ta -> map : 1.7.4: getCell(row, col)
+ta -> cell : 1.7.5: getObjects()
+ta -> inv : 1.7.6: isFull()
+ta -> rce : 1.7.7: <<create>> RemoveFromCellEffect(row, col, item)
+ta -> aie : 1.7.8: <<create>> AddToInventoryEffect(item)
+ctrl -> rce : 1.8: apply(session)
+rce -> cell : 1.8.1: removeObject(item)
+ctrl -> aie : 1.9: apply(session)
+aie -> inv : 1.9.1: addItem(item)
+
+note bottom of ctrl
+  **GRASP Controller**: GameController coordinates pickup.
+  **Creator**: Controller creates TakeAction (has item reference).
+  TakeAction creates both Effects (Information Expert –
+  it knows what's on the cell and inventory state).
+  **Low Coupling**: Effects modify model independently.
+end note
+
+@enduml

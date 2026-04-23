@@ -1,0 +1,145 @@
+@startuml Pick Up Item - Sequence Diagram
+!theme plain
+title **UC-3: Pick Up Item – Sequence Diagram**
+
+actor       Player                  as player
+participant ":GameView"             as ui       #LightBlue
+participant ":GameController"       as ctrl     #LightGreen
+participant ":TakeAction"           as ta       #LightYellow
+participant ":RemoveFromCellEffect" as rce      #Orange
+participant ":AddToInventoryEffect" as aie      #Orange
+participant ":Hero"                 as hero     #Pink
+participant ":Map"                  as map      #LightGray
+participant ":GridCell"             as cell     #LightGray
+participant ":Inventory"            as inv      #Wheat
+participant ":GameSession"          as sess     #White
+
+== Hero Moves onto Cell with Item ==
+
+player -> ui : keyPress(move)
+activate ui
+
+ui -> ctrl : moveHero(deltaRow, deltaCol)
+activate ctrl
+
+note right of ctrl
+  After move completes,
+  controller auto-picks
+  up items on hero's cell.
+end note
+
+ref over ctrl : UC-1 Move Player (MoveAction → MoveEffect)
+
+ctrl -> sess : getHero()
+activate sess
+sess --> ctrl : hero
+deactivate sess
+
+ctrl -> hero : getRow(), getCol()
+activate hero
+hero --> ctrl : row, col
+deactivate hero
+
+ctrl -> map : getCell(row, col)
+activate map
+map --> ctrl : cell
+deactivate map
+
+ctrl -> cell : getObjects()
+activate cell
+cell --> ctrl : objectList
+deactivate cell
+
+loop for each Item on cell
+  ctrl -> ta ** : <<create>> TakeAction(item)
+
+  ctrl -> ta : resolve(session)
+  activate ta
+
+  ta -> sess : getHero()
+  activate sess
+  sess --> ta : hero
+  deactivate sess
+
+  ta -> hero : getRow(), getCol()
+  activate hero
+  hero --> ta : row, col
+  deactivate hero
+
+  ta -> sess : getMap()
+  activate sess
+  sess --> ta : map
+  deactivate sess
+
+  ta -> map : getCell(row, col)
+  activate map
+  map --> ta : cell
+  deactivate map
+
+  ta -> cell : getObjects()
+  activate cell
+  cell --> ta : objectList
+  deactivate cell
+
+  note right of ta
+    Checks item is on cell
+    and inventory is not full.
+  end note
+
+  ta -> hero : getInventory()
+  activate hero
+  hero --> ta : inventory
+  deactivate hero
+
+  ta -> inv : isFull()
+  activate inv
+  inv --> ta : false
+  deactivate inv
+
+  ta -> rce ** : <<create>> RemoveFromCellEffect(row, col, item)
+  ta -> aie ** : <<create>> AddToInventoryEffect(item)
+  ta --> ctrl : List<Effect> [rce, aie]
+  deactivate ta
+
+  ctrl -> rce : apply(session)
+  activate rce
+  rce -> sess : getMap()
+  activate sess
+  sess --> rce : map
+  deactivate sess
+  rce -> map : getCell(row, col)
+  activate map
+  map --> rce : cell
+  deactivate map
+  rce -> cell : removeObject(item)
+  activate cell
+  cell --> rce
+  deactivate cell
+  rce --> ctrl
+  deactivate rce
+
+  ctrl -> aie : apply(session)
+  activate aie
+  aie -> sess : getHero()
+  activate sess
+  sess --> aie : hero
+  deactivate sess
+  aie -> hero : getInventory()
+  activate hero
+  hero --> aie : inventory
+  deactivate hero
+  aie -> inv : addItem(item)
+  activate inv
+  inv --> aie : true
+  deactivate inv
+  aie --> ctrl
+  deactivate aie
+end
+
+ctrl --> ui
+deactivate ctrl
+
+ui -> ui : render()
+deactivate ui
+
+@enduml

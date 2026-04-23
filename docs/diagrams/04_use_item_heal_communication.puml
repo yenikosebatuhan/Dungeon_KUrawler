@@ -1,0 +1,47 @@
+@startuml Use Item (Heal) - Communication Diagram
+!theme plain
+title **UC-4: Use Item (Heal) – Communication Diagram**
+
+object ":GameView" as ui #LightBlue
+object ":GameController" as ctrl #LightGreen
+object ":EatAction" as ea #LightYellow
+object ":HealEffect" as he #Orange
+object ":Hero" as hero #Pink
+object ":Inventory" as inv #Wheat
+object ":Consumable" as cons #Plum
+object ":GameSession" as sess #White
+
+ui -- ctrl
+ctrl -- ea
+ctrl -- he
+ctrl -- sess
+ea -- sess
+ea -- hero
+ea -- inv
+ea -- cons
+ea -- he
+he -- hero
+hero -- inv
+
+ui -> ctrl : 1: executeAction(eatAction)
+ctrl -> ea : 1.1: <<create>> EatAction(consumable)
+ctrl -> ea : 1.2: resolve(session)
+ea -> sess : 1.2.1: getHero()
+ea -> hero : 1.2.2: getInventory()
+ea -> inv : 1.2.3: removeItem(consumable)
+ea -> cons : 1.2.4: getHealAmount()
+ea -> he : 1.2.5: <<create>> HealEffect(hero, healAmount)
+ctrl -> he : 1.3: apply(session)
+he -> hero : 1.3.1: heal(healAmount)
+ctrl -> sess : 1.4: advanceTurn()
+
+note bottom of ctrl
+  **GRASP Controller**: GameController coordinates.
+  **Creator**: Controller creates EatAction (has consumable ref).
+  EatAction creates HealEffect (Information Expert –
+  it knows the consumable's heal amount).
+  **Information Expert**: Inventory.removeItem() manages
+  its own contents; Hero.heal() manages its own HP.
+end note
+
+@enduml

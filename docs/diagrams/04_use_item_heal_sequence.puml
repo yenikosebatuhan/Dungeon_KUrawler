@@ -1,0 +1,92 @@
+@startuml Use Item (Heal) - Sequence Diagram
+!theme plain
+title **UC-4: Use Item (Heal) – Sequence Diagram**
+
+actor       Player                as player
+participant ":GameView"           as ui       #LightBlue
+participant ":GameController"     as ctrl     #LightGreen
+participant ":EatAction"          as ea       #LightYellow
+participant ":HealEffect"        as he       #Orange
+participant ":Hero"               as hero     #Pink
+participant ":Inventory"          as inv      #Wheat
+participant ":Consumable"         as cons     #Plum
+participant ":GameSession"        as sess     #White
+
+== Player Uses a Consumable Item ==
+
+player -> ui : selectItem(consumable)
+activate ui
+
+ui -> ctrl : executeAction(eatAction)
+activate ctrl
+
+note right of ctrl
+  **GRASP Controller**: UI passes
+  EatAction to the controller.
+end note
+
+ctrl -> ea ** : <<create>> EatAction(consumable)
+
+ctrl -> ea : resolve(session)
+activate ea
+
+ea -> sess : getHero()
+activate sess
+sess --> ea : hero
+deactivate sess
+
+ea -> hero : getInventory()
+activate hero
+hero --> ea : inventory
+deactivate hero
+
+ea -> inv : removeItem(consumable)
+activate inv
+
+note right of inv
+  **Information Expert**: Inventory
+  knows its own contents and
+  can remove the item.
+end note
+
+inv --> ea : true
+deactivate inv
+
+ea -> cons : getHealAmount()
+activate cons
+cons --> ea : healAmount
+deactivate cons
+
+ea -> he ** : <<create>> HealEffect(hero, healAmount)
+ea --> ctrl : List<Effect> [healEffect]
+deactivate ea
+
+loop for each effect in effects
+  ctrl -> he : apply(session)
+  activate he
+  he -> hero : heal(healAmount)
+  activate hero
+
+  note right of hero
+    Character.heal() caps
+    HP at maxHealth.
+  end note
+
+  hero --> he
+  deactivate hero
+  he --> ctrl
+  deactivate he
+end
+
+ctrl -> sess : advanceTurn()
+activate sess
+sess --> ctrl
+deactivate sess
+
+ctrl --> ui
+deactivate ctrl
+
+ui -> ui : render()
+deactivate ui
+
+@enduml
