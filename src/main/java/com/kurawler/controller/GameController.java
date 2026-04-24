@@ -9,6 +9,8 @@ import com.kurawler.model.GridCell;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
+import com.kurawler.persistence.MapDeserializer;
+import com.kurawler.persistence.MapSerializer;
 import java.util.List;
 
 /**
@@ -23,9 +25,27 @@ import java.util.List;
 public class GameController {
 
     private final GameSession session;
+    private final MapSerializer serializer = new MapSerializer();
+    private final MapDeserializer deserializer = new MapDeserializer();
 
     public GameController(GameSession session) {
         this.session = session;
+    }
+
+    public boolean saveMap(String filename) {
+        return serializer.saveGameState(session, filename);
+    }
+
+    public boolean loadMap(String filename) {
+        return deserializer.loadGameState(filename, session);
+    }
+
+    public void startNewGame() {
+        session.setCurrentMode("Play");
+    }
+
+    public void pauseGame() {
+        session.setCurrentMode("Paused");
     }
 
     /**
