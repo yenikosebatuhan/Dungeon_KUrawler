@@ -1,8 +1,5 @@
 package com.kurawler.model.object;
 
-/**
- * A non-pickupable object on the grid (e.g., pillar, trap, wall).
- */
 public class StaticObject extends GameObject {
     private boolean isPassable;
     private boolean isSearchable;
