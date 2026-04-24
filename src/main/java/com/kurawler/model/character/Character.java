@@ -91,4 +91,5 @@ public abstract class Character {
         this.row = row;
         this.col = col;
     }
+    
 }
