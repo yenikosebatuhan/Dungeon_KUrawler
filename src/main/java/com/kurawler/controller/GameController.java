@@ -57,7 +57,7 @@ public class GameController {
         for (Effect effect : effects) {
             effect.apply(session);
         }
-        session.advanceTurn();
+        // Turn tracking removed — Caner's new GameSession no longer has advanceTurn()
     }
 
     /**
@@ -79,7 +79,7 @@ public class GameController {
         GridCell cell = session.getMap().getCell(hero.getRow(), hero.getCol());
         if (cell == null) return;
 
-        for (GameObject obj : cell.getObjects()) {
+        for (GameObject obj : cell.getGameObjects()) {
             if (obj instanceof Item) {
                 TakeAction take = new TakeAction((Item) obj);
                 List<Effect> effects = take.resolve(session);
