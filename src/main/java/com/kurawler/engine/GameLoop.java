@@ -27,6 +27,7 @@ public class GameLoop {
     private long lastUpdateTime;
     private EnemySpawner enemySpawner;
     private CollisionDetector collisionDetector;
+    private final List<Projectile> activeProjectiles;
 
     /** Target sleep time per frame in milliseconds (~60 FPS). */
     private static final long FRAME_SLEEP_MS = 16;
@@ -43,6 +44,7 @@ public class GameLoop {
         this.session = session;
         this.enemySpawner = new EnemySpawner(session);
         this.collisionDetector = new CollisionDetector(session.getMap());
+        this.activeProjectiles = new ArrayList<>();
     }
 
     /**
@@ -100,14 +102,16 @@ public class GameLoop {
         if (session.checkWinCondition()) {
             stop();
         }
-        if (session.isGameOver()) {
+
+        Hero hero = session.getHero();
+        if (hero != null && !hero.isAlive()) {
             stop();
         }
     }
 
     /**
-     * Iterates over all living enemies and lets each one decide its action
-     * (chase, attack, wander, teleport, or cast spell) based on its type.
+     * Scans the grid for all living enemies and lets each one decide its
+     * action (chase, attack, wander, teleport, or cast spell) based on type.
      */
     private void updateEnemies() {
         Map map = session.getMap();
@@ -116,8 +120,8 @@ public class GameLoop {
             return;
         }
 
-        List<Enemy> snapshot = new ArrayList<>(session.getEnemies());
-        for (Enemy enemy : snapshot) {
+        List<Enemy> enemies = findAllEnemies(map);
+        for (Enemy enemy : enemies) {
             if (!enemy.isAlive()) {
                 continue;
             }
@@ -127,6 +131,28 @@ public class GameLoop {
                 ((Sorcerer) enemy).decideAction(hero, map, session);
             }
         }
+    }
+
+    /**
+     * Scans the entire grid to find all Enemy characters.
+     *
+     * @param map the game map to scan
+     * @return a list of all enemies currently on the grid
+     */
+    private List<Enemy> findAllEnemies(Map map) {
+        List<Enemy> enemies = new ArrayList<>();
+        for (int x = 0; x < map.getGridWidth(); x++) {
+            for (int y = 0; y < map.getGridHeight(); y++) {
+                GridCell cell = map.getCellAt(x, y);
+                if (cell != null) {
+                    Character occupant = cell.getOccupyingCharacter();
+                    if (occupant instanceof Enemy) {
+                        enemies.add((Enemy) occupant);
+                    }
+                }
+            }
+        }
+        return enemies;
     }
 
     /**
@@ -141,35 +167,50 @@ public class GameLoop {
             return;
         }
 
-        List<Projectile> snapshot = new ArrayList<>(session.getProjectiles());
+        List<Projectile> snapshot = new ArrayList<>(activeProjectiles);
         for (Projectile projectile : snapshot) {
-            int oldRow = projectile.getPositionRow();
-            int oldCol = projectile.getPositionCol();
-            int newRow = oldRow + projectile.getDirectionRow();
-            int newCol = oldCol + projectile.getDirectionCol();
+            int newRow = projectile.getPositionRow() + projectile.getDirectionRow();
+            int newCol = projectile.getPositionCol() + projectile.getDirectionCol();
 
             GridCell targetCell = map.getCell(newRow, newCol);
-            if (targetCell == null || !targetCell.isWalkable()) {
-                session.removeProjectile(projectile);
+            if (targetCell == null || (targetCell.getStaticObject() != null
+                    && !targetCell.getStaticObject().isPassable())) {
+                activeProjectiles.remove(projectile);
                 continue;
             }
 
             projectile.setPosition(newRow, newCol);
 
-            Hero hero = session.getHero();
-            if (hero != null && hero.isAlive()
-                    && hero.getRow() == newRow && hero.getCol() == newCol) {
-                CombatResolver.applyProjectileDamage(projectile, hero);
-                session.removeProjectile(projectile);
-                continue;
-            }
-
-            Enemy enemy = session.getEnemyAt(newRow, newCol);
-            if (enemy != null && enemy.isAlive()) {
-                CombatResolver.applyProjectileDamage(projectile, enemy);
-                session.removeProjectile(projectile);
+            Character occupant = targetCell.getOccupyingCharacter();
+            if (occupant != null && occupant.isAlive()) {
+                CombatResolver.applyProjectileDamage(projectile, occupant);
+                activeProjectiles.remove(projectile);
+                if (!occupant.isAlive()) {
+                    targetCell.setOccupyingCharacter(null);
+                    session.decrementEnemyCount();
+                }
             }
         }
+    }
+
+    /**
+     * Adds a projectile to the active tracking list.
+     *
+     * @param projectile the projectile to track
+     */
+    public void addProjectile(Projectile projectile) {
+        if (projectile != null) {
+            activeProjectiles.add(projectile);
+        }
+    }
+
+    /**
+     * Returns the list of active projectiles.
+     *
+     * @return the active projectile list
+     */
+    public List<Projectile> getActiveProjectiles() {
+        return activeProjectiles;
     }
 
     /**
