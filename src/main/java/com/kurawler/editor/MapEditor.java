@@ -1,8 +1,10 @@
 package com.kurawler.editor;
 
-import com.kurawler.model.*;
+import com.kurawler.model.GridCell;
+import com.kurawler.model.Map;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.object.GameObject;
+import com.kurawler.model.object.Item;
 import com.kurawler.model.object.StaticObject;
 import java.util.List;
 
@@ -36,7 +38,7 @@ public class MapEditor {
         if (obj instanceof StaticObject) {
             cell.setStaticObject((StaticObject) obj);
         } else {
-            cell.addGameObject(obj);
+            cell.addObject(obj);
         }
 
         return true;
@@ -71,12 +73,12 @@ public class MapEditor {
             return true;
         }
 
-        List<GameObject> objects = cell.getGameObjects();
+        List<GameObject> objects = cell.getObjects();
         if (objects.isEmpty()) {
             return false;
         }
 
-        return cell.removeGameObject(objects.get(objects.size() - 1));
+        return cell.removeObject(objects.get(objects.size() - 1));
     }
 
     public boolean deleteObject(int x, int y, GameObject obj) {
@@ -91,7 +93,7 @@ public class MapEditor {
             return true;
         }
 
-        return cell.removeGameObject(obj);
+        return cell.removeObject(obj);
     }
 
     public boolean deleteCharacter(int x, int y) {
@@ -115,7 +117,7 @@ public class MapEditor {
 
                 cell.setStaticObject(null);
                 cell.setOccupyingCharacter(null);
-                cell.getGameObjects().clear();
+                cell.getObjects().clear();
             }
         }
     }

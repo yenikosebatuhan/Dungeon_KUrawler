@@ -1,8 +1,10 @@
 package com.kurawler.editor;
 
-import com.kurawler.model.*;
+import com.kurawler.model.GridCell;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.object.GameObject;
+import com.kurawler.model.object.Item;
+import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
 
 public class PlacementValidator {
@@ -13,7 +15,9 @@ public class PlacementValidator {
         }
 
         if (obj instanceof StaticObject || obj instanceof StaticContainer) {
-            return cell.isEmpty();
+            return cell.getStaticObject() == null
+                    && cell.getOccupyingCharacter() == null
+                    && !cell.hasObjects();
         }
 
         if (obj instanceof Item) {
@@ -31,6 +35,6 @@ public class PlacementValidator {
         return cell != null
                 && (cell.getStaticObject() != null
                 || cell.getOccupyingCharacter() != null
-                || !cell.getGameObjects().isEmpty());
+                || cell.hasObjects());
     }
 }
