@@ -1,13 +1,10 @@
 package com.kurawler.editor;
 
-import java.util.List;
-
-import com.kurawler.model.GridCell;
-import com.kurawler.model.Map;
+import com.kurawler.model.*;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.object.GameObject;
-import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
+import java.util.List;
 
 public class MapEditor {
 
@@ -19,83 +16,116 @@ public class MapEditor {
     private Character selectedCharacter;
 
     public MapEditor(int width, int height) {
-        this.currentMap = new Map(width, height);
+        this(new Map(width, height));
+    }
+
+    public MapEditor(Map map) {
+        this.currentMap = map;
         this.palette = new ObjectPalette();
         this.validator = new PlacementValidator();
         this.itemGenerator = new RandomItemGenerator();
     }
 
-    public boolean placeObject(GameObject obj, int row, int col) {
-        GridCell cell = currentMap.getCell(row, col);
+    public boolean placeObject(GameObject obj, int x, int y) {
+        GridCell cell = currentMap.getCellAt(x, y);
 
         if (!validator.isValidPlacement(obj, cell)) {
             return false;
         }
 
-        boolean placed = currentMap.placeObject(row, col, obj);
-        if (placed && isBlockingStaticObject(obj)) {
-            cell.setWalkable(false);
+        if (obj instanceof StaticObject) {
+            cell.setStaticObject((StaticObject) obj);
+        } else {
+            cell.addGameObject(obj);
         }
 
-        return placed;
+        return true;
     }
 
-    public boolean placeCharacter(Character character, int row, int col) {
-        GridCell cell = currentMap.getCell(row, col);
+    public boolean placeCharacter(Character character, int x, int y) {
+        GridCell cell = currentMap.getCellAt(x, y);
 
         if (!validator.isValidCharacterPlacement(character, cell)) {
             return false;
         }
 
-        character.setPosition(row, col);
+        cell.setOccupyingCharacter(character);
+        character.setPosition(cell.getRow(), cell.getCol());
         return true;
     }
 
-    public boolean deleteObject(int row, int col) {
-        GridCell cell = currentMap.getCell(row, col);
+    public boolean deleteObject(int x, int y) {
+        GridCell cell = currentMap.getCellAt(x, y);
 
         if (cell == null) {
             return false;
         }
 
-        List<GameObject> objects = cell.getObjects();
-        if (!objects.isEmpty()) {
-            GameObject objectToRemove = findPreferredObjectToRemove(objects);
-            boolean removed = currentMap.removeObject(row, col, objectToRemove);
-
-            if (removed && isBlockingStaticObject(objectToRemove)) {
-                cell.setWalkable(true);
-            }
-
-            return removed;
-        }
-
-        if (!cell.isWalkable()) {
-            cell.setWalkable(true);
+        if (cell.getStaticObject() != null) {
+            cell.setStaticObject(null);
             return true;
         }
 
-        return false;
+        if (cell.getOccupyingCharacter() != null) {
+            cell.setOccupyingCharacter(null);
+            return true;
+        }
+
+        List<GameObject> objects = cell.getGameObjects();
+        if (objects.isEmpty()) {
+            return false;
+        }
+
+        return cell.removeGameObject(objects.get(objects.size() - 1));
+    }
+
+    public boolean deleteObject(int x, int y, GameObject obj) {
+        GridCell cell = currentMap.getCellAt(x, y);
+
+        if (cell == null || obj == null) {
+            return false;
+        }
+
+        if (obj instanceof StaticObject && cell.getStaticObject() == obj) {
+            cell.setStaticObject(null);
+            return true;
+        }
+
+        return cell.removeGameObject(obj);
+    }
+
+    public boolean deleteCharacter(int x, int y) {
+        GridCell cell = currentMap.getCellAt(x, y);
+
+        if (cell == null || cell.getOccupyingCharacter() == null) {
+            return false;
+        }
+
+        cell.setOccupyingCharacter(null);
+        return true;
     }
 
     public void clearMap() {
-        for (int row = 0; row < currentMap.getHeight(); row++) {
-            for (int col = 0; col < currentMap.getWidth(); col++) {
-                GridCell cell = currentMap.getCell(row, col);
+        for (int x = 0; x < currentMap.getGridWidth(); x++) {
+            for (int y = 0; y < currentMap.getGridHeight(); y++) {
+                GridCell cell = currentMap.getCellAt(x, y);
                 if (cell == null) {
                     continue;
                 }
 
-                for (GameObject obj : cell.getObjects()) {
-                    cell.removeObject(obj);
-                }
-                cell.setWalkable(true);
+                cell.setStaticObject(null);
+                cell.setOccupyingCharacter(null);
+                cell.getGameObjects().clear();
             }
         }
     }
 
     public void generateRandomItems(int count) {
         itemGenerator.generateRandomItems(currentMap, count);
+    }
+
+    public Item generateRandomItem(int x, int y) {
+        return itemGenerator.generateAndPlaceRandomItem(currentMap, x, y);
     }
 
     public Map getCurrentMap() {
@@ -128,18 +158,5 @@ public class MapEditor {
 
     public Character getSelectedCharacter() {
         return selectedCharacter;
-    }
-
-    private GameObject findPreferredObjectToRemove(List<GameObject> objects) {
-        for (GameObject obj : objects) {
-            if (obj instanceof StaticObject || obj instanceof StaticContainer) {
-                return obj;
-            }
-        }
-        return objects.get(objects.size() - 1);
-    }
-
-    private boolean isBlockingStaticObject(GameObject obj) {
-        return obj instanceof StaticObject && "wall".equalsIgnoreCase(obj.getName());
     }
 }
