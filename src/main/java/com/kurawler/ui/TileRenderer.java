@@ -154,6 +154,26 @@ public class TileRenderer {
         }
     }
 
+    /** Draw an enemy on the grid. Knight = red square, Sorcerer = purple circle. */
+    public void drawEnemy(GraphicsContext gc, int screenX, int screenY, String enemyType) {
+        double inset = tileSize * 0.15;
+        double size = tileSize - 2 * inset;
+
+        if ("Knight".equals(enemyType)) {
+            gc.setFill(Color.web("#d32f2f"));
+            gc.fillRect(screenX + inset, screenY + inset, size, size);
+            gc.setFill(Color.WHITE);
+            gc.setFont(javafx.scene.text.Font.font("Monospaced", javafx.scene.text.FontWeight.BOLD, 14));
+            gc.fillText("K", screenX + tileSize / 2.0 - 4, screenY + tileSize / 2.0 + 5);
+        } else {
+            gc.setFill(Color.web("#7b1fa2"));
+            gc.fillOval(screenX + inset, screenY + inset, size, size);
+            gc.setFill(Color.WHITE);
+            gc.setFont(javafx.scene.text.Font.font("Monospaced", javafx.scene.text.FontWeight.BOLD, 14));
+            gc.fillText("S", screenX + tileSize / 2.0 - 4, screenY + tileSize / 2.0 + 5);
+        }
+    }
+
     public int getTileSize() {
         return tileSize;
     }

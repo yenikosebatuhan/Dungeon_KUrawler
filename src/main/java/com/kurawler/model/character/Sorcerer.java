@@ -23,10 +23,14 @@ public class Sorcerer extends Enemy {
 
     public void decideAction(Hero hero, Map map, GameSession session) {
         if (hero == null || map == null || !isAlive() || !hero.isAlive()) return;
-        if (RNG.nextFloat() < TELEPORT_CHANCE) teleportToRandomWalkable(map, session, hero);
+        if (RNG.nextFloat() < TELEPORT_CHANCE) {
+            System.out.println("[AI] Sorcerer: Teleporting");
+            teleportToRandomWalkable(map, session, hero);
+        }
         
         ticksSinceLastAttack++;
         if (ticksSinceLastAttack >= ATTACK_COOLDOWN) {
+            System.out.println("[AI] Sorcerer: Casting spell at hero");
             castSpell(hero);
             ticksSinceLastAttack = 0;
         }
