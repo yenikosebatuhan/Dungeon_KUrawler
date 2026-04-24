@@ -19,12 +19,14 @@ public class Knight extends Enemy {
         int dCol = hero.getCol() - getCol();
 
         if (Math.abs(dRow) + Math.abs(dCol) == 1) {
+            System.out.println("[AI] Knight: Attacking hero!");
             hero.takeDamage(calculateDamage());
             return;
         }
 
         double euclid = Math.sqrt(dRow * dRow + dCol * dCol);
         if (euclid <= SIGHT_RADIUS) {
+            System.out.println("[AI] Knight: Chasing hero");
             if (Math.abs(dRow) >= Math.abs(dCol)) {
                 if (!tryStep(Integer.signum(dRow), 0, map, session, hero))
                     tryStep(0, Integer.signum(dCol), map, session, hero);
@@ -33,6 +35,7 @@ public class Knight extends Enemy {
                     tryStep(Integer.signum(dRow), 0, map, session, hero);
             }
         } else {
+            System.out.println("[AI] Knight: Roaming");
             int[][] dirs = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
             int[] d = dirs[RNG.nextInt(4)];
             tryStep(d[0], d[1], map, session, hero);

@@ -87,10 +87,11 @@ public class GameLoop {
     /**
      * Performs one frame of game logic: enemy AI, projectile movement,
      * enemy spawning, and win/lose checks.
+     * Public so that JavaFX AnimationTimer can drive the loop externally.
      *
      * @param deltaTime milliseconds elapsed since the last frame
      */
-    private void update(long deltaTime) {
+    public void update(long deltaTime) {
         if (!"Play".equals(session.getCurrentMode())) {
             return;
         }
