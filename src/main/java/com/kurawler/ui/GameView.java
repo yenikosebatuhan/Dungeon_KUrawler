@@ -15,16 +15,12 @@ import com.kurawler.model.object.Weapon;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.Label;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
 /**
@@ -40,7 +36,6 @@ public class GameView {
     private final ScreenManager screenManager;
     private final TileRenderer renderer;
 
-    private Stage stage;
     private Canvas canvas;
     private Label statusLabel;
     private Label inventoryLabel;
@@ -53,8 +48,7 @@ public class GameView {
     }
 
     /** Build and show the game window. */
-    public void show(Stage primaryStage) {
-        this.stage = primaryStage;
+    public void show(Stage stage) {
         GameSession session = controller.getSession();
         int mapWidth = session.getMap().getWidth();
         int mapHeight = session.getMap().getHeight();
@@ -80,14 +74,7 @@ public class GameView {
         messageLabel.setTextFill(Color.web("#aaaaaa"));
         messageLabel.setWrapText(true);
 
-        Button menuBtn = new Button("Menu");
-        menuBtn.setFont(Font.font("Monospaced", FontWeight.BOLD, 13));
-        menuBtn.setPrefWidth(220);
-        menuBtn.setStyle("-fx-background-color: #2a1a3e; -fx-text-fill: #e0e0e0; "
-                + "-fx-border-color: #664466; -fx-border-width: 1; -fx-cursor: hand;");
-        menuBtn.setOnAction(e -> showInGameMenu());
-
-        VBox sidebar = new VBox(12, statusLabel, inventoryLabel, messageLabel, menuBtn);
+        VBox sidebar = new VBox(12, statusLabel, inventoryLabel, messageLabel);
         sidebar.setPrefWidth(SIDEBAR_WIDTH);
         sidebar.setStyle("-fx-padding: 12; -fx-background-color: #1a1a2e;");
 
@@ -97,7 +84,7 @@ public class GameView {
         root.setStyle("-fx-background-color: #0f0f23;");
 
         Scene scene = new Scene(root, canvasW + SIDEBAR_WIDTH, canvasH);
-        scene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPress);
+        scene.setOnKeyPressed(this::handleKeyPress);
 
         stage.setTitle("Dungeon KUrawler");
         stage.setScene(scene);
@@ -110,41 +97,22 @@ public class GameView {
     /** Capture key input and delegate to controller. No logic here. */
     private void handleKeyPress(KeyEvent event) {
         switch (event.getCode()) {
-            case W: case UP:    controller.moveHero(-1,  0); break;
-            case S: case DOWN:  controller.moveHero( 1,  0); break;
-            case A: case LEFT:  controller.moveHero( 0, -1); break;
-            case D: case RIGHT: controller.moveHero( 0,  1); break;
-            case ESCAPE:        showInGameMenu(); return;
-            default:            return;
+            case W: case UP:
+                controller.moveHero(-1, 0);
+                break;
+            case S: case DOWN:
+                controller.moveHero(1, 0);
+                break;
+            case A: case LEFT:
+                controller.moveHero(0, -1);
+                break;
+            case D: case RIGHT:
+                controller.moveHero(0, 1);
+                break;
+            default:
+                return;
         }
         render();
-    }
-
-    private void showInGameMenu() {
-        ButtonType save    = new ButtonType("Save");
-        ButtonType load    = new ButtonType("Load");
-        ButtonType mainMenu = new ButtonType("Main Menu");
-        ButtonType resume  = new ButtonType("Resume");
-
-        Alert alert = new Alert(Alert.AlertType.NONE,
-                "Press Save to save your progress,\nLoad to restore a save, or\nMain Menu to quit.",
-                save, load, mainMenu, resume);
-        alert.setTitle("Dungeon KUrawler");
-        alert.setHeaderText("Game Menu");
-        alert.initOwner(stage);
-
-        alert.showAndWait().ifPresent(choice -> {
-            if (choice == save) {
-                controller.saveMap("map_save.json");
-                messageLabel.setText("Game saved.");
-            } else if (choice == load) {
-                controller.loadMap("map_save.json");
-                messageLabel.setText("Game loaded.");
-                render();
-            } else if (choice == mainMenu) {
-                screenManager.showMainMenu();
-            }
-        });
     }
 
     /** Render the entire game state by reading the model. */
