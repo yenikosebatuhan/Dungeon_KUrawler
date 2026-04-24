@@ -6,8 +6,8 @@ import com.kurawler.effect.RemoveFromCellEffect;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.Item;
 import com.kurawler.model.object.GameObject;
-import com.kurawler.model.object.Item;
 import java.util.ArrayList;
 import java.util.List;
 

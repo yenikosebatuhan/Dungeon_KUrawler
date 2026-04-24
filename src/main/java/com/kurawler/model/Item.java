@@ -1,23 +1,38 @@
 package com.kurawler.model;
 
+import com.kurawler.model.object.GameObject;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Base class for all items in the game.
  * Extends GameObject and adds inventory-related properties.
+ *
+ * <p>Items are GameObjects that (usually) occupy an inventory slot and
+ * expose a list of contextual actions the UI can offer the player.</p>
  */
-public class Item extends GameObject {
+public abstract class Item extends GameObject {
 
     protected boolean takesInventorySlot;
     protected boolean isTargetObjective;
 
     /**
-     * Creates a new Item with the given name.
+     * Creates a new Item with the given name and an empty description.
      * @param name The display name of the item
      */
-    public Item(String name) {
-        super(name);
+    protected Item(String name) {
+        super(name, "");
+        this.takesInventorySlot = true;
+        this.isTargetObjective = false;
+    }
+
+    /**
+     * Creates a new Item with the given name and description.
+     * @param name        The display name of the item
+     * @param description Flavour text describing the item
+     */
+    protected Item(String name, String description) {
+        super(name, description);
         this.takesInventorySlot = true;
         this.isTargetObjective = false;
     }
@@ -47,10 +62,11 @@ public class Item extends GameObject {
     }
 
     /**
-     * Returns available actions for this item.
-     * @return list of action strings
+     * Returns the list of contextual actions available for this item
+     * (e.g. "DISCARD", "EQUIP", "EAT", ...).
+     * Subclasses should override to append their own actions.
+     * @return list of action strings (never null)
      */
-    @Override
     public List<String> getAvailableActions() {
         List<String> actions = new ArrayList<>();
         actions.add("DISCARD");

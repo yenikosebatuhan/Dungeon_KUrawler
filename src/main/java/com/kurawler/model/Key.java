@@ -8,21 +8,25 @@ import java.util.List;
  */
 public class Key extends Item {
 
-    private String keyId;
+    private final String keyId;
 
     /**
      * Creates a new Key item.
      * @param name  The display name of the key
      * @param keyId The unique identifier used to match with a locked container
+     * @throws IllegalArgumentException if keyId is null or empty
      */
     public Key(String name, String keyId) {
         super(name);
+        if (keyId == null || keyId.isEmpty()) {
+            throw new IllegalArgumentException("keyId must be non-empty");
+        }
         this.keyId = keyId;
     }
 
     /**
      * Returns the unique identifier of this key.
-     * @return key ID string
+     * @return key ID string (never null)
      */
     public String getKeyId() {
         return keyId;
