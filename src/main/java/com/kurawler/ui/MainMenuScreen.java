@@ -33,22 +33,10 @@ public class MainMenuScreen {
         subtitle.setTextFill(Color.web("#888888"));
 
         Button newGameBtn = createMenuButton("New Game");
-        newGameBtn.setOnAction(e -> screenManager.startNewGame());
+        newGameBtn.setOnAction(e -> screenManager.showPlayMode());
 
         Button editorBtn = createMenuButton("Level Editor");
         editorBtn.setOnAction(e -> screenManager.showBuildMode());
-
-        Button saveBtn = createMenuButton("Save Map");
-        saveBtn.setOnAction(e -> {
-            boolean ok = screenManager.saveCurrentMap("map_save.json");
-            System.out.println(ok ? "[Menu] Map saved to map_save.json" : "[Menu] Save failed.");
-        });
-
-        Button loadBtn = createMenuButton("Load Map");
-        loadBtn.setOnAction(e -> {
-            boolean ok = screenManager.loadMap("map_save.json");
-            System.out.println(ok ? "[Menu] Map loaded from map_save.json" : "[Menu] Load failed.");
-        });
 
         Button helpBtn = createMenuButton("Help");
         helpBtn.setOnAction(e -> {
@@ -59,7 +47,7 @@ public class MainMenuScreen {
         Button exitBtn = createMenuButton("Exit");
         exitBtn.setOnAction(e -> Platform.exit());
 
-        VBox layout = new VBox(20, title, subtitle, newGameBtn, editorBtn, saveBtn, loadBtn, helpBtn, exitBtn);
+        VBox layout = new VBox(20, title, subtitle, newGameBtn, editorBtn, helpBtn, exitBtn);
         layout.setAlignment(Pos.CENTER);
         layout.setPadding(new Insets(60));
         layout.setStyle("-fx-background-color: #0f0f23;");

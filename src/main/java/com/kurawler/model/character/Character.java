@@ -82,11 +82,8 @@ public abstract class Character {
     public void setStrength(int strength) { this.strength = strength; }
     public int getMana() { return mana; }
     public int getMaxMana() { return maxMana; }
-    public void setMana(int mana) { this.mana = Math.max(0, Math.min(maxMana, mana)); }
     public int getEnergy() { return energy; }
     public int getMaxEnergy() { return maxEnergy; }
-    public void setEnergy(int energy) { this.energy = Math.max(0, Math.min(maxEnergy, energy)); }
-    public void setHealth(int health) { this.health = Math.max(0, Math.min(maxHealth, health)); }
     public int getRow() { return row; }
     public int getCol() { return col; }
 
