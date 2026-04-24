@@ -69,7 +69,7 @@ public class EnemySpawner {
      * <p>Roll distribution: 0-59 = Knight, 60-89 = Sorcerer, 90-99 = no spawn.</p>
      */
     private void spawnEnemy() {
-        if (getActiveEnemyCount() >= MAX_ACTIVE_ENEMIES) {
+        if (session.getActiveEnemyCount() >= MAX_ACTIVE_ENEMIES) {
             return;
         }
 
@@ -86,14 +86,15 @@ public class EnemySpawner {
             GridCell spawnCell = findEdgeSpawnLocation();
             if (spawnCell != null) {
                 enemy.setPosition(spawnCell.getRow(), spawnCell.getCol());
-                session.addEnemy(enemy);
+                spawnCell.setOccupyingCharacter(enemy);
+                session.incrementEnemyCount();
             }
         }
     }
 
     /**
-     * Finds a random walkable cell along the map edges (top or bottom row)
-     * that is not occupied by the hero or another enemy.
+     * Finds a random walkable, unoccupied cell along the map edges
+     * (top or bottom row).
      *
      * @return a valid edge GridCell for spawning, or null if none available
      */
@@ -104,11 +105,11 @@ public class EnemySpawner {
         }
 
         List<GridCell> candidates = new ArrayList<>();
-        int lastRow = map.getHeight() - 1;
+        int lastY = map.getGridHeight() - 1;
 
-        for (int col = 0; col < map.getWidth(); col++) {
-            addIfValidSpawn(map.getCell(0, col), candidates);
-            addIfValidSpawn(map.getCell(lastRow, col), candidates);
+        for (int x = 0; x < map.getGridWidth(); x++) {
+            addIfValidSpawn(map.getCellAt(x, 0), candidates);
+            addIfValidSpawn(map.getCellAt(x, lastY), candidates);
         }
 
         if (candidates.isEmpty()) {
@@ -124,36 +125,10 @@ public class EnemySpawner {
      * @param candidates the list to add valid cells to
      */
     private void addIfValidSpawn(GridCell cell, List<GridCell> candidates) {
-        if (cell == null || !cell.isWalkable()) {
-            return;
-        }
-        int row = cell.getRow();
-        int col = cell.getCol();
-
-        if (session.getHero() != null
-                && session.getHero().getRow() == row
-                && session.getHero().getCol() == col) {
-            return;
-        }
-        if (session.getEnemyAt(row, col) != null) {
+        if (cell == null || cell.isBlocked()) {
             return;
         }
         candidates.add(cell);
-    }
-
-    /**
-     * Counts the number of living enemies currently in the session.
-     *
-     * @return the active enemy count
-     */
-    public int getActiveEnemyCount() {
-        int count = 0;
-        for (Enemy enemy : session.getEnemies()) {
-            if (enemy.isAlive()) {
-                count++;
-            }
-        }
-        return count;
     }
 
     /**
