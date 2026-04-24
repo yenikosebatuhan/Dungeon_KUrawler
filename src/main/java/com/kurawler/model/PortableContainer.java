@@ -1,17 +1,18 @@
 package com.kurawler.model;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
- * Represents a portable container (e.g. pouch) that the Hero can carry in inventory.
- * Can hold a limited number of items inside it.
+ * Represents a portable container (e.g. pouch) that the Hero can carry
+ * in inventory. Can hold a limited number of items inside it.
  * Extends Item so it can itself be stored in the Hero's Inventory.
  */
 public class PortableContainer extends Item {
 
-    private int capacityLimit;
-    private List<Item> contents;
+    private final int capacityLimit;
+    private final List<Item> contents;
 
     /**
      * Creates a new PortableContainer.
@@ -20,57 +21,42 @@ public class PortableContainer extends Item {
      */
     public PortableContainer(String name, int capacityLimit) {
         super(name);
-        this.capacityLimit = capacityLimit;
+        this.capacityLimit = Math.max(0, capacityLimit);
         this.contents = new ArrayList<>();
     }
 
     /**
      * Adds an item into this container if there is space.
+     * A container cannot contain itself (prevents infinite recursion).
+     *
      * @param item The item to add
-     * @return true if successfully added, false if container is full or item is null
+     * @return true if successfully added, false if the container is full,
+     *         the item is null, the item is this container itself, or
+     *         the item is already present
      */
     public boolean addItem(Item item) {
         if (item == null) {
             return false;
         }
+        if (item == this) {
+            return false;
+        }
         if (contents.size() >= capacityLimit) {
             return false;
         }
-        contents.add(item);
-        return true;
+        if (contents.contains(item)) {
+            return false;
+        }
+        return contents.add(item);
     }
 
     /**
-     * Removes a specific item from this container.
-     * @param item The item to remove
-     * @return true if item was found and removed, false otherwise
-     */
-    public boolean removeItem(Item item) {
-        return contents.remove(item);
-    }
-
-    /**
-     * Returns the list of items currently inside this container.
-     * @return list of contents
+     * Returns an unmodifiable view of the items currently inside
+     * this container.
+     * @return unmodifiable list of contents
      */
     public List<Item> getContents() {
-        return contents;
-    }
-
-    /**
-     * Returns the maximum number of items this container can hold.
-     * @return capacity limit
-     */
-    public int getCapacityLimit() {
-        return capacityLimit;
-    }
-
-    /**
-     * Returns whether this container is full.
-     * @return true if at capacity
-     */
-    public boolean isFull() {
-        return contents.size() >= capacityLimit;
+        return Collections.unmodifiableList(contents);
     }
 
     /**

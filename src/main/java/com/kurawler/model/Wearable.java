@@ -8,17 +8,29 @@ import java.util.List;
  */
 public class Wearable extends Item {
 
-    private int modifierValue;
-    private String modifierType; // "DEF" or "STR"
+    /** Adds to the Hero's defence when equipped. */
+    public static final String MOD_DEF = "DEF";
+    /** Adds to the Hero's strength when equipped. */
+    public static final String MOD_STR = "STR";
+
+    private final int modifierValue;
+    private final String modifierType;
 
     /**
      * Creates a new Wearable item.
      * @param name          The display name of the item
      * @param modifierValue The amount added to the stat when equipped
      * @param modifierType  Which stat is modified: "DEF" or "STR"
+     * @throws IllegalArgumentException if modifierType is not one of the
+     *         supported values
      */
     public Wearable(String name, int modifierValue, String modifierType) {
         super(name);
+        if (modifierType == null
+                || !(modifierType.equals(MOD_DEF) || modifierType.equals(MOD_STR))) {
+            throw new IllegalArgumentException(
+                    "modifierType must be DEF or STR (got: " + modifierType + ")");
+        }
         this.modifierValue = modifierValue;
         this.modifierType = modifierType;
     }

@@ -1,11 +1,6 @@
 package com.kurawler.model;
 
 import com.kurawler.model.character.Hero;
-import com.kurawler.model.object.Consumable;
-import com.kurawler.model.object.Key;
-import com.kurawler.model.object.Weapon;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
 /**
@@ -66,14 +61,17 @@ public class MapFactory {
         session.setHero(hero);
 
         // Scatter items across rooms
-        map.placeObject(2, 2, new Weapon("Iron Sword", "A sturdy blade", 8));
-        map.placeObject(2, 12, new Consumable("Health Potion", "Restores 10 HP", 10));
-        map.placeObject(1, 14, new Consumable("Mana Elixir", "Restores 20 mana", 20));
-        map.placeObject(10, 2, new Weapon("War Axe", "A heavy axe", 12));
-        map.placeObject(9, 10, new Key("Gold Key", "Opens a golden door", "gold"));
-        map.placeObject(10, 13, new Weapon("Dagger", "A small dagger", 5));
-        map.placeObject(9, 12, new Consumable("Energy Apple", "Restores energy", 15));
-        map.placeObject(13, 7, new Weapon("Magic Staff", "Channels arcane energy", 10));
+        // Weapons: (name, atkValue, isRanged)
+        map.placeObject(2, 2,   new Weapon("Iron Sword", 8, false));
+        map.placeObject(10, 2,  new Weapon("War Axe", 12, false));
+        map.placeObject(10, 13, new Weapon("Dagger", 5, false));
+        map.placeObject(13, 7,  new Weapon("Magic Staff", 10, true)); // ranged
+        // Consumables: (name, restoreAmount, statType)
+        map.placeObject(2, 12,  new Consumable("Health Potion", 10, Consumable.STAT_HP));
+        map.placeObject(1, 14,  new Consumable("Mana Elixir", 20, Consumable.STAT_MANA));
+        map.placeObject(9, 12,  new Consumable("Energy Apple", 15, Consumable.STAT_ENERGY));
+        // Keys: (name, keyId)
+        map.placeObject(9, 10,  new Key("Gold Key", "gold"));
 
         return session;
     }

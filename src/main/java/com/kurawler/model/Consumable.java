@@ -8,24 +8,41 @@ import java.util.List;
  */
 public class Consumable extends Item {
 
-    private int restoreAmount;
-    private String statType; // "HP", "ENERGY", or "MANA"
+    /** Restores hit points; triggers the "EAT" action. */
+    public static final String STAT_HP = "HP";
+    /** Restores energy; triggers the "EAT" action. */
+    public static final String STAT_ENERGY = "ENERGY";
+    /** Restores mana; triggers the "DRINK" action. */
+    public static final String STAT_MANA = "MANA";
+
+    private final int restoreAmount;
+    private final String statType;
 
     /**
      * Creates a new Consumable item.
      * @param name          The display name of the item
      * @param restoreAmount How much of the stat to restore when consumed
+     *                      (non-negative)
      * @param statType      Which stat is restored: "HP", "ENERGY", or "MANA"
+     * @throws IllegalArgumentException if statType is not one of the
+     *         supported values
      */
     public Consumable(String name, int restoreAmount, String statType) {
         super(name);
-        this.restoreAmount = restoreAmount;
+        if (statType == null
+                || !(statType.equals(STAT_HP)
+                        || statType.equals(STAT_ENERGY)
+                        || statType.equals(STAT_MANA))) {
+            throw new IllegalArgumentException(
+                    "statType must be one of HP, ENERGY, MANA (got: " + statType + ")");
+        }
+        this.restoreAmount = Math.max(0, restoreAmount);
         this.statType = statType;
     }
 
     /**
      * Returns the amount this consumable restores.
-     * @return restore amount
+     * @return restore amount (>= 0)
      */
     public int getRestoreAmount() {
         return restoreAmount;
@@ -47,9 +64,9 @@ public class Consumable extends Item {
     @Override
     public List<String> getAvailableActions() {
         List<String> actions = super.getAvailableActions();
-        if (statType.equals("HP") || statType.equals("ENERGY")) {
+        if (STAT_HP.equals(statType) || STAT_ENERGY.equals(statType)) {
             actions.add("EAT");
-        } else if (statType.equals("MANA")) {
+        } else if (STAT_MANA.equals(statType)) {
             actions.add("DRINK");
         }
         return actions;

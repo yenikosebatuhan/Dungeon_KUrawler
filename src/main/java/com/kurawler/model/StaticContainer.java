@@ -1,6 +1,8 @@
 package com.kurawler.model;
 
+import com.kurawler.model.object.GameObject;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -10,10 +12,10 @@ import java.util.List;
  */
 public class StaticContainer extends GameObject {
 
-    private int capacityLimit;
+    private final int capacityLimit;
+    private final List<Item> contents;
     private boolean isLocked;
     private String requiredKeyId;
-    private List<Item> contents;
 
     /**
      * Creates a new unlocked StaticContainer.
@@ -21,8 +23,8 @@ public class StaticContainer extends GameObject {
      * @param capacityLimit Maximum number of items this container can hold
      */
     public StaticContainer(String name, int capacityLimit) {
-        super(name);
-        this.capacityLimit = capacityLimit;
+        super(name, "");
+        this.capacityLimit = Math.max(0, capacityLimit);
         this.contents = new ArrayList<>();
         this.isLocked = false;
         this.requiredKeyId = null;
@@ -31,13 +33,18 @@ public class StaticContainer extends GameObject {
     /**
      * Attempts to unlock this container using the provided Key.
      * @param key The key to use
-     * @return true if the key matched and the container was unlocked, false otherwise
+     * @return true if the key matched and the container was unlocked,
+     *         false if the key is null, the container is already
+     *         unlocked, or the key does not match
      */
     public boolean unlock(Key key) {
-        if (key == null) {
+        if (!isLocked) {
             return false;
         }
-        if (isLocked && key.getKeyId().equals(requiredKeyId)) {
+        if (key == null || key.getKeyId() == null || requiredKeyId == null) {
+            return false;
+        }
+        if (requiredKeyId.equals(key.getKeyId())) {
             isLocked = false;
             return true;
         }
@@ -45,36 +52,32 @@ public class StaticContainer extends GameObject {
     }
 
     /**
-     * Opens the container and returns its contents if it is not locked.
-     * @return list of items inside, or empty list if locked
+     * Opens the container and returns its contents.
+     * @return unmodifiable view of contents
+     * @throws IllegalStateException if the container is locked
      */
     public List<Item> openContainer() {
-        if (!isLocked) {
-            return contents;
+        if (isLocked) {
+            throw new IllegalStateException(
+                    "Container '" + getName() + "' is locked and cannot be opened");
         }
-        return new ArrayList<>();
+        return Collections.unmodifiableList(contents);
     }
 
     /**
      * Adds an item to this container if there is space.
      * @param item The item to add
+     * @return true if successfully added, false if container is full
+     *         or the item is null
      */
-    public void addItem(Item item) {
+    public boolean addItem(Item item) {
         if (item == null) {
-            return;
+            return false;
         }
-        if (contents.size() < capacityLimit) {
-            contents.add(item);
+        if (contents.size() >= capacityLimit) {
+            return false;
         }
-    }
-
-    /**
-     * Removes a specific item from this container.
-     * @param item The item to remove
-     * @return true if item was found and removed, false otherwise
-     */
-    public boolean removeItem(Item item) {
-        return contents.remove(item);
+        return contents.add(item);
     }
 
     /**
@@ -87,42 +90,36 @@ public class StaticContainer extends GameObject {
 
     /**
      * Sets the lock state and required key ID for this container.
+     * When {@code locked} is false, the required key ID is cleared.
      * @param locked true to lock the container
-     * @param keyId  The key ID required to unlock it (only used when locked=true)
+     * @param keyId  The key ID required to unlock it; required when
+     *               locked=true, ignored when locked=false
      */
     public void setLocked(boolean locked, String keyId) {
-        this.isLocked = locked;
-        this.requiredKeyId = keyId;
+        if (locked) {
+            if (keyId == null || keyId.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "A non-empty keyId is required when locking a container");
+            }
+            this.requiredKeyId = keyId;
+            this.isLocked = true;
+        } else {
+            this.isLocked = false;
+            this.requiredKeyId = null;
+        }
     }
 
     /**
-     * Returns the key ID required to unlock this container.
-     * @return required key ID, or null if not locked
-     */
-    public String getRequiredKeyId() {
-        return requiredKeyId;
-    }
-
-    /**
-     * Returns the maximum number of items this container can hold.
-     * @return capacity limit
-     */
-    public int getCapacityLimit() {
-        return capacityLimit;
-    }
-
-    /**
-     * Returns available actions for this container.
-     * "OPEN" is only available when not locked.
+     * Returns contextual actions for this container:
+     * "UNLOCK" if locked, "OPEN" if unlocked.
      * @return list of action strings
      */
-    @Override
     public List<String> getAvailableActions() {
         List<String> actions = new ArrayList<>();
-        if (!isLocked) {
-            actions.add("OPEN");
-        } else {
+        if (isLocked) {
             actions.add("UNLOCK");
+        } else {
+            actions.add("OPEN");
         }
         return actions;
     }

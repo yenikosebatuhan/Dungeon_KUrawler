@@ -4,9 +4,9 @@ import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Inventory;
 import com.kurawler.model.Map;
-import com.kurawler.model.object.Consumable;
-import com.kurawler.model.object.Weapon;
-import com.kurawler.model.object.Wearable;
+import com.kurawler.model.Consumable;
+import com.kurawler.model.Weapon;
+import com.kurawler.model.Wearable;
 import java.util.Random;
 
 /**
@@ -39,7 +39,7 @@ public class Hero extends Character {
 
     @Override
     public int calculateDamage() {
-        int weaponDmg = (equippedWeapon != null) ? equippedWeapon.getDamage() : 0;
+        int weaponDmg = (equippedWeapon != null) ? equippedWeapon.getAtkValue() : 0;
         return getStrength() + weaponDmg;
     }
 
@@ -103,26 +103,52 @@ public class Hero extends Character {
 
     /**
      * Equips a wearable, replacing any previous one.
-     * The previous wearable's defense bonus (if any) is removed first.
+     * The previous wearable's stat bonus (if any) is removed first.
+     * Currently only DEF-type wearables affect defense; STR-type
+     * wearables affect strength.
      */
     public void equipWearable(Wearable wearable) {
         if (wearable == null) return;
         if (equippedWearable != null) {
             // Strip old bonus
-            setDefensePower(getDefensePower() - equippedWearable.getDefenseBonus());
+            applyWearableModifier(equippedWearable, -1);
         }
         equippedWearable = wearable;
-        setDefensePower(getDefensePower() + wearable.getDefenseBonus());
+        applyWearableModifier(wearable, +1);
+    }
+
+    private void applyWearableModifier(Wearable wearable, int sign) {
+        int delta = sign * wearable.getModifierValue();
+        if (Wearable.MOD_DEF.equals(wearable.getModifierType())) {
+            setDefensePower(getDefensePower() + delta);
+        } else if (Wearable.MOD_STR.equals(wearable.getModifierType())) {
+            setStrength(getStrength() + delta);
+        }
     }
 
     /**
-     * Consumes an item from the inventory: heals the hero by its healAmount
-     * and removes it from inventory. No-op if the consumable isn't carried.
+     * Consumes an item from the inventory: restores the relevant stat
+     * (HP/MANA/ENERGY) by its restoreAmount and removes it from inventory.
+     * No-op if the consumable isn't carried.
      */
     public boolean useConsumable(Consumable consumable) {
         if (consumable == null) return false;
         if (!inventory.removeItem(consumable)) return false;
-        heal(consumable.getHealAmount());
+        int amount = consumable.getRestoreAmount();
+        switch (consumable.getStatType()) {
+            case Consumable.STAT_HP:
+                heal(amount);
+                break;
+            case Consumable.STAT_MANA:
+                restoreMana(amount);
+                break;
+            case Consumable.STAT_ENERGY:
+                restoreEnergy(amount);
+                break;
+            default:
+                // Unknown stat type — safe no-op
+                break;
+        }
         return true;
     }
 

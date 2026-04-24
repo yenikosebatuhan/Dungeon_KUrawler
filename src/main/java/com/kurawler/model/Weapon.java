@@ -1,5 +1,6 @@
 package com.kurawler.model;
 
+import com.kurawler.model.object.Projectile;
 import java.util.List;
 
 /**
@@ -8,8 +9,10 @@ import java.util.List;
  */
 public class Weapon extends Item {
 
-    private int atkValue;
-    private boolean isRanged;
+    private static final int DEFAULT_PROJECTILE_SPEED = 2;
+
+    private final int atkValue;
+    private final boolean isRanged;
 
     /**
      * Creates a new Weapon.
@@ -41,17 +44,20 @@ public class Weapon extends Item {
 
     /**
      * Fires a projectile from the given cell in the given direction.
-     * Only works if the weapon is ranged.
+     * Only works if the weapon is ranged and a source cell is provided.
+     *
      * @param sourceCell The cell from which the projectile is fired
      * @param direction  Direction to fire ("UP", "DOWN", "LEFT", "RIGHT")
-     * @return a new Projectile, or null if weapon is not ranged
+     * @return a new Projectile positioned at the source cell, or null if
+     *         the weapon is not ranged, the source cell is null, or the
+     *         direction is invalid
      */
     public Projectile fireProjectile(GridCell sourceCell, String direction) {
-        if (!isRanged) {
+        if (!isRanged || sourceCell == null || direction == null) {
             return null;
         }
-        Projectile projectile = new Projectile(atkValue, direction, 2);
-        projectile.setCurrentCell(sourceCell);
+        Projectile projectile = new Projectile(atkValue, direction, DEFAULT_PROJECTILE_SPEED);
+        projectile.setPosition(sourceCell.getRow(), sourceCell.getCol());
         return projectile;
     }
 

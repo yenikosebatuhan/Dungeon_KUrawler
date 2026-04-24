@@ -46,7 +46,7 @@ public class CombatResolver {
         if (attacker instanceof Hero) {
             Hero hero = (Hero) attacker;
             if (hero.getEquippedWeapon() != null) {
-                damage += hero.getEquippedWeapon().getDamage();
+                damage += hero.getEquippedWeapon().getAtkValue();
             }
         }
 

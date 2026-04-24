@@ -5,12 +5,12 @@ import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Inventory;
 import com.kurawler.model.character.Hero;
-import com.kurawler.model.object.Consumable;
+import com.kurawler.model.Consumable;
+import com.kurawler.model.Item;
+import com.kurawler.model.Key;
+import com.kurawler.model.StaticContainer;
+import com.kurawler.model.Weapon;
 import com.kurawler.model.object.GameObject;
-import com.kurawler.model.object.Item;
-import com.kurawler.model.object.Key;
-import com.kurawler.model.object.StaticContainer;
-import com.kurawler.model.object.Weapon;
 
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
@@ -195,10 +195,10 @@ public class GameView {
         );
 
         Inventory inv = hero.getInventory();
-        StringBuilder sb = new StringBuilder("  Inventory (" + inv.getItemCount() + "/8):\n");
-        for (int r = 0; r < 2; r++) {
+        StringBuilder sb = new StringBuilder("  Inventory (" + inv.getItemCount() + "/" + Inventory.MAX_CAPACITY + "):\n");
+        for (int r = 0; r < Inventory.ROWS; r++) {
             sb.append("  ");
-            for (int c = 0; c < 4; c++) {
+            for (int c = 0; c < Inventory.COLS; c++) {
                 Item item = inv.getItem(r, c);
                 if (item != null) {
                     sb.append("[").append(item.getName()).append("] ");
