@@ -244,9 +244,15 @@ public class GameView {
                 controller.saveMap("map_save.json");
                 messageLabel.setText("Game saved.");
             } else if (choice == load) {
-                controller.loadMap("map_save.json");
-                messageLabel.setText("Game loaded.");
-                render();
+                boolean loaded = controller.loadMap("map_save.json");
+                if (loaded) {
+                    animationTimer.stop();
+                    animationTimer = null;
+                    screenManager.showPlayMode(controller.getSession());
+                    return;
+                } else {
+                    messageLabel.setText("No save file found.");
+                }
             } else if (choice == mainMenu) {
                 screenManager.showMainMenu();
                 return;
@@ -275,7 +281,8 @@ public class GameView {
                 int sy = r * TILE_SIZE;
                 GridCell cell = map.getCell(r, c);
 
-                if (!cell.isWalkable()) {
+                StaticObject so = cell.getStaticObject();
+                if (so != null && !so.isPassable()) {
                     renderer.drawWall(gc, sx, sy);
                 } else {
                     renderer.drawFloor(gc, sx, sy);
