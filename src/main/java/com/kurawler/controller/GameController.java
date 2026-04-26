@@ -3,7 +3,9 @@ package com.kurawler.controller;
 import com.kurawler.action.Action;
 import com.kurawler.action.MoveAction;
 import com.kurawler.action.TakeAction;
+import com.kurawler.effect.AddToInventoryEffect;
 import com.kurawler.effect.Effect;
+import com.kurawler.effect.RemoveFromCellEffect;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Inventory;
@@ -119,11 +121,9 @@ public class GameController {
      * Creates a TakeAction and runs it through the pipeline.
      */
     public void interactWithObject(int row, int col, Item item) {
-        TakeAction take = new TakeAction(item);
-        List<Effect> effects = take.resolve(session);
-        for (Effect effect : effects) {
-            effect.apply(session);
-        }
+        if (session.getHero().getInventory().isFull()) return;
+        new RemoveFromCellEffect(row, col, item).apply(session);
+        new AddToInventoryEffect(item).apply(session);
         session.advanceTurn();
     }
 

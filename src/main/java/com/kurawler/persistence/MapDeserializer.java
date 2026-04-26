@@ -74,7 +74,14 @@ public class MapDeserializer {
         String name = (String) heroJson.get("name");
         Hero hero = new Hero(name);
 
-        hero.setPosition((int) heroJson.get("row"), (int) heroJson.get("col"));
+        int heroRow = (int) heroJson.get("row");
+        int heroCol = (int) heroJson.get("col");
+        hero.setPosition(heroRow, heroCol);
+        GridCell heroCell = session.getMap().getCell(heroRow, heroCol);
+        if (heroCell != null) {
+            hero.setCurrentCell(heroCell);
+            heroCell.setOccupyingCharacter(hero);
+        }
         hero.setHealth((int) heroJson.get("hp"));
         hero.setMana((int) heroJson.get("mana"));
         hero.setEnergy((int) heroJson.get("energy"));
@@ -96,6 +103,7 @@ public class MapDeserializer {
         }
 
         session.setHero(hero);
+        session.resetActiveEnemyCount();
     }
 
     public Map loadMapFromFile(String filename) {
