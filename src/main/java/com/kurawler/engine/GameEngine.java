@@ -5,37 +5,42 @@ import com.kurawler.controller.GameController;
 import com.kurawler.model.GameSession;
 
 /**
- * Engine: Runs the game loop and delegates actions to the controller.
- * Responsibilities: game loop, movement coordination, combat coordination, enemy spawn stubs.
+ * Facade that owns both the GameController (Action-Effect pipeline)
+ * and the GameLoop (AI, spawning, projectiles).
+ * UI creates a GameEngine, then calls start()/stop() and tick().
  */
 public class GameEngine {
 
     private final GameController controller;
+    private final GameLoop gameLoop;
     private boolean running;
 
     public GameEngine(GameController controller) {
         this.controller = controller;
+        this.gameLoop = new GameLoop(controller.getSession());
         this.running = false;
     }
 
-    /** Simple game loop — processes one action per tick. */
+    /** Process a player action through the Action-Effect pipeline. */
     public void tick(Action playerAction) {
         if (playerAction != null) {
             controller.executeAction(playerAction);
         }
-        // TODO: Process enemy AI actions
-        // TODO: Update projectiles
-        // TODO: Check win/lose conditions
+    }
+
+    /** Called each frame by AnimationTimer to drive AI and spawning. */
+    public void update(long deltaMs) {
+        gameLoop.update(deltaMs);
     }
 
     public void start() {
         this.running = true;
-        System.out.println("[Engine] Game started.");
+        controller.getSession().setCurrentMode("Play");
     }
 
     public void stop() {
         this.running = false;
-        System.out.println("[Engine] Game stopped.");
+        gameLoop.stop();
     }
 
     public boolean isRunning() {
@@ -44,5 +49,9 @@ public class GameEngine {
 
     public GameController getController() {
         return controller;
+    }
+
+    public GameLoop getGameLoop() {
+        return gameLoop;
     }
 }

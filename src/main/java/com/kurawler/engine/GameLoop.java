@@ -6,8 +6,6 @@ import com.kurawler.model.Map;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
-import com.kurawler.model.character.Knight;
-import com.kurawler.model.character.Sorcerer;
 import com.kurawler.model.object.Projectile;
 import java.util.ArrayList;
 import java.util.List;
@@ -133,11 +131,7 @@ public class GameLoop {
             if (!enemy.isAlive()) {
                 continue;
             }
-            if (enemy instanceof Knight) {
-                ((Knight) enemy).decideAction(hero, map, session);
-            } else if (enemy instanceof Sorcerer) {
-                ((Sorcerer) enemy).decideAction(hero, map, session);
-            }
+            enemy.decideAction(hero, map, session);
         }
     }
 
