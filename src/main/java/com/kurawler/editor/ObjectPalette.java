@@ -1,12 +1,17 @@
 package com.kurawler.editor;
 
-import com.kurawler.model.*;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.Sorcerer;
+import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
+import com.kurawler.model.object.Key;
+import com.kurawler.model.object.PortableContainer;
+import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
+import com.kurawler.model.object.Wearable;
+import com.kurawler.model.object.Weapon;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -78,19 +83,19 @@ public class ObjectPalette {
             case "Gargoyle Pool":
                 return new StaticObject("Gargoyle Pool", "A searchable stone pool", true, true);
             case "Sword":
-                return new Weapon("Sword", 5, false);
+                return new Weapon("Sword", "A sword", 5);
             case "Spell Book":
-                return new Weapon("Spell Book", 8, true);
+                return new Weapon("Spell Book", "A magical spell book", 8);
             case "Health Potion":
-                return new Consumable("Health Potion", 20, Consumable.STAT_HP);
+                return new Consumable("Health Potion", "Restores 20 HP", 20);
             case "Armor":
-                return new Wearable("Armor", 3, Wearable.MOD_DEF);
+                return new Wearable("Armor", "Protective armor", 3);
             case "Golden Key":
-                return new Key("Golden Key", "key_001");
+                return new Key("Golden Key", "Opens golden doors", "key_001");
             case "Chest":
-                return new StaticContainer("Chest", 5);
+                return new StaticContainer("Chest", "A wooden chest");
             case "Pouch":
-                return new PortableContainer("Pouch", 4);
+                return new PortableContainer("Pouch", "A small pouch", 4);
             default:
                 return null;
         }

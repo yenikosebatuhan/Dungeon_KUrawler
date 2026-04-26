@@ -79,7 +79,7 @@ public class GameController {
         GridCell cell = session.getMap().getCell(hero.getRow(), hero.getCol());
         if (cell == null) return;
 
-        for (GameObject obj : cell.getGameObjects()) {
+        for (GameObject obj : cell.getObjects()) {
             if (obj instanceof Item) {
                 TakeAction take = new TakeAction((Item) obj);
                 List<Effect> effects = take.resolve(session);

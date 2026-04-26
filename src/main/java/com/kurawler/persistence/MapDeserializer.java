@@ -165,7 +165,7 @@ public class MapDeserializer {
                 int heal = json.containsKey("healAmount") ? (int) json.get("healAmount") : 0;
                 return new Consumable(name, description, heal);
             case "StaticObject":
-                return new StaticObject(name, description);
+                return new StaticObject(name, description, true, false);
             case "Key":
                 String keyId = json.containsKey("keyId") ? (String) json.get("keyId") : "";
                 return new Key(name, description, keyId);
