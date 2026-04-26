@@ -136,7 +136,18 @@ public class MapDeserializer {
         GridCell cell = map.getCell(row, col);
         if (cell == null) return;
 
-        cell.setWalkable((boolean) cellJson.get("walkable"));
+        if (cellJson.containsKey("staticObject")) {
+            @SuppressWarnings("unchecked")
+            LinkedHashMap<String, Object> soJson = (LinkedHashMap<String, Object>) cellJson.get("staticObject");
+            String soName = (String) soJson.get("name");
+            String soDesc = soJson.containsKey("description") ? (String) soJson.get("description") : "";
+            boolean soPassable = soJson.containsKey("passable") ? (boolean) soJson.get("passable") : true;
+            boolean soSearchable = soJson.containsKey("searchable") ? (boolean) soJson.get("searchable") : false;
+            cell.setStaticObject(new StaticObject(soName, soDesc, soPassable, soSearchable));
+        } else if (!(boolean) cellJson.get("walkable")) {
+            // Backward compat: old saves only stored "walkable": false for walls
+            cell.setStaticObject(new StaticObject("Wall", "Dark wall", false, false));
+        }
 
         if (cellJson.containsKey("objects")) {
             @SuppressWarnings("unchecked")
