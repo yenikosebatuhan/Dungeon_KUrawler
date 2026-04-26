@@ -53,7 +53,7 @@ public class CollisionDetector {
         if (cell == null) {
             return false;
         }
-        return cell.isWalkable() && !cell.hasObjects();
+        return cell.isWalkable() && cell.getGameObjects().isEmpty();
     }
 
     /**

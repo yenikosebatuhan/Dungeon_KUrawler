@@ -23,7 +23,7 @@ public class RemoveFromCellEffect implements Effect {
     public void apply(GameSession session) {
         GridCell cell = session.getMap().getCell(row, col);
         if (cell != null) {
-            cell.removeObject(object);
+            cell.removeGameObject(object);
             System.out.println("[Effect] " + object.getName() + " removed from cell (" + row + "," + col + ").");
         }
     }
