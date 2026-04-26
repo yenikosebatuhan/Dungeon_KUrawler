@@ -32,6 +32,10 @@ public class GameLoop {
     /** Target sleep time per frame in milliseconds (~60 FPS). */
     private static final long FRAME_SLEEP_MS = 16;
 
+    /** Enemy AI runs every this many frames (~6 moves/sec at 60 FPS). */
+    private static final int ENEMY_TICK_INTERVAL = 10;
+    private int enemyTickCounter = 0;
+
     /**
      * Creates a new game loop bound to the given session.
      *
@@ -115,6 +119,9 @@ public class GameLoop {
      * action (chase, attack, wander, teleport, or cast spell) based on type.
      */
     private void updateEnemies() {
+        if (++enemyTickCounter < ENEMY_TICK_INTERVAL) return;
+        enemyTickCounter = 0;
+
         Map map = session.getMap();
         Hero hero = session.getHero();
         if (hero == null || map == null) {
