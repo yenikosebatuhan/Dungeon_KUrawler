@@ -53,6 +53,8 @@ public class GameSession {
         this.playDurationTimer = 0;
     }
     
+    public void pauseGame() { /* Pause logic */ }
+    
     public boolean checkWinCondition() {
         if (hero == null || targetObjective == null) return false;
         Inventory inv = hero.getInventory();
