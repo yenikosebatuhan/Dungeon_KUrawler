@@ -70,6 +70,7 @@ public class GameSession {
     public int getActiveEnemyCount() { return activeEnemyCount; }
     public void incrementEnemyCount() { this.activeEnemyCount++; }
     public void decrementEnemyCount() { if (this.activeEnemyCount > 0) this.activeEnemyCount--; }
+    public void resetActiveEnemyCount() { this.activeEnemyCount = 0; }
 
     // --- TEAM'S METHODS ---
     public Map getMap() { return map; }

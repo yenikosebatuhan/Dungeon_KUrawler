@@ -16,9 +16,10 @@ public class Hero extends Character {
 
     private static final int ATTACK_ENERGY_COST = 1;
     private static final int MELEE_REACH = 1;
+    private static final Random RNG = new Random();
 
     public Hero(String name) {
-        super(name, 17, 0, 2, 8 + new Random().nextInt(8), 80, 100);
+        super(name, 17, 0, 2, 8 + RNG.nextInt(8), 80, 100);
         this.inventory = new Inventory();
     }
 
@@ -43,14 +44,10 @@ public class Hero extends Character {
         int targetCol = getCol() + dCol;
 
         GridCell targetCell = map.getCell(targetRow, targetCol);
-        // Caner's perfect collision detection!
+
         if (targetCell == null || targetCell.isBlocked()) return false;
 
-        // Clear old cell, claim new cell
-        if (getCurrentCell() != null) getCurrentCell().setOccupyingCharacter(null);
-        targetCell.setOccupyingCharacter(this);
-        setCurrentCell(targetCell);
-        setPosition(targetRow, targetCol);
+        moveToCell(targetCell);
         return true;
     }
 
@@ -68,8 +65,10 @@ public class Hero extends Character {
     }
 
     public void equipWearable(Wearable wearable) {
-        if (wearable == null) return;
-        if (equippedWearable != null) setDefensePower(getDefensePower() - equippedWearable.getDefenseBonus());
+        if (wearable == null || wearable == equippedWearable) return;
+        if (equippedWearable != null) {
+            setDefensePower(getDefensePower() - equippedWearable.getDefenseBonus());
+        }
         equippedWearable = wearable;
         setDefensePower(getDefensePower() + wearable.getDefenseBonus());
     }
