@@ -13,6 +13,7 @@ public class Knight extends Enemy {
         super("Knight", 20, 4, 1, 8, 0, 80);
     }
 
+    @Override
     public void decideAction(Hero hero, Map map, GameSession session) {
         if (hero == null || map == null || !isAlive() || !hero.isAlive()) return;
         int dRow = hero.getRow() - getRow();
@@ -46,13 +47,8 @@ public class Knight extends Enemy {
         GridCell target = map.getCell(nr, nc);
         
         if (target == null || target.isBlocked()) return false;
-        if (hero.getRow() == nr && hero.getCol() == nc) return false;
-
-        // Move processing
-        if (getCurrentCell() != null) getCurrentCell().setOccupyingCharacter(null);
-        target.setOccupyingCharacter(this);
-        setCurrentCell(target);
-        setPosition(nr, nc);
+        
+        moveToCell(target);
         return true;
     }
 
