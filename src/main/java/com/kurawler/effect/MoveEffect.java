@@ -1,6 +1,7 @@
 package com.kurawler.effect;
 
 import com.kurawler.model.GameSession;
+import com.kurawler.model.GridCell;
 import com.kurawler.model.character.Character;
 
 /**
@@ -20,8 +21,15 @@ public class MoveEffect implements Effect {
 
     @Override
     public void apply(GameSession session) {
-        character.setPosition(newRow, newCol);
-        System.out.println("[Effect] " + character.getName() + " moved to (" + newRow + "," + newCol + ").");
+        GridCell targetCell = session.getMap().getCell(newRow, newCol);
+        if (targetCell != null) {
+            character.moveToCell(targetCell);
+        } else {
+            character.setPosition(newRow, newCol);
+        }
+        character.useEnergy(1);
+        System.out.println("[Effect] " + character.getName() + " moved to (" + newRow + "," + newCol
+                + ") | Energy: " + character.getEnergy() + "/" + character.getMaxEnergy());
     }
 
     @Override
