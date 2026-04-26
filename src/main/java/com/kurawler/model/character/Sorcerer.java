@@ -21,25 +21,52 @@ public class Sorcerer extends Enemy {
         super("Sorcerer", 10, 8, 0, 5, 60, 40);
     }
 
+    @Override
     public void decideAction(Hero hero, Map map, GameSession session) {
         if (hero == null || map == null || !isAlive() || !hero.isAlive()) return;
-        if (RNG.nextFloat() < TELEPORT_CHANCE) teleportToRandomWalkable(map, session, hero);
         
         ticksSinceLastAttack++;
-        if (ticksSinceLastAttack >= ATTACK_COOLDOWN) {
-            castSpell(hero);
+        
+        int dist = Math.abs(hero.getRow() - getRow()) + Math.abs(hero.getCol() - getCol());
+        boolean teleported = false;
+        if (dist <= 1 && RNG.nextFloat() < TELEPORT_CHANCE) {
+            teleportToRandomWalkable(map, session, hero);
+            teleported = true;
+        }
+        
+        if (!teleported && ticksSinceLastAttack >= ATTACK_COOLDOWN) {
+            castSpell(hero, map);
             ticksSinceLastAttack = 0;
         }
     }
 
-    public Projectile castSpell(Hero hero) {
-        if (hero == null || !hero.isAlive()) return null;
+    public Projectile castSpell(Hero hero, Map map) {
+        if (hero == null || !hero.isAlive() || map == null) return null;
+        if (!hasLineOfSight(hero, map)) return null;
         int dr = Integer.signum(hero.getRow() - getRow());
         int dc = Integer.signum(hero.getCol() - getCol());
         Projectile p = new Projectile("Arcane Bolt", "Crackling magic energy", SPELL_DAMAGE, dr, dc);
         hero.takeDamage(SPELL_DAMAGE);
         this.lastSpell = p;
         return p;
+    }
+
+    private boolean hasLineOfSight(Hero hero, Map map) {
+        int r = getRow(), c = getCol();
+        int dr = Integer.signum(hero.getRow() - r);
+        int dc = Integer.signum(hero.getCol() - c);
+        if (dr == 0 && dc == 0) return false;
+        
+        if (dr != 0 && dc != 0 && Math.abs(hero.getRow()-r) != Math.abs(hero.getCol()-c)) return false;
+        r += dr; c += dc;
+        while (r != hero.getRow() || c != hero.getCol()) {
+            GridCell cell = map.getCell(r, c);
+            if (cell == null) return false;
+            
+            if (cell.getStaticObject() != null && !cell.getStaticObject().isPassable()) return false;
+            r += dr; c += dc;
+        }
+        return true;
     }
 
     private void teleportToRandomWalkable(Map map, GameSession session, Hero hero) {
@@ -55,10 +82,7 @@ public class Sorcerer extends Enemy {
         if (candidates.isEmpty()) return;
         GridCell pick = candidates.get(RNG.nextInt(candidates.size()));
         
-        if (getCurrentCell() != null) getCurrentCell().setOccupyingCharacter(null);
-        pick.setOccupyingCharacter(this);
-        setCurrentCell(pick);
-        setPosition(pick.getRow(), pick.getCol());
+        moveToCell(pick);
     }
 
     public float getTeleportChance() { return TELEPORT_CHANCE; }
