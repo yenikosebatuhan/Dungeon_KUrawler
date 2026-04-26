@@ -3,6 +3,7 @@ package com.kurawler.model;
 import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.object.Item;
+import com.kurawler.model.object.Projectile; 
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,16 +12,18 @@ public class GameSession {
     private Hero hero;
     private int turnCount;
     private final List<Enemy> enemies;
-
+    private final List<Projectile> projectiles; 
+    
     // Caner's Core Logic
     private int playDurationTimer;
     private int activeEnemyCount;
-    private String currentMode; // "Play" or "Design"
+    private String currentMode; 
     private Item targetObjective;
 
     public GameSession() {
         this.turnCount = 0;
         this.enemies = new ArrayList<>();
+        this.projectiles = new ArrayList<>(); 
         this.playDurationTimer = 0;
         this.activeEnemyCount = 0;
         this.currentMode = "Design";
@@ -31,11 +34,25 @@ public class GameSession {
         this.map = map;
     }
 
+    // --- PROJECTILE MANAGEMENT (NEW) ---
+    public List<Projectile> getProjectiles() {
+        return projectiles;
+    }
+
+    public void addProjectile(Projectile p) {
+        if (p != null) projectiles.add(p);
+    }
+
+    public void removeProjectile(Projectile p) {
+        projectiles.remove(p);
+    }
+
     // --- CANER'S CORE METHODS ---
     public void startGame() {
         this.currentMode = "Play";
         this.playDurationTimer = 0;
     }
+    
     public void pauseGame() { /* Pause logic */ }
     
     public boolean checkWinCondition() {
