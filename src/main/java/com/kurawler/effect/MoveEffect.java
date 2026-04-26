@@ -22,9 +22,9 @@ public class MoveEffect implements Effect {
 
     @Override
     public void apply(GameSession session) {
-        GridCell target = session.getMap().getCell(newRow, newCol);
-        if (target != null) {
-            character.moveToCell(target);
+        GridCell targetCell = session.getMap().getCell(newRow, newCol);
+        if (targetCell != null) {
+            character.moveToCell(targetCell);
         } else {
             character.setPosition(newRow, newCol);
         }

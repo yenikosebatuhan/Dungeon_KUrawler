@@ -117,7 +117,7 @@ public class MapEditor {
 
                 cell.setStaticObject(null);
                 cell.setOccupyingCharacter(null);
-                cell.getObjects().clear();
+                for (GameObject obj : cell.getObjects()) cell.removeObject(obj);
             }
         }
     }
