@@ -4,7 +4,7 @@ import com.kurawler.effect.Effect;
 import com.kurawler.effect.HealEffect;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.character.Hero;
-import com.kurawler.model.Consumable;
+import com.kurawler.model.object.Consumable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,7 +27,7 @@ public class EatAction implements Action {
 
         // Only resolve if hero has this consumable
         if (hero.getInventory().removeItem(consumable)) {
-            effects.add(new HealEffect(hero, consumable.getRestoreAmount()));
+            effects.add(new HealEffect(hero, consumable.getHealAmount()));
         }
 
         return effects;
