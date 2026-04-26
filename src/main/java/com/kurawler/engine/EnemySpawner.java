@@ -85,9 +85,7 @@ public class EnemySpawner {
         if (enemy != null) {
             GridCell spawnCell = findSpawnLocation();
             if (spawnCell != null) {
-                enemy.setPosition(spawnCell.getRow(), spawnCell.getCol());
-                enemy.setCurrentCell(spawnCell);
-                spawnCell.setOccupyingCharacter(enemy);
+                enemy.moveToCell(spawnCell);
                 session.incrementEnemyCount();
                 System.out.println("[Spawn] " + enemy.getName()
                         + " spawned at (" + spawnCell.getRow() + "," + spawnCell.getCol()

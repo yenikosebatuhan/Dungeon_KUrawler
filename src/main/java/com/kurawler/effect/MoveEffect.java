@@ -5,7 +5,8 @@ import com.kurawler.model.GridCell;
 import com.kurawler.model.character.Character;
 
 /**
- * Effect that moves a character to a new position.
+ * Effect that moves a character to a new cell, keeping position,
+ * currentCell, and the grid's occupant reference in sync via moveToCell().
  */
 public class MoveEffect implements Effect {
 

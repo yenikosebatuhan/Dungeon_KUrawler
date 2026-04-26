@@ -30,11 +30,13 @@ public class Sorcerer extends Enemy {
         int dist = Math.abs(hero.getRow() - getRow()) + Math.abs(hero.getCol() - getCol());
         boolean teleported = false;
         if (dist <= 1 && RNG.nextFloat() < TELEPORT_CHANCE) {
+            System.out.println("[AI] Sorcerer: Teleporting");
             teleportToRandomWalkable(map, session, hero);
             teleported = true;
         }
 
         if (!teleported && ticksSinceLastAttack >= ATTACK_COOLDOWN) {
+            System.out.println("[AI] Sorcerer: Casting spell at hero");
             castSpell(hero, map);
             ticksSinceLastAttack = 0;
         }
