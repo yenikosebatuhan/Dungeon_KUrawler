@@ -3,7 +3,6 @@ package com.kurawler.model;
 import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.object.Item;
-import com.kurawler.model.object.Projectile;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,7 +11,6 @@ public class GameSession {
     private Hero hero;
     private int turnCount;
     private final List<Enemy> enemies;
-    private final List<Projectile> projectiles;
 
     // Caner's Core Logic
     private int playDurationTimer;
@@ -23,7 +21,6 @@ public class GameSession {
     public GameSession() {
         this.turnCount = 0;
         this.enemies = new ArrayList<>();
-        this.projectiles = new ArrayList<>();
         this.playDurationTimer = 0;
         this.activeEnemyCount = 0;
         this.currentMode = "Design";
@@ -81,13 +78,4 @@ public class GameSession {
         return null;
     }
     public boolean isGameOver() { return hero != null && !hero.isAlive(); }
-
-    // --- PROJECTILE API (used by GameLoop) ---
-    public List<Projectile> getProjectiles() { return projectiles; }
-    public void addProjectile(Projectile projectile) {
-        if (projectile != null) projectiles.add(projectile);
-    }
-    public boolean removeProjectile(Projectile projectile) {
-        return projectiles.remove(projectile);
-    }
 }

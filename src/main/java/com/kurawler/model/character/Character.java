@@ -64,14 +64,34 @@ public abstract class Character {
     public void setStrength(int strength) { this.strength = strength; }
     public int getMana() { return mana; }
     public int getMaxMana() { return maxMana; }
+    public void setMana(int mana) { this.mana = Math.max(0, Math.min(maxMana, mana)); }
     public int getEnergy() { return energy; }
     public int getMaxEnergy() { return maxEnergy; }
+    public void setEnergy(int energy) { this.energy = Math.max(0, Math.min(maxEnergy, energy)); }
+    public void setHealth(int health) { this.health = Math.max(0, Math.min(maxHealth, health)); }
     public int getRow() { return row; }
     public int getCol() { return col; }
 
     public void setPosition(int row, int col) {
         this.row = row;
         this.col = col;
+    }
+
+    /**
+     * Atomically moves this character to a new cell, keeping
+     * (row, col), currentCell, and the cell's occupant in sync.
+     * Pass null to remove the character from the map.
+     */
+    public void moveToCell(GridCell newCell) {
+        if (currentCell != null) {
+            currentCell.setOccupyingCharacter(null);
+        }
+        this.currentCell = newCell;
+        if (newCell != null) {
+            newCell.setOccupyingCharacter(this);
+            this.row = newCell.getRow();
+            this.col = newCell.getCol();
+        }
     }
     
     public GridCell getCurrentCell() { return currentCell; }
