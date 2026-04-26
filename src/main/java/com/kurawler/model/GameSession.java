@@ -11,7 +11,7 @@ public class GameSession {
     private Hero hero;
     private int turnCount;
     private final List<Enemy> enemies;
-    
+
     // Caner's Core Logic
     private int playDurationTimer;
     private int activeEnemyCount;
