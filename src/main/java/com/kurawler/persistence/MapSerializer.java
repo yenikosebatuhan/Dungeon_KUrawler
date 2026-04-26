@@ -9,6 +9,7 @@ import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Key;
+import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -43,7 +44,9 @@ public class MapSerializer {
         for (int row = 0; row < map.getHeight(); row++) {
             for (int col = 0; col < map.getWidth(); col++) {
                 GridCell cell = map.getCell(row, col);
-                if (!cell.isWalkable() || cell.hasObjects()) {
+                StaticObject so = cell.getStaticObject();
+                boolean hasSpecialStatic = so != null && (!so.isPassable() || so.isSearchable());
+                if (hasSpecialStatic || cell.hasObjects()) {
                     entries.add(buildCellJson(cell, row, col));
                 }
             }
@@ -116,7 +119,9 @@ public class MapSerializer {
         for (int row = 0; row < map.getHeight(); row++) {
             for (int col = 0; col < map.getWidth(); col++) {
                 GridCell cell = map.getCell(row, col);
-                if (!cell.isWalkable() || cell.hasObjects()) {
+                StaticObject so = cell.getStaticObject();
+                boolean hasSpecialStatic = so != null && (!so.isPassable() || so.isSearchable());
+                if (hasSpecialStatic || cell.hasObjects()) {
                     entries.add(buildCellJson(cell, row, col));
                 }
             }
@@ -134,6 +139,16 @@ public class MapSerializer {
         sb.append("{ \"row\": ").append(row);
         sb.append(", \"col\": ").append(col);
         sb.append(", \"walkable\": ").append(cell.isWalkable());
+
+        StaticObject so = cell.getStaticObject();
+        if (so != null && (!so.isPassable() || so.isSearchable())) {
+            sb.append(", \"staticObject\": {");
+            sb.append(" \"name\": \"").append(escape(so.getName())).append("\"");
+            sb.append(", \"description\": \"").append(escape(so.getDescription())).append("\"");
+            sb.append(", \"passable\": ").append(so.isPassable());
+            sb.append(", \"searchable\": ").append(so.isSearchable());
+            sb.append(" }");
+        }
 
         List<GameObject> objects = cell.getObjects();
         if (!objects.isEmpty()) {

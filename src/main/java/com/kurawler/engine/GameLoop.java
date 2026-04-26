@@ -32,6 +32,10 @@ public class GameLoop {
     /** Target sleep time per frame in milliseconds (~60 FPS). */
     private static final long FRAME_SLEEP_MS = 16;
 
+    /** Enemy AI runs every this many frames (~6 moves/sec at 60 FPS). */
+    private static final int ENEMY_TICK_INTERVAL = 10;
+    private int enemyTickCounter = 0;
+
     /**
      * Creates a new game loop bound to the given session.
      *
@@ -87,10 +91,11 @@ public class GameLoop {
     /**
      * Performs one frame of game logic: enemy AI, projectile movement,
      * enemy spawning, and win/lose checks.
+     * Public so that JavaFX AnimationTimer can drive the loop externally.
      *
      * @param deltaTime milliseconds elapsed since the last frame
      */
-    private void update(long deltaTime) {
+    public void update(long deltaTime) {
         if (!"Play".equals(session.getCurrentMode())) {
             return;
         }
@@ -114,6 +119,9 @@ public class GameLoop {
      * action (chase, attack, wander, teleport, or cast spell) based on type.
      */
     private void updateEnemies() {
+        if (++enemyTickCounter < ENEMY_TICK_INTERVAL) return;
+        enemyTickCounter = 0;
+
         Map map = session.getMap();
         Hero hero = session.getHero();
         if (hero == null || map == null) {

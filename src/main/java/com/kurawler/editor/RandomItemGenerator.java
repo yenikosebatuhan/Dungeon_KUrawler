@@ -1,6 +1,13 @@
 package com.kurawler.editor;
 
-import com.kurawler.model.*;
+import com.kurawler.model.GridCell;
+import com.kurawler.model.Map;
+import com.kurawler.model.object.Consumable;
+import com.kurawler.model.object.Item;
+import com.kurawler.model.object.Key;
+import com.kurawler.model.object.PortableContainer;
+import com.kurawler.model.object.Weapon;
+import com.kurawler.model.object.Wearable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -29,7 +36,7 @@ public class RandomItemGenerator {
         for (int i = 0; i < itemsToGenerate; i++) {
             int cellIndex = random.nextInt(emptyCells.size());
             GridCell cell = emptyCells.remove(cellIndex);
-            cell.addGameObject(generateRandomItem());
+            cell.addObject(generateRandomItem());
         }
     }
 
@@ -44,7 +51,7 @@ public class RandomItemGenerator {
         }
 
         Item item = generateRandomItem();
-        cell.addGameObject(item);
+        cell.addObject(item);
         return item;
     }
 
@@ -54,7 +61,7 @@ public class RandomItemGenerator {
         for (int x = 0; x < map.getGridWidth(); x++) {
             for (int y = 0; y < map.getGridHeight(); y++) {
                 GridCell cell = map.getCellAt(x, y);
-                if (cell != null && cell.isEmpty()) {
+                if (cell != null && !cell.isBlocked() && !cell.hasObjects()) {
                     emptyCells.add(cell);
                 }
             }
@@ -68,15 +75,15 @@ public class RandomItemGenerator {
 
         switch (type) {
             case 0:
-                return new Weapon("Random Sword", 3 + random.nextInt(5), false);
+                return new Weapon("Random Sword", "A randomly forged blade", 3 + random.nextInt(5));
             case 1:
-                return new Consumable("Health Potion", 10 + random.nextInt(20), Consumable.STAT_HP);
+                return new Consumable("Health Potion", "Restores HP", 10 + random.nextInt(20));
             case 2:
-                return new Wearable("Random Armor", 1 + random.nextInt(3), Wearable.MOD_DEF);
+                return new Wearable("Random Armor", "Protective gear", 1 + random.nextInt(3));
             case 3:
-                return new Key("Random Key", "key_" + random.nextInt(100));
+                return new Key("Random Key", "A mysterious key", "key_" + random.nextInt(100));
             default:
-                return new PortableContainer("Pouch", 3 + random.nextInt(3));
+                return new PortableContainer("Pouch", "A small pouch", 3 + random.nextInt(3));
         }
     }
 }

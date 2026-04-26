@@ -74,7 +74,14 @@ public class MapDeserializer {
         String name = (String) heroJson.get("name");
         Hero hero = new Hero(name);
 
-        hero.setPosition((int) heroJson.get("row"), (int) heroJson.get("col"));
+        int heroRow = (int) heroJson.get("row");
+        int heroCol = (int) heroJson.get("col");
+        hero.setPosition(heroRow, heroCol);
+        GridCell heroCell = session.getMap().getCell(heroRow, heroCol);
+        if (heroCell != null) {
+            hero.setCurrentCell(heroCell);
+            heroCell.setOccupyingCharacter(hero);
+        }
         hero.setHealth((int) heroJson.get("hp"));
         hero.setMana((int) heroJson.get("mana"));
         hero.setEnergy((int) heroJson.get("energy"));
@@ -96,6 +103,7 @@ public class MapDeserializer {
         }
 
         session.setHero(hero);
+        session.resetActiveEnemyCount();
     }
 
     public Map loadMapFromFile(String filename) {
@@ -136,7 +144,18 @@ public class MapDeserializer {
         GridCell cell = map.getCell(row, col);
         if (cell == null) return;
 
-        cell.setWalkable((boolean) cellJson.get("walkable"));
+        if (cellJson.containsKey("staticObject")) {
+            @SuppressWarnings("unchecked")
+            LinkedHashMap<String, Object> soJson = (LinkedHashMap<String, Object>) cellJson.get("staticObject");
+            String soName = (String) soJson.get("name");
+            String soDesc = soJson.containsKey("description") ? (String) soJson.get("description") : "";
+            boolean soPassable = soJson.containsKey("passable") ? (boolean) soJson.get("passable") : true;
+            boolean soSearchable = soJson.containsKey("searchable") ? (boolean) soJson.get("searchable") : false;
+            cell.setStaticObject(new StaticObject(soName, soDesc, soPassable, soSearchable));
+        } else if (!(boolean) cellJson.get("walkable")) {
+            // Backward compat: old saves only stored "walkable": false for walls
+            cell.setStaticObject(new StaticObject("Wall", "Dark wall", false, false));
+        }
 
         if (cellJson.containsKey("objects")) {
             @SuppressWarnings("unchecked")
@@ -165,7 +184,7 @@ public class MapDeserializer {
                 int heal = json.containsKey("healAmount") ? (int) json.get("healAmount") : 0;
                 return new Consumable(name, description, heal);
             case "StaticObject":
-                return new StaticObject(name, description);
+                return new StaticObject(name, description, true, false);
             case "Key":
                 String keyId = json.containsKey("keyId") ? (String) json.get("keyId") : "";
                 return new Key(name, description, keyId);
