@@ -26,6 +26,8 @@ public class TileRenderer {
     private Image wallSprite;
     private Image floorSprite;
     private Image heroSprite;
+    private Image knightSprite;
+    private Image sorcererSprite;
     private Image swordSprite;
     private Image potionSprite;
     private Image keySprite;
@@ -57,7 +59,9 @@ public class TileRenderer {
         // Cols 3-6 row 0 = full-size character sprites (68-71% fill, 48x48)
         // Col 3 = front-facing hero
         if (characters.isLoaded()) {
-            heroSprite = characters.getSprite(3, 0); // full hero sprite (68% fill, h=48 w=45)
+            heroSprite = characters.getSprite(3, 0);
+            knightSprite = characters.getSprite(0, 1);
+            sorcererSprite = characters.getSprite(0, 3);
         }
         // weapons_x3: 10 cols x 10 rows
         if (weapons.isLoaded()) {
@@ -151,6 +155,25 @@ public class TileRenderer {
         } else {
             gc.setFill(Color.web("#795548"));
             gc.fillRect(screenX + 8, screenY + 12, tileSize - 16, tileSize - 18);
+        }
+    }
+
+    /** Draw an enemy using sprite sheet. Colored fallback if sprites unavailable. */
+    public void drawEnemy(GraphicsContext gc, int screenX, int screenY, String enemyType) {
+        Image sprite = "Knight".equals(enemyType) ? knightSprite : sorcererSprite;
+
+        if (sprite != null) {
+            gc.drawImage(sprite, screenX, screenY, tileSize, tileSize);
+        } else {
+            double inset = tileSize * 0.15;
+            double size = tileSize - 2 * inset;
+            if ("Knight".equals(enemyType)) {
+                gc.setFill(Color.web("#d32f2f"));
+                gc.fillRect(screenX + inset, screenY + inset, size, size);
+            } else {
+                gc.setFill(Color.web("#7b1fa2"));
+                gc.fillOval(screenX + inset, screenY + inset, size, size);
+            }
         }
     }
 

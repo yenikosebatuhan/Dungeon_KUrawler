@@ -1,6 +1,6 @@
 package com.kurawler.editor;
 
-import com.kurawler.model.*;
+import com.kurawler.model.Map;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
 

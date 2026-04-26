@@ -6,7 +6,9 @@ import com.kurawler.action.TakeAction;
 import com.kurawler.effect.Effect;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
+import com.kurawler.model.Inventory;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
 import com.kurawler.persistence.MapDeserializer;
@@ -57,7 +59,7 @@ public class GameController {
         for (Effect effect : effects) {
             effect.apply(session);
         }
-        // Turn tracking removed — Caner's new GameSession no longer has advanceTurn()
+        session.advanceTurn();
     }
 
     /**
@@ -88,6 +90,41 @@ public class GameController {
                 }
             }
         }
+    }
+
+    /**
+     * Uses the first Consumable found in the hero's inventory.
+     * Heals the hero and removes the item from inventory.
+     */
+    public boolean useFirstConsumable() {
+        Hero hero = session.getHero();
+        Inventory inv = hero.getInventory();
+        for (Item item : inv.getItems()) {
+            if (item instanceof Consumable) {
+                Consumable c = (Consumable) item;
+                boolean used = hero.useConsumable(c);
+                if (used) {
+                    System.out.println("[Action] Used " + c.getName()
+                            + " → HP: " + hero.getHealth() + "/" + hero.getMaxHealth());
+                }
+                return used;
+            }
+        }
+        System.out.println("[Action] No consumable in inventory.");
+        return false;
+    }
+
+    /**
+     * Interact with a specific item on a cell (triggered by 3x3 click menu).
+     * Creates a TakeAction and runs it through the pipeline.
+     */
+    public void interactWithObject(int row, int col, Item item) {
+        TakeAction take = new TakeAction(item);
+        List<Effect> effects = take.resolve(session);
+        for (Effect effect : effects) {
+            effect.apply(session);
+        }
+        session.advanceTurn();
     }
 
     public GameSession getSession() {

@@ -10,8 +10,8 @@ import com.kurawler.model.object.Key;
 import com.kurawler.model.object.PortableContainer;
 import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
-import com.kurawler.model.object.Wearable;
 import com.kurawler.model.object.Weapon;
+import com.kurawler.model.object.Wearable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -83,15 +83,15 @@ public class ObjectPalette {
             case "Gargoyle Pool":
                 return new StaticObject("Gargoyle Pool", "A searchable stone pool", true, true);
             case "Sword":
-                return new Weapon("Sword", "A sword", 5);
+                return new Weapon("Sword", "A sharp blade", 5);
             case "Spell Book":
-                return new Weapon("Spell Book", "A magical spell book", 8);
+                return new Weapon("Spell Book", "A tome of arcane power", 8);
             case "Health Potion":
                 return new Consumable("Health Potion", "Restores 20 HP", 20);
             case "Armor":
                 return new Wearable("Armor", "Protective armor", 3);
             case "Golden Key":
-                return new Key("Golden Key", "Opens golden doors", "key_001");
+                return new Key("Golden Key", "Opens a golden lock", "key_001");
             case "Chest":
                 return new StaticContainer("Chest", "A wooden chest");
             case "Pouch":

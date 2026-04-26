@@ -1,7 +1,7 @@
 {
   "width": 16,
   "height": 16,
-  "hero": { "name": "Adventurer", "row": 13, "col": 7, "hp": 17, "mana": 80, "energy": 100, "str": 9, "def": 2, "equippedWeapon": "", "inventory": [{ "type": "Weapon", "name": "Magic Staff", "description": "Channels arcane energy", "damage": 10 }] },
+  "hero": { "name": "Adventurer", "row": 8, "col": 14, "hp": 17, "mana": 80, "energy": 100, "str": 9, "def": 2, "equippedWeapon": "", "inventory": [{ "type": "Weapon", "name": "Iron Sword", "description": "A sturdy blade", "damage": 8 }, { "type": "Weapon", "name": "Dagger", "description": "A small dagger", "damage": 5 }] },
   "cells": [
     { "row": 0, "col": 0, "walkable": false },
     { "row": 0, "col": 1, "walkable": false },
@@ -27,7 +27,6 @@
     { "row": 1, "col": 14, "walkable": true, "objects": [{ "type": "Consumable", "name": "Mana Elixir", "description": "Restores 20 mana", "healAmount": 20 }] },
     { "row": 1, "col": 15, "walkable": false },
     { "row": 2, "col": 0, "walkable": false },
-    { "row": 2, "col": 2, "walkable": true, "objects": [{ "type": "Weapon", "name": "Iron Sword", "description": "A sturdy blade", "damage": 8 }] },
     { "row": 2, "col": 6, "walkable": false },
     { "row": 2, "col": 7, "walkable": false },
     { "row": 2, "col": 8, "walkable": false },
@@ -35,6 +34,7 @@
     { "row": 2, "col": 12, "walkable": true, "objects": [{ "type": "Consumable", "name": "Health Potion", "description": "Restores 10 HP", "healAmount": 10 }] },
     { "row": 2, "col": 15, "walkable": false },
     { "row": 3, "col": 0, "walkable": false },
+    { "row": 3, "col": 3, "walkable": false },
     { "row": 3, "col": 15, "walkable": false },
     { "row": 4, "col": 0, "walkable": false },
     { "row": 4, "col": 6, "walkable": false },
@@ -94,7 +94,6 @@
     { "row": 9, "col": 15, "walkable": false },
     { "row": 10, "col": 0, "walkable": false },
     { "row": 10, "col": 2, "walkable": true, "objects": [{ "type": "Weapon", "name": "War Axe", "description": "A heavy axe", "damage": 12 }] },
-    { "row": 10, "col": 13, "walkable": true, "objects": [{ "type": "Weapon", "name": "Dagger", "description": "A small dagger", "damage": 5 }] },
     { "row": 10, "col": 15, "walkable": false },
     { "row": 11, "col": 0, "walkable": false },
     { "row": 11, "col": 5, "walkable": false },

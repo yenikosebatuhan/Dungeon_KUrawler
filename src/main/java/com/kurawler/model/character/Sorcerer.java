@@ -24,16 +24,16 @@ public class Sorcerer extends Enemy {
     @Override
     public void decideAction(Hero hero, Map map, GameSession session) {
         if (hero == null || map == null || !isAlive() || !hero.isAlive()) return;
-        
+
         ticksSinceLastAttack++;
-        
+
         int dist = Math.abs(hero.getRow() - getRow()) + Math.abs(hero.getCol() - getCol());
         boolean teleported = false;
         if (dist <= 1 && RNG.nextFloat() < TELEPORT_CHANCE) {
             teleportToRandomWalkable(map, session, hero);
             teleported = true;
         }
-        
+
         if (!teleported && ticksSinceLastAttack >= ATTACK_COOLDOWN) {
             castSpell(hero, map);
             ticksSinceLastAttack = 0;
