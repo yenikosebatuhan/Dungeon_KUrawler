@@ -1,7 +1,7 @@
 package com.kurawler.effect;
 
 import com.kurawler.model.GameSession;
-import com.kurawler.model.Item;
+import com.kurawler.model.object.Item;
 
 /**
  * Effect that adds an item to the hero's inventory.

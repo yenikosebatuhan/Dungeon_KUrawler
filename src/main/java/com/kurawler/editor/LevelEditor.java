@@ -1,10 +1,10 @@
 package com.kurawler.editor;
 
-import com.kurawler.model.Consumable;
-import com.kurawler.model.Item;
 import com.kurawler.model.Map;
-import com.kurawler.model.Weapon;
+import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
+import com.kurawler.model.object.Item;
+import com.kurawler.model.object.Weapon;
 import java.util.Random;
 
 /**
@@ -39,13 +39,13 @@ public class LevelEditor {
         int roll = random.nextInt(3);
         switch (roll) {
             case 0:
-                item = new Weapon("Random Sword", 5 + random.nextInt(15), false);
+                item = new Weapon("Random Sword", "A randomly generated sword", 5 + random.nextInt(15));
                 break;
             case 1:
-                item = new Consumable("Random Potion", 10 + random.nextInt(30), Consumable.STAT_HP);
+                item = new Consumable("Random Potion", "A randomly generated potion", 10 + random.nextInt(30));
                 break;
             default:
-                item = new Weapon("Random Dagger", 3 + random.nextInt(10), false);
+                item = new Weapon("Random Dagger", "A randomly generated dagger", 3 + random.nextInt(10));
                 break;
         }
         map.placeObject(row, col, item);
