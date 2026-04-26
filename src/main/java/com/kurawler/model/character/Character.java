@@ -76,6 +76,23 @@ public abstract class Character {
         this.row = row;
         this.col = col;
     }
+
+    /**
+     * Atomically moves this character to a new cell, keeping
+     * (row, col), currentCell, and the cell's occupant in sync.
+     * Pass null to remove the character from the map.
+     */
+    public void moveToCell(GridCell newCell) {
+        if (currentCell != null) {
+            currentCell.setOccupyingCharacter(null);
+        }
+        this.currentCell = newCell;
+        if (newCell != null) {
+            newCell.setOccupyingCharacter(this);
+            this.row = newCell.getRow();
+            this.col = newCell.getCol();
+        }
+    }
     
     public GridCell getCurrentCell() { return currentCell; }
     public void setCurrentCell(GridCell cell) { this.currentCell = cell; }
