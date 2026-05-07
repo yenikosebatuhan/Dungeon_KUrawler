@@ -44,6 +44,7 @@ public class ScreenManager {
 
     public void showPlayMode(GameSession session) {
         currentSession = session;
+        session.wireObservers();
         GameController controller = new GameController(session);
         GameView view = new GameView(controller, this);
         view.show(stage);
