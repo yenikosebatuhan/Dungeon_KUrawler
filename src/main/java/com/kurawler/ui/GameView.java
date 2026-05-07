@@ -2,12 +2,17 @@ package com.kurawler.ui;
 
 import com.kurawler.controller.GameController;
 import com.kurawler.engine.GameLoop;
+import com.kurawler.engine.TeamMatchGameLoop;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Inventory;
+import com.kurawler.model.Team;
+import com.kurawler.model.TeamMatchSession;
+import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
+import com.kurawler.model.character.Sorcerer;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
@@ -54,6 +59,7 @@ public class GameView {
     private Label inventoryLabel;
     private Label messageLabel;
     private GameLoop gameLoop;
+    private TeamMatchGameLoop teamMatchGameLoop;
     private AnimationTimer animationTimer;
 
     public GameView(GameController controller, ScreenManager screenManager) {
@@ -114,25 +120,57 @@ public class GameView {
         stage.setResizable(false);
         stage.show();
 
-        session.setCurrentMode("Play");
+        if (!(session instanceof TeamMatchSession)) {
+            session.setCurrentMode("Play");
+        }
         startGameLoop(session);
         render();
     }
 
     private void startGameLoop(GameSession session) {
-        gameLoop = new GameLoop(session);
         final long[] lastTime = {System.nanoTime()};
 
-        animationTimer = new AnimationTimer() {
-            @Override
-            public void handle(long now) {
-                long deltaMs = (now - lastTime[0]) / 1_000_000;
-                lastTime[0] = now;
-                gameLoop.update(deltaMs);
-                render();
-            }
-        };
+        if (session instanceof TeamMatchSession) {
+            TeamMatchSession tmSession = (TeamMatchSession) session;
+            teamMatchGameLoop = new TeamMatchGameLoop(tmSession);
+            teamMatchGameLoop.start();
+
+            animationTimer = new AnimationTimer() {
+                @Override
+                public void handle(long now) {
+                    long deltaMs = (now - lastTime[0]) / 1_000_000;
+                    lastTime[0] = now;
+                    teamMatchGameLoop.update(deltaMs);
+                    render();
+
+                    if (!teamMatchGameLoop.isRunning() && tmSession.getMatchResult() != null) {
+                        animationTimer.stop();
+                        showTeamMatchResult(tmSession.getMatchResult());
+                    }
+                }
+            };
+        } else {
+            gameLoop = new GameLoop(session);
+            animationTimer = new AnimationTimer() {
+                @Override
+                public void handle(long now) {
+                    long deltaMs = (now - lastTime[0]) / 1_000_000;
+                    lastTime[0] = now;
+                    gameLoop.update(deltaMs);
+                    render();
+                }
+            };
+        }
         animationTimer.start();
+    }
+
+    private void showTeamMatchResult(String result) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION, result);
+        alert.setTitle("Team Match Over");
+        alert.setHeaderText("Match Result");
+        alert.initOwner(stage);
+        alert.showAndWait();
+        screenManager.showMainMenu();
     }
 
     private void handleKeyPress(KeyEvent event) {
@@ -302,12 +340,17 @@ public class GameView {
                     }
                 }
 
-                // Draw enemies on occupied cells
-                if (cell.getOccupyingCharacter() instanceof Enemy) {
-                    Enemy enemy = (Enemy) cell.getOccupyingCharacter();
-                    if (enemy.isAlive()) {
-                        String type = (enemy instanceof Knight) ? "Knight" : "Sorcerer";
-                        renderer.drawEnemy(gc, sx, sy, type);
+                Character occupant = cell.getOccupyingCharacter();
+                if (occupant != null && occupant.isAlive() && !(occupant instanceof Hero)) {
+                    String type = (occupant instanceof Knight) ? "Knight" : "Sorcerer";
+                    renderer.drawEnemy(gc, sx, sy, type);
+
+                    if (session instanceof TeamMatchSession) {
+                        TeamMatchSession tmSession = (TeamMatchSession) session;
+                        Team team = tmSession.getTeamForCharacter(occupant);
+                        if (team != null) {
+                            drawTeamIndicator(gc, sx, sy, team.getColor());
+                        }
                     }
                 }
             }
@@ -316,6 +359,10 @@ public class GameView {
         int heroSx = hero.getCol() * TILE_SIZE;
         int heroSy = hero.getRow() * TILE_SIZE;
         renderer.drawHero(gc, heroSx, heroSy);
+
+        if (session instanceof TeamMatchSession) {
+            drawTeamIndicator(gc, heroSx, heroSy, Team.TeamColor.BLUE);
+        }
 
         gc.setStroke(Color.web("#ffffff", 0.06));
         gc.setLineWidth(1);
@@ -332,33 +379,90 @@ public class GameView {
     private void updateSidebar(GameSession session) {
         Hero hero = session.getHero();
         String wpn = hero.getEquippedWeapon() != null ? hero.getEquippedWeapon().getName() : "None";
-        statusLabel.setText(
-            "  " + hero.getName() + "\n"
-            + "  HP:  " + hero.getHealth() + " / " + hero.getMaxHealth() + "\n"
-            + "  MP:  " + hero.getMana() + " / " + hero.getMaxMana() + "\n"
-            + "  NRG: " + hero.getEnergy() + " / " + hero.getMaxEnergy() + "\n"
-            + "  STR: " + hero.getStrength() + "  DEF: " + hero.getDefensePower() + "\n"
-            + "  DMG: " + hero.calculateDamage() + "\n"
-            + "  Weapon: " + wpn + "\n"
-            + "  Pos: (" + hero.getRow() + "," + hero.getCol() + ")"
-            + "  Turn: " + session.getTurnCount()
-            + "\n  Enemies: " + session.getActiveEnemyCount()
-        );
 
-        Inventory inv = hero.getInventory();
-        StringBuilder sb = new StringBuilder("  Inventory (" + inv.getItemCount() + "/8):\n");
-        for (int r = 0; r < 2; r++) {
-            sb.append("  ");
-            for (int c = 0; c < 4; c++) {
-                Item item = inv.getItem(r, c);
-                if (item != null) {
-                    sb.append("[").append(item.getName()).append("] ");
-                } else {
-                    sb.append("[  --  ] ");
+        if (session instanceof TeamMatchSession) {
+            TeamMatchSession tm = (TeamMatchSession) session;
+            statusLabel.setText(
+                "  *** TEAM MATCH ***\n\n"
+                + "  YOU: " + hero.getName() + "\n"
+                + "  HP: " + hero.getHealth() + "/" + hero.getMaxHealth()
+                + "  STR: " + hero.getStrength() + "\n"
+                + "  DEF: " + hero.getDefensePower()
+                + "  Weapon: " + wpn + "\n"
+            );
+            inventoryLabel.setText(
+                "  \u25CF Team A (RED)  ["
+                + tm.getTeamA().aliveCount() + "/4 alive]\n"
+                + teamRoster(tm.getTeamA())
+                + "\n  \u25CF Team B (BLUE) ["
+                + tm.getTeamB().aliveCount() + "/4 alive]\n"
+                + teamRoster(tm.getTeamB())
+            );
+        } else {
+            statusLabel.setText(
+                "  " + hero.getName() + "\n"
+                + "  HP:  " + hero.getHealth() + " / " + hero.getMaxHealth() + "\n"
+                + "  MP:  " + hero.getMana() + " / " + hero.getMaxMana() + "\n"
+                + "  NRG: " + hero.getEnergy() + " / " + hero.getMaxEnergy() + "\n"
+                + "  STR: " + hero.getStrength() + "  DEF: " + hero.getDefensePower() + "\n"
+                + "  DMG: " + hero.calculateDamage() + "\n"
+                + "  Weapon: " + wpn + "\n"
+                + "  Pos: (" + hero.getRow() + "," + hero.getCol() + ")"
+                + "  Turn: " + session.getTurnCount()
+                + "\n  Enemies: " + session.getActiveEnemyCount()
+            );
+
+            Inventory inv = hero.getInventory();
+            StringBuilder sb = new StringBuilder("  Inventory (" + inv.getItemCount() + "/8):\n");
+            for (int r = 0; r < 2; r++) {
+                sb.append("  ");
+                for (int c = 0; c < 4; c++) {
+                    Item item = inv.getItem(r, c);
+                    if (item != null) {
+                        sb.append("[").append(item.getName()).append("] ");
+                    } else {
+                        sb.append("[  --  ] ");
+                    }
                 }
+                sb.append("\n");
             }
-            sb.append("\n");
+            inventoryLabel.setText(sb.toString());
         }
-        inventoryLabel.setText(sb.toString());
+    }
+
+    private void drawTeamIndicator(GraphicsContext gc, int sx, int sy, Team.TeamColor teamColor) {
+        Color borderColor = (teamColor == Team.TeamColor.RED)
+                ? Color.rgb(255, 60, 60, 0.9)
+                : Color.rgb(60, 120, 255, 0.9);
+        Color dotColor = (teamColor == Team.TeamColor.RED)
+                ? Color.rgb(255, 80, 80)
+                : Color.rgb(80, 140, 255);
+
+        gc.setStroke(borderColor);
+        gc.setLineWidth(2.5);
+        gc.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+
+        gc.setFill(dotColor);
+        gc.fillOval(sx + TILE_SIZE - 12, sy + 2, 9, 9);
+        gc.setStroke(Color.web("#000000", 0.6));
+        gc.setLineWidth(1);
+        gc.strokeOval(sx + TILE_SIZE - 12, sy + 2, 9, 9);
+    }
+
+    private String teamRoster(Team team) {
+        StringBuilder sb = new StringBuilder();
+        for (Character member : team.getMembers()) {
+            String icon = (member instanceof Hero) ? "  \u2694 "
+                    : (member instanceof Sorcerer) ? "  \u2728 " : "  \u2620 ";
+            if (member.isAlive()) {
+                sb.append(icon).append(member.getName())
+                  .append("  HP:").append(member.getHealth())
+                  .append("/").append(member.getMaxHealth()).append("\n");
+            } else {
+                sb.append(icon).append(member.getName())
+                  .append("  -- DEAD --\n");
+            }
+        }
+        return sb.toString();
     }
 }
