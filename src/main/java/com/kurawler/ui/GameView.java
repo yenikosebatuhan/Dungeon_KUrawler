@@ -8,10 +8,13 @@ import com.kurawler.model.GridCell;
 import com.kurawler.model.Inventory;
 import com.kurawler.model.Team;
 import com.kurawler.model.TeamMatchSession;
+import com.kurawler.model.achievement.Achievement;
+import com.kurawler.model.achievement.AchievementManager;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
+import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.character.Sorcerer;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
@@ -22,6 +25,7 @@ import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
 
 import javafx.animation.AnimationTimer;
+import javafx.animation.PauseTransition;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -39,6 +43,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 /**
  * JavaFX game view — renders the grid and handles key/mouse input.
@@ -47,7 +52,7 @@ import javafx.stage.Stage;
 public class GameView {
 
     private static final int TILE_SIZE = 48;
-    private static final int SIDEBAR_WIDTH = 250;
+    private static final int SIDEBAR_WIDTH = 340;
 
     private final GameController controller;
     private final ScreenManager screenManager;
@@ -58,6 +63,8 @@ public class GameView {
     private Label statusLabel;
     private Label inventoryLabel;
     private Label messageLabel;
+    private Label achievementsLabel;
+    private Label achievementPopupLabel;
     private GameLoop gameLoop;
     private TeamMatchGameLoop teamMatchGameLoop;
     private AnimationTimer animationTimer;
@@ -96,6 +103,20 @@ public class GameView {
         messageLabel.setTextFill(Color.web("#aaaaaa"));
         messageLabel.setWrapText(true);
 
+        achievementsLabel = new Label();
+        achievementsLabel.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
+        achievementsLabel.setTextFill(Color.web("#ffd54f"));
+        achievementsLabel.setWrapText(true);
+        achievementsLabel.setPrefWidth(SIDEBAR_WIDTH - 24);
+        achievementsLabel.setStyle("-fx-padding: 8; -fx-border-color: #6c5ce7; "
+                + "-fx-border-width: 1; -fx-background-color: #201f3f;");
+
+        achievementPopupLabel = new Label();
+        achievementPopupLabel.setFont(Font.font("Monospaced", FontWeight.BOLD, 11));
+        achievementPopupLabel.setTextFill(Color.web("#ffd54f"));
+        achievementPopupLabel.setWrapText(true);
+        achievementPopupLabel.setVisible(false);
+
         Button menuBtn = new Button("Menu");
         menuBtn.setFont(Font.font("Monospaced", FontWeight.BOLD, 13));
         menuBtn.setPrefWidth(220);
@@ -103,7 +124,13 @@ public class GameView {
                 + "-fx-border-color: #664466; -fx-border-width: 1; -fx-cursor: hand;");
         menuBtn.setOnAction(e -> showInGameMenu());
 
-        VBox sidebar = new VBox(12, statusLabel, inventoryLabel, messageLabel, menuBtn);
+        AchievementManager achievementManager = session.getAchievementManager();
+        if (achievementManager != null) {
+            achievementManager.setOnUnlock(this::showAchievementPopup);
+        }
+
+        VBox sidebar = new VBox(12, statusLabel, achievementsLabel, inventoryLabel,
+                messageLabel, achievementPopupLabel, menuBtn);
         sidebar.setPrefWidth(SIDEBAR_WIDTH);
         sidebar.setStyle("-fx-padding: 12; -fx-background-color: #1a1a2e;");
 
@@ -356,6 +383,12 @@ public class GameView {
             }
         }
 
+        ShadowClone shadowClone = session.getShadowClone();
+        if (shadowClone != null && shadowClone.isAlive()) {
+            renderer.drawShadowClone(gc, shadowClone.getCol() * TILE_SIZE,
+                    shadowClone.getRow() * TILE_SIZE);
+        }
+
         int heroSx = hero.getCol() * TILE_SIZE;
         int heroSy = hero.getRow() * TILE_SIZE;
         renderer.drawHero(gc, heroSx, heroSy);
@@ -374,6 +407,15 @@ public class GameView {
         }
 
         updateSidebar(session);
+    }
+
+    private void showAchievementPopup(Achievement achievement) {
+        achievementPopupLabel.setText("Achievement unlocked:\n" + achievement.getName());
+        achievementPopupLabel.setVisible(true);
+
+        PauseTransition hide = new PauseTransition(Duration.seconds(3));
+        hide.setOnFinished(e -> achievementPopupLabel.setVisible(false));
+        hide.play();
     }
 
     private void updateSidebar(GameSession session) {
@@ -428,6 +470,8 @@ public class GameView {
             }
             inventoryLabel.setText(sb.toString());
         }
+        inventoryLabel.setText(sb.toString());
+        updateAchievements(session);
     }
 
     private void drawTeamIndicator(GraphicsContext gc, int sx, int sy, Team.TeamColor teamColor) {
@@ -464,5 +508,22 @@ public class GameView {
             }
         }
         return sb.toString();
+    }
+
+    private void updateAchievements(GameSession session) {
+        AchievementManager manager = session.getAchievementManager();
+        if (manager == null) {
+            achievementsLabel.setText("");
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder("  BADGES / ACHIEVEMENTS\n");
+        for (Achievement achievement : manager.getAchievements()) {
+            sb.append("  ")
+              .append(achievement.isUnlocked() ? "[UNLOCKED] " : "[LOCKED]   ")
+              .append(achievement.getName())
+              .append("\n");
+        }
+        achievementsLabel.setText(sb.toString());
     }
 }

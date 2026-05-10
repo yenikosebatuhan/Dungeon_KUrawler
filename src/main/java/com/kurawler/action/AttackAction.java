@@ -27,7 +27,7 @@ public class AttackAction implements Action {
 
         if (attacker.isAlive() && defender.isAlive()) {
             int damage = attacker.calculateDamage();
-            effects.add(new DamageEffect(defender, damage));
+            effects.add(new DamageEffect(attacker, defender, damage));
         }
 
         return effects;
