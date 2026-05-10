@@ -1,6 +1,8 @@
 package com.kurawler.model;
 
+import com.kurawler.model.achievement.AchievementManager;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.Key;
 import com.kurawler.model.object.Weapon;
@@ -39,6 +41,9 @@ public class MapFactory {
             spawnCell.setOccupyingCharacter(hero);
         }
         session.setHero(hero);
+        session.setShadowClone(new ShadowClone(4, 3, map));
+        session.setAchievementManager(new AchievementManager());
+        session.wireObservers();
 
         map.placeObject(2, 2, new Weapon("Iron Sword", "A sturdy blade", 8));
         map.placeObject(2, 12, new Consumable("Health Potion", "Restores 10 HP", 10));
