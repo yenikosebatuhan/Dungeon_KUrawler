@@ -470,7 +470,6 @@ public class GameView {
             }
             inventoryLabel.setText(sb.toString());
         }
-        inventoryLabel.setText(sb.toString());
         updateAchievements(session);
     }
 
