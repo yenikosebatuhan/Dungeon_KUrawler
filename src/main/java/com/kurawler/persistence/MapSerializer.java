@@ -4,7 +4,10 @@ import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Inventory;
 import com.kurawler.model.Map;
+import com.kurawler.model.achievement.Achievement;
+import com.kurawler.model.achievement.AchievementManager;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
@@ -38,6 +41,8 @@ public class MapSerializer {
         sb.append("  \"width\": ").append(map.getWidth()).append(",\n");
         sb.append("  \"height\": ").append(map.getHeight()).append(",\n");
         sb.append("  \"hero\": ").append(buildHeroJson(session.getHero())).append(",\n");
+        sb.append("  \"shadowClone\": ").append(buildShadowCloneJson(session.getShadowClone())).append(",\n");
+        sb.append("  \"achievements\": ").append(buildAchievementsJson(session.getAchievementManager())).append(",\n");
         sb.append("  \"cells\": [");
 
         List<String> entries = new ArrayList<>();
@@ -56,6 +61,40 @@ public class MapSerializer {
             sb.append("\n    ").append(String.join(",\n    ", entries)).append("\n  ");
         }
         sb.append("]\n}");
+        return sb.toString();
+    }
+
+    private String buildShadowCloneJson(ShadowClone shadowClone) {
+        if (shadowClone == null) {
+            return "null";
+        }
+
+        return "{ \"row\": " + shadowClone.getRow()
+                + ", \"col\": " + shadowClone.getCol()
+                + ", \"hp\": " + shadowClone.getHealth()
+                + " }";
+    }
+
+    private String buildAchievementsJson(AchievementManager manager) {
+        if (manager == null) {
+            return "null";
+        }
+
+        List<String> unlocked = new ArrayList<>();
+        for (Achievement achievement : manager.getAchievements()) {
+            if (achievement.isUnlocked()) {
+                unlocked.add("\"" + escape(achievement.getName()) + "\"");
+            }
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("{ ");
+        sb.append("\"totalMoves\": ").append(manager.getTotalMoves());
+        sb.append(", \"enemiesKilled\": ").append(manager.getEnemiesKilled());
+        sb.append(", \"itemsCollected\": ").append(manager.getItemsCollected());
+        sb.append(", \"damageTaken\": ").append(manager.getDamageTaken());
+        sb.append(", \"unlocked\": [").append(String.join(", ", unlocked)).append("]");
+        sb.append(" }");
         return sb.toString();
     }
 

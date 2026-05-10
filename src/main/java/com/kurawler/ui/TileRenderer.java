@@ -110,6 +110,21 @@ public class TileRenderer {
         }
     }
 
+    /** Draw an ethereal clone using the hero sprite with a blue tint. */
+    public void drawShadowClone(GraphicsContext gc, int screenX, int screenY) {
+        double oldAlpha = gc.getGlobalAlpha();
+        gc.setGlobalAlpha(0.45);
+        gc.setFill(Color.web("#2638ff", 0.35));
+        gc.fillRect(screenX, screenY, tileSize, tileSize);
+        if (heroSprite != null) {
+            gc.drawImage(heroSprite, screenX, screenY, tileSize, tileSize);
+        } else {
+            gc.setFill(Color.web("#4f66ff"));
+            gc.fillRoundRect(screenX + 8, screenY + 4, tileSize - 16, tileSize - 8, 8, 8);
+        }
+        gc.setGlobalAlpha(oldAlpha);
+    }
+
     /** Draw an item sprite. Type determines which sprite to use. */
     public void drawItem(GraphicsContext gc, int screenX, int screenY, String itemType) {
         Image sprite;
