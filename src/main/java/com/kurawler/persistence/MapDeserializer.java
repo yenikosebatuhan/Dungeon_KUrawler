@@ -3,7 +3,9 @@ package com.kurawler.persistence;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Map;
+import com.kurawler.model.achievement.AchievementManager;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
@@ -54,6 +56,9 @@ public class MapDeserializer {
 
             session.setMap(map);
             restoreHero(root, session);
+            restoreShadowClone(root, session);
+            restoreAchievements(root, session);
+            session.wireObservers();
 
             System.out.println("[Persistence] Loaded game state from " + filename);
             return true;
@@ -104,6 +109,54 @@ public class MapDeserializer {
 
         session.setHero(hero);
         session.resetActiveEnemyCount();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void restoreShadowClone(LinkedHashMap<String, Object> root, GameSession session) {
+        if (!root.containsKey("shadowClone") || root.get("shadowClone") == null) {
+            Hero hero = session.getHero();
+            if (hero != null) {
+                session.setShadowClone(new ShadowClone(hero.getRow(), hero.getCol(), session.getMap()));
+            }
+            return;
+        }
+
+        LinkedHashMap<String, Object> cloneJson =
+                (LinkedHashMap<String, Object>) root.get("shadowClone");
+        ShadowClone shadowClone = new ShadowClone((int) cloneJson.get("row"),
+                (int) cloneJson.get("col"), session.getMap());
+        if (cloneJson.containsKey("hp")) {
+            shadowClone.setHealth((int) cloneJson.get("hp"));
+        }
+        session.setShadowClone(shadowClone);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void restoreAchievements(LinkedHashMap<String, Object> root, GameSession session) {
+        AchievementManager manager = new AchievementManager();
+
+        if (root.containsKey("achievements") && root.get("achievements") != null) {
+            LinkedHashMap<String, Object> achievementJson =
+                    (LinkedHashMap<String, Object>) root.get("achievements");
+            List<String> unlocked = new ArrayList<>();
+            if (achievementJson.containsKey("unlocked")) {
+                for (Object name : (List<Object>) achievementJson.get("unlocked")) {
+                    unlocked.add((String) name);
+                }
+            }
+            manager.restoreProgress(
+                    getIntOrZero(achievementJson, "totalMoves"),
+                    getIntOrZero(achievementJson, "enemiesKilled"),
+                    getIntOrZero(achievementJson, "itemsCollected"),
+                    getIntOrZero(achievementJson, "damageTaken"),
+                    unlocked);
+        }
+
+        session.setAchievementManager(manager);
+    }
+
+    private int getIntOrZero(LinkedHashMap<String, Object> values, String key) {
+        return values.containsKey(key) ? (int) values.get(key) : 0;
     }
 
     public Map loadMapFromFile(String filename) {
@@ -238,7 +291,16 @@ public class MapDeserializer {
         if (c == '[') return parseArray();
         if (c == '"') return parseString();
         if (c == 't' || c == 'f') return parseBoolean();
+        if (c == 'n') return parseNull();
         return parseInt();
+    }
+
+    private Object parseNull() {
+        if (src.startsWith("null", pos)) {
+            pos += 4;
+            return null;
+        }
+        throw new IllegalStateException("Expected null at pos " + pos);
     }
 
     private String parseString() {

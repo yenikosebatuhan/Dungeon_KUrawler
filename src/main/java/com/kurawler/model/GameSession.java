@@ -1,7 +1,9 @@
 package com.kurawler.model;
 
+import com.kurawler.model.achievement.AchievementManager;
 import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Projectile; 
 import java.util.ArrayList;
@@ -10,6 +12,8 @@ import java.util.List;
 public class GameSession {
     private Map map;
     private Hero hero;
+    private ShadowClone shadowClone;
+    private AchievementManager achievementManager;
     private int turnCount;
     private final List<Enemy> enemies;
     private final List<Projectile> projectiles; 
@@ -77,6 +81,24 @@ public class GameSession {
     public void setMap(Map map) { this.map = map; }
     public Hero getHero() { return hero; }
     public void setHero(Hero hero) { this.hero = hero; }
+    public ShadowClone getShadowClone() { return shadowClone; }
+    public void setShadowClone(ShadowClone shadowClone) { this.shadowClone = shadowClone; }
+    public AchievementManager getAchievementManager() { return achievementManager; }
+    public void setAchievementManager(AchievementManager achievementManager) {
+        this.achievementManager = achievementManager;
+    }
+
+    public void wireObservers() {
+        if (hero == null) return;
+        hero.clearObservers();
+        if (shadowClone != null) {
+            hero.addObserver(shadowClone);
+        }
+        if (achievementManager != null) {
+            hero.addObserver(achievementManager);
+        }
+    }
+
     public int getTurnCount() { return turnCount; }
     public void advanceTurn() { this.turnCount++; }
     public List<Enemy> getEnemies() { return enemies; }
