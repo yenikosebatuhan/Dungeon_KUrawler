@@ -29,7 +29,7 @@ public class EnemySpawner {
     private Random random;
 
     /** Time between spawn attempts in milliseconds. */
-    public static final long SPAWN_INTERVAL = 9000;
+    public static final long SPAWN_INTERVAL = 5000;
 
     /** Maximum number of living enemies allowed on the map. */
     public static final int MAX_ACTIVE_ENEMIES = 5;
@@ -83,39 +83,58 @@ public class EnemySpawner {
         }
 
         if (enemy != null) {
-            GridCell spawnCell = findEdgeSpawnLocation();
+            GridCell spawnCell = findSpawnLocation();
             if (spawnCell != null) {
-                enemy.setPosition(spawnCell.getRow(), spawnCell.getCol());
-                spawnCell.setOccupyingCharacter(enemy);
+                enemy.moveToCell(spawnCell);
                 session.incrementEnemyCount();
+                System.out.println("[Spawn] " + enemy.getName()
+                        + " spawned at (" + spawnCell.getRow() + "," + spawnCell.getCol()
+                        + ") | Active enemies: " + session.getActiveEnemyCount());
             }
         }
     }
 
     /**
-     * Finds a random walkable, unoccupied cell along the map edges
-     * (top or bottom row).
+     * Finds a random walkable, unoccupied cell for spawning.
+     * Prefers edge cells (top/bottom row); falls back to any walkable cell
+     * far from the hero if edges are all walls.
      *
-     * @return a valid edge GridCell for spawning, or null if none available
+     * @return a valid GridCell for spawning, or null if none available
      */
-    private GridCell findEdgeSpawnLocation() {
+    private GridCell findSpawnLocation() {
         Map map = session.getMap();
         if (map == null) {
             return null;
         }
 
-        List<GridCell> candidates = new ArrayList<>();
-        int lastY = map.getGridHeight() - 1;
-
-        for (int x = 0; x < map.getGridWidth(); x++) {
-            addIfValidSpawn(map.getCellAt(x, 0), candidates);
-            addIfValidSpawn(map.getCellAt(x, lastY), candidates);
+        List<GridCell> edgeCandidates = new ArrayList<>();
+        int lastRow = map.getHeight() - 1;
+        for (int c = 0; c < map.getWidth(); c++) {
+            addIfValidSpawn(map.getCell(0, c), edgeCandidates);
+            addIfValidSpawn(map.getCell(lastRow, c), edgeCandidates);
         }
 
-        if (candidates.isEmpty()) {
-            return null;
+        if (!edgeCandidates.isEmpty()) {
+            return edgeCandidates.get(random.nextInt(edgeCandidates.size()));
         }
-        return candidates.get(random.nextInt(candidates.size()));
+
+        // Fallback: any walkable cell at least 5 tiles from hero
+        List<GridCell> fallback = new ArrayList<>();
+        com.kurawler.model.character.Hero hero = session.getHero();
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int c = 0; c < map.getWidth(); c++) {
+                GridCell cell = map.getCell(r, c);
+                if (cell == null || cell.isBlocked()) continue;
+                if (cell.getOccupyingCharacter() != null) continue;
+                if (hero != null) {
+                    int dist = Math.abs(r - hero.getRow()) + Math.abs(c - hero.getCol());
+                    if (dist < 5) continue;
+                }
+                fallback.add(cell);
+            }
+        }
+        if (fallback.isEmpty()) return null;
+        return fallback.get(random.nextInt(fallback.size()));
     }
 
     /**
@@ -126,6 +145,9 @@ public class EnemySpawner {
      */
     private void addIfValidSpawn(GridCell cell, List<GridCell> candidates) {
         if (cell == null || cell.isBlocked()) {
+            return;
+        }
+        if (cell.getOccupyingCharacter() != null) {
             return;
         }
         candidates.add(cell);

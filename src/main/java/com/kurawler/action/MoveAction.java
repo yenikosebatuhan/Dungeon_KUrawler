@@ -29,6 +29,11 @@ public class MoveAction implements Action {
         int newRow = hero.getRow() + deltaRow;
         int newCol = hero.getCol() + deltaCol;
 
+        if (hero.getEnergy() < 1) {
+            System.out.println("[Action] " + hero.getName() + " has no energy to move!");
+            return effects;
+        }
+
         GridCell target = session.getMap().getCell(newRow, newCol);
         if (target != null && target.isWalkable()) {
             effects.add(new MoveEffect(hero, newRow, newCol));
