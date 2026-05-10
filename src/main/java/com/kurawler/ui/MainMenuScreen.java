@@ -35,6 +35,9 @@ public class MainMenuScreen {
         Button newGameBtn = createMenuButton("New Game");
         newGameBtn.setOnAction(e -> screenManager.startNewGame());
 
+        Button teamMatchBtn = createMenuButton("Team Match");
+        teamMatchBtn.setOnAction(e -> screenManager.startTeamMatch());
+
         Button editorBtn = createMenuButton("Level Editor");
         editorBtn.setOnAction(e -> screenManager.showBuildMode());
 
@@ -59,7 +62,7 @@ public class MainMenuScreen {
         Button exitBtn = createMenuButton("Exit");
         exitBtn.setOnAction(e -> Platform.exit());
 
-        VBox layout = new VBox(20, title, subtitle, newGameBtn, editorBtn, saveBtn, loadBtn, helpBtn, exitBtn);
+        VBox layout = new VBox(20, title, subtitle, newGameBtn, teamMatchBtn, editorBtn, saveBtn, loadBtn, helpBtn, exitBtn);
         layout.setAlignment(Pos.CENTER);
         layout.setPadding(new Insets(60));
         layout.setStyle("-fx-background-color: #0f0f23;");

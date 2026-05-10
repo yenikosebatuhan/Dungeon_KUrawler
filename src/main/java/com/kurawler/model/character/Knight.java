@@ -3,15 +3,27 @@ package com.kurawler.model.character;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Map;
+import com.kurawler.model.object.Weapon;
 import java.util.Random;
 
 public class Knight extends Enemy {
     private static final int SIGHT_RADIUS = 5;
     private static final Random RNG = new Random();
 
+    private Weapon equippedMatchWeapon;
+
     public Knight() {
         super("Knight", 20, 4, 1, 8, 0, 80);
     }
+
+    public void equipMatchWeapon(Weapon weapon) {
+        this.equippedMatchWeapon = weapon;
+        if (weapon != null) {
+            setAttackPower(4 + weapon.getDamage());
+        }
+    }
+
+    public Weapon getEquippedMatchWeapon() { return equippedMatchWeapon; }
 
     @Override
     public void decideAction(Hero hero, Map map, GameSession session) {

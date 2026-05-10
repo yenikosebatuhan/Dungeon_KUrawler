@@ -67,6 +67,7 @@ public class GameSession {
     
     public String getCurrentMode() { return currentMode; }
     public void setCurrentMode(String mode) { this.currentMode = mode; }
+    public boolean isTeamMatch() { return "TeamMatch".equals(currentMode); }
     public int getPlayDurationTimer() { return playDurationTimer; }
     public void setPlayDurationTimer(int timer) { this.playDurationTimer = Math.max(0, timer); }
     public Item getTargetObjective() { return targetObjective; }
