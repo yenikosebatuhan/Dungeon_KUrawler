@@ -5,6 +5,7 @@ import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Item;
+import com.kurawler.model.object.Key;
 import com.kurawler.model.object.Projectile; 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,9 +63,25 @@ public class GameSession {
     public boolean checkWinCondition() {
         if (hero == null || targetObjective == null) return false;
         Inventory inv = hero.getInventory();
-        return inv != null && inv.hasItem(targetObjective);
+        if (inv == null) return false;
+        if (inv.hasItem(targetObjective)) return true;
+        for (Item item : inv.getItems()) {
+            if (isSameObjective(item, targetObjective)) {
+                return true;
+            }
+        }
+        return false;
     }
-    
+
+    private boolean isSameObjective(Item item, Item target) {
+        if (item == null || target == null) return false;
+        if (!item.getName().equals(target.getName())) return false;
+        if (item instanceof Key && target instanceof Key) {
+            return ((Key) item).getKeyId().equals(((Key) target).getKeyId());
+        }
+        return item.getClass().equals(target.getClass());
+    }
+
     public String getCurrentMode() { return currentMode; }
     public void setCurrentMode(String mode) { this.currentMode = mode; }
     public boolean isTeamMatch() { return "TeamMatch".equals(currentMode); }
@@ -103,9 +120,15 @@ public class GameSession {
     public int getTurnCount() { return turnCount; }
     public void advanceTurn() { this.turnCount++; }
     public List<Enemy> getEnemies() { return enemies; }
+    public void clearEnemies() {
+        enemies.clear();
+        resetActiveEnemyCount();
+    }
     public void addEnemy(Enemy enemy) { 
-        enemies.add(enemy); 
-        incrementEnemyCount();
+        if (enemy != null && !enemies.contains(enemy)) {
+            enemies.add(enemy); 
+            incrementEnemyCount();
+        }
     }
     public boolean removeEnemy(Enemy enemy) { 
         boolean removed = enemies.remove(enemy);
