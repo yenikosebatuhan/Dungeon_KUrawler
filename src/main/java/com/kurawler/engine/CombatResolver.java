@@ -7,67 +7,53 @@ import com.kurawler.model.object.Projectile;
 /**
  * Resolves combat interactions between characters and projectiles.
  *
- * <p>Damage formula for melee: {@code (attacker.STR + weapon.ATK) - defender.DEF}.
- * The defender's DEF is already subtracted inside {@link Character#takeDamage(int)},
- * so this class computes the raw outgoing damage only.</p>
+ * <p>Sophisticated Damage Formula: {@code Max(1, (attacker.STR / 2 + weapon.ATK) - defender.DEF)}.</p>
  */
 public class CombatResolver {
 
     /**
-     * Performs a melee attack from attacker to defender.
-     * Damage is calculated as attacker's STR plus equipped weapon ATK (if Hero).
-     * The defender's DEF is applied inside {@link Character#takeDamage(int)}.
-     *
-     * @param attacker the character dealing damage; must not be null
-     * @param defender the character receiving damage; must not be null
+     * Performs a melee attack from attacker to defender using the new formula.
      */
     public static void performMeleeAttack(Character attacker, Character defender) {
-        if (attacker == null || defender == null) {
+        if (attacker == null || defender == null || !attacker.isAlive() || !defender.isAlive()) {
             return;
         }
-        if (!attacker.isAlive() || !defender.isAlive()) {
-            return;
-        }
-        int baseDamage = calculateBaseDamage(attacker);
-        defender.takeDamage(baseDamage);
+        
+        int finalDamage = calculateFinalDamage(attacker, defender);
+        defender.takeDamage(finalDamage);
     }
 
     /**
-     * Calculates raw outgoing damage for a character.
-     * For a Hero, adds the equipped weapon's damage to STR.
-     * For other characters, uses STR only.
-     *
-     * @param attacker the attacking character
-     * @return the raw damage value before defender's DEF is applied
+     * Calculates the exact damage applying STR, ATK, and subtracting the defender's DEF.
+     * Ensures damage is at least 1.
      */
-    private static int calculateBaseDamage(Character attacker) {
-        int damage = attacker.getStrength();
+    public static int calculateFinalDamage(Character attacker, Character defender) {
+        int str = attacker.getStrength();
+        int atk = attacker.getAttackPower(); // Default base ATK
 
+        // Add equipped weapon damage if the attacker is a Hero
         if (attacker instanceof Hero) {
             Hero hero = (Hero) attacker;
             if (hero.getEquippedWeapon() != null) {
-                damage += hero.getEquippedWeapon().getDamage();
+                atk += hero.getEquippedWeapon().getDamage();
             }
         }
 
-        return damage;
+        int def = defender.getDefensePower();
+
+        // Sophisticated PDF formula
+        int damage = (str / 2) + atk - def;
+        
+        return Math.max(1, damage); // Minimum damage is 1
     }
 
-    /**
-     * Applies projectile damage to a target character.
-     * Uses the projectile's damage value directly; defender's DEF
-     * is applied inside {@link Character#takeDamage(int)}.
-     *
-     * @param projectile the projectile hitting the target; must not be null
-     * @param target     the character being hit; must not be null
-     */
     public static void applyProjectileDamage(Projectile projectile, Character target) {
-        if (projectile == null || target == null) {
+        if (projectile == null || target == null || !target.isAlive()) {
             return;
         }
-        if (!target.isAlive()) {
-            return;
-        }
-        target.takeDamage(projectile.getDamage());
+        
+        // Projectiles bypass normal STR formula but still respect DEF
+        int damage = projectile.getDamage() - target.getDefensePower();
+        target.takeDamage(Math.max(1, damage));
     }
 }

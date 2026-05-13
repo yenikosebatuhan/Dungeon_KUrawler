@@ -33,7 +33,8 @@ public class Knight extends Enemy {
 
         if (Math.abs(dRow) + Math.abs(dCol) == 1) {
             System.out.println("[AI] Knight: Attacking hero!");
-            hero.takeDamage(calculateDamage());
+            // --- BUG-07 FIX: Route AI attacks through centralized CombatResolver ---
+            com.kurawler.engine.CombatResolver.performMeleeAttack(this, hero);
             return;
         }
 
