@@ -1,6 +1,7 @@
 package com.kurawler.editor;
 
 import com.kurawler.model.Map;
+import com.kurawler.model.character.Character;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
 
@@ -29,6 +30,10 @@ public class LevelEditor {
             return mapEditor.deleteObject(col, row);
         }
         return mapEditor.deleteObject(col, row, obj);
+    }
+
+    public boolean placeCharacter(int row, int col, Character character) {
+        return mapEditor.placeCharacter(character, col, row);
     }
 
     /** Generate a random item and place it at the given cell. */

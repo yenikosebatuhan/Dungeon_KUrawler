@@ -26,13 +26,16 @@ public class GameLoop {
     private EnemySpawner enemySpawner;
     private CollisionDetector collisionDetector;
     private final List<Projectile> activeProjectiles;
+    private long playTimeAccumulatorMs;
 
     /** Target sleep time per frame in milliseconds (~60 FPS). */
     private static final long FRAME_SLEEP_MS = 16;
 
-    /** Enemy AI runs every this many frames (~6 moves/sec at 60 FPS). */
-    private static final int ENEMY_TICK_INTERVAL = 10;
+    /** Enemy AI runs every this many frames (~2 moves/sec at 60 FPS). */
+    private static final int ENEMY_TICK_INTERVAL = 30;
+    private static final int PROJECTILE_TICK_INTERVAL = 8;
     private int enemyTickCounter = 0;
+    private int projectileTickCounter = 0;
 
     /**
      * Creates a new game loop bound to the given session.
@@ -99,8 +102,12 @@ public class GameLoop {
         }
 
         updateEnemies();
-        updateProjectiles();
+        if (++projectileTickCounter >= PROJECTILE_TICK_INTERVAL) {
+            projectileTickCounter = 0;
+            updateProjectiles();
+        }
         enemySpawner.update(deltaTime);
+        updatePlayTimer(deltaTime);
 
         if (session.checkWinCondition()) {
             stop();
@@ -109,6 +116,16 @@ public class GameLoop {
         Hero hero = session.getHero();
         if (hero != null && !hero.isAlive()) {
             stop();
+        }
+    }
+
+    private void updatePlayTimer(long deltaTime) {
+        if (deltaTime <= 0) return;
+        playTimeAccumulatorMs += deltaTime;
+        if (playTimeAccumulatorMs >= 1000) {
+            session.setPlayDurationTimer(session.getPlayDurationTimer()
+                    + (int) (playTimeAccumulatorMs / 1000));
+            playTimeAccumulatorMs %= 1000;
         }
     }
 
@@ -169,6 +186,9 @@ public class GameLoop {
             return;
         }
 
+        activeProjectiles.addAll(session.getProjectiles());
+        session.getProjectiles().clear();
+
         List<Projectile> snapshot = new ArrayList<>(activeProjectiles);
         for (Projectile projectile : snapshot) {
             int newRow = projectile.getPositionRow() + projectile.getDirectionRow();
@@ -185,9 +205,14 @@ public class GameLoop {
 
             Character occupant = targetCell.getOccupyingCharacter();
             if (occupant != null && occupant.isAlive()) {
+                boolean isHeroProjectile = "Hero Bolt".equals(projectile.getName());
+                boolean isHero = occupant instanceof Hero;
+                if (isHeroProjectile == isHero) {
+                    continue;
+                }
                 CombatResolver.applyProjectileDamage(projectile, occupant);
                 activeProjectiles.remove(projectile);
-                if (!occupant.isAlive()) {
+                if (!occupant.isAlive() && !isHero) {
                     targetCell.setOccupyingCharacter(null);
                     session.decrementEnemyCount();
                 }
