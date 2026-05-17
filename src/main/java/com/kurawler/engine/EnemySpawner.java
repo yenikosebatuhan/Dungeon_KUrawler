@@ -28,8 +28,8 @@ public class EnemySpawner {
     private long timeSinceLastSpawn;
     private Random random;
 
-    /** Time between spawn attempts in milliseconds. */
-    public static final long SPAWN_INTERVAL = 5000;
+    /** Time between spawn attempts in milliseconds (9 seconds per spec). */
+    public static final long SPAWN_INTERVAL = 9000;
 
     /** Maximum number of living enemies allowed on the map. */
     public static final int MAX_ACTIVE_ENEMIES = 5;
@@ -86,7 +86,7 @@ public class EnemySpawner {
             GridCell spawnCell = findSpawnLocation();
             if (spawnCell != null) {
                 enemy.moveToCell(spawnCell);
-                session.incrementEnemyCount();
+                session.addEnemy(enemy);
                 System.out.println("[Spawn] " + enemy.getName()
                         + " spawned at (" + spawnCell.getRow() + "," + spawnCell.getCol()
                         + ") | Active enemies: " + session.getActiveEnemyCount());
@@ -109,9 +109,14 @@ public class EnemySpawner {
 
         List<GridCell> edgeCandidates = new ArrayList<>();
         int lastRow = map.getHeight() - 1;
+        int lastCol = map.getWidth() - 1;
         for (int c = 0; c < map.getWidth(); c++) {
             addIfValidSpawn(map.getCell(0, c), edgeCandidates);
             addIfValidSpawn(map.getCell(lastRow, c), edgeCandidates);
+        }
+        for (int r = 1; r < lastRow; r++) {
+            addIfValidSpawn(map.getCell(r, 0), edgeCandidates);
+            addIfValidSpawn(map.getCell(r, lastCol), edgeCandidates);
         }
 
         if (!edgeCandidates.isEmpty()) {

@@ -36,8 +36,10 @@ public class Sorcerer extends Enemy {
         }
 
         if (!teleported && ticksSinceLastAttack >= ATTACK_COOLDOWN) {
-            System.out.println("[AI] Sorcerer: Casting spell at hero");
-            castSpell(hero, map);
+            Projectile p = castSpell(hero, map);
+            if (p != null && session != null) {
+                session.addProjectile(p);
+            }
             ticksSinceLastAttack = 0;
         }
     }
@@ -48,7 +50,7 @@ public class Sorcerer extends Enemy {
         int dr = Integer.signum(hero.getRow() - getRow());
         int dc = Integer.signum(hero.getCol() - getCol());
         Projectile p = new Projectile("Arcane Bolt", "Crackling magic energy", SPELL_DAMAGE, dr, dc);
-        hero.takeDamage(SPELL_DAMAGE);
+        p.setPosition(getRow() + dr, getCol() + dc);
         this.lastSpell = p;
         return p;
     }

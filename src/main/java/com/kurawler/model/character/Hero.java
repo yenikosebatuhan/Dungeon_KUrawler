@@ -5,6 +5,7 @@ import com.kurawler.model.GridCell;
 import com.kurawler.model.Inventory;
 import com.kurawler.model.Map;
 import com.kurawler.model.object.Consumable;
+import com.kurawler.model.object.Projectile;
 import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.Wearable;
 import com.kurawler.model.observer.HeroObserver;
@@ -20,9 +21,13 @@ public class Hero extends Character implements HeroSubject {
     private Wearable equippedWearable;
 
     private static final int ATTACK_ENERGY_COST = 1;
+    private static final int RANGED_MANA_COST = 10;
+    private static final int RANGED_DAMAGE = 6;
     private static final int MELEE_REACH = 1;
     private static final Random RNG = new Random();
     private final List<HeroObserver> observers = new ArrayList<>();
+    private int facingRow = 0;
+    private int facingCol = 1;
 
     public Hero(String name) {
         super(name, 17, 0, 2, 8 + RNG.nextInt(8), 80, 100);
@@ -58,6 +63,10 @@ public class Hero extends Character implements HeroSubject {
 
         int deltaRow = newCell.getRow() - getRow();
         int deltaCol = newCell.getCol() - getCol();
+        if (deltaRow != 0 || deltaCol != 0) {
+            facingRow = deltaRow;
+            facingCol = deltaCol;
+        }
         super.moveToCell(newCell);
         notifyMoved(getRow(), getCol(), deltaRow, deltaCol);
     }
@@ -162,11 +171,32 @@ public class Hero extends Character implements HeroSubject {
         setDefensePower(getDefensePower() + wearable.getDefenseBonus());
     }
 
+    public void unequipWearable() {
+        if (equippedWearable == null) return;
+        setDefensePower(getDefensePower() - equippedWearable.getDefenseBonus());
+        equippedWearable = null;
+    }
+
     public boolean useConsumable(Consumable consumable) {
         if (consumable == null || !inventory.removeItem(consumable)) return false;
-        heal(consumable.getHealAmount());
+        if (consumable.getHealAmount() > 0) heal(consumable.getHealAmount());
+        if (consumable.getManaAmount() > 0) restoreMana(consumable.getManaAmount());
+        if (consumable.getEnergyAmount() > 0) restoreEnergy(consumable.getEnergyAmount());
         return true;
     }
+
+    public Projectile shootProjectile() {
+        if (getMana() < RANGED_MANA_COST) return null;
+        useMana(RANGED_MANA_COST);
+        int dmg = RANGED_DAMAGE + (equippedWeapon != null ? equippedWeapon.getDamage() / 2 : 0);
+        Projectile p = new Projectile("Hero Bolt", "A focused energy bolt", dmg, facingRow, facingCol);
+        p.setPosition(getRow() + facingRow, getCol() + facingCol);
+        notifyAttacked(dmg);
+        return p;
+    }
+
+    public int getFacingRow() { return facingRow; }
+    public int getFacingCol() { return facingCol; }
 
     public Inventory getInventory() { return inventory; }
     public Weapon getEquippedWeapon() { return equippedWeapon; }
