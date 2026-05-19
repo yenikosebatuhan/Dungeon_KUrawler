@@ -158,7 +158,19 @@ public class GameView {
         if (!(session instanceof TeamMatchSession)) {
             session.setCurrentMode("Play");
         }
-        startGameLoop(session);
+
+        // PDF §4.1.2: Show target item popup at the start of a new play session.
+        // Team Match has no target item, so skip in that mode.
+        // IMPORTANT: defer startGameLoop() until the popup is dismissed so that
+        // enemies do not move/attack while the player is still reading the quest.
+        if (!(session instanceof TeamMatchSession) && session.getTargetObjective() != null) {
+            javafx.application.Platform.runLater(() -> {
+                new TargetItemPopup(stage, session.getTargetObjective()).show();
+                startGameLoop(session);   // blocks above: showAndWait() returns only after dismiss
+            });
+        } else {
+            startGameLoop(session);
+        }
         render();
     }
 
