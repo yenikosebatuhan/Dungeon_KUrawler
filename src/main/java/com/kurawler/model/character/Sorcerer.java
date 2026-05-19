@@ -17,9 +17,18 @@ public class Sorcerer extends Enemy {
     private int ticksSinceLastAttack = 0;
     private Projectile lastSpell;
 
+    /** PDF §2.5.2: marks whether this Sorcerer has already dropped its ring upon defeat. */
+    private boolean ringDropped = false;
+
     public Sorcerer() {
         super("Sorcerer", 10, 8, 0, 5, 60, 40);
     }
+
+    /** @return true once the post-defeat ring drop has been handled. */
+    public boolean isRingDropped() { return ringDropped; }
+
+    /** Marks the ring as dropped so the GameLoop drops it at most once. */
+    public void markRingDropped() { this.ringDropped = true; }
 
     @Override
     public void decideAction(Hero hero, Map map, GameSession session) {

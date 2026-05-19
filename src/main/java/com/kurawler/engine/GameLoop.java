@@ -37,6 +37,11 @@ public class GameLoop {
     private int enemyTickCounter = 0;
     private int projectileTickCounter = 0;
 
+    /** Phase II — Shadow Clone Scroll auto-spawn interval (15 seconds). */
+    private static final long SHADOW_CLONE_SCROLL_SPAWN_INTERVAL_MS = 15_000;
+    private long shadowCloneScrollSpawnAccumulatorMs = 0;
+    private final java.util.Random rng = new java.util.Random();
+
     /**
      * Creates a new game loop bound to the given session.
      *
@@ -108,6 +113,10 @@ public class GameLoop {
         }
         enemySpawner.update(deltaTime);
         updatePlayTimer(deltaTime);
+
+        // Phase II features added in this PR:
+        handleSorcererRingDrops();              // §2.5.2 — ring drops from defeated sorcerers
+        updateShadowCloneScrollSpawn(deltaTime); // Phase II — auto-spawn scroll every 15 s
 
         if (session.checkWinCondition()) {
             stop();
