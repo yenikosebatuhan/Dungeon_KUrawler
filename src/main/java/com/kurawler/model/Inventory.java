@@ -13,6 +13,13 @@ public class Inventory {
         this.slots = new Item[ROWS][COLS];
     }
 
+    /**
+     * REQUIRES: item != null
+     * MODIFIES: this (the inventory's slot array)
+     * EFFECTS:  If the inventory has at least one empty slot, places item in the
+     *           first empty slot (row-major order) and returns true. Otherwise
+     *           the inventory is left unchanged and returns false.
+     */
     public boolean addItem(Item item) {
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS; c++) {
@@ -25,6 +32,12 @@ public class Inventory {
         return false;
     }
 
+    /**
+     * REQUIRES: item != null
+     * MODIFIES: this
+     * EFFECTS:  If item currently occupies a slot, empties that slot and returns
+     *           true; otherwise the inventory is left unchanged and returns false.
+     */
     public boolean removeItem(Item item) {
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS; c++) {
@@ -42,6 +55,11 @@ public class Inventory {
         return slots[row][col];
     }
 
+    /**
+     * REQUIRES: true (no precondition)
+     * MODIFIES: nothing (pure query)
+     * EFFECTS:  Returns true iff all ROWS*COLS (8) slots are occupied.
+     */
     public boolean isFull() {
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS; c++) {
