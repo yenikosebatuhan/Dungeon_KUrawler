@@ -74,12 +74,15 @@ public class GameController {
 
     /**
      * Called by the UI when the player presses a movement key.
-     * Creates a MoveAction, executes it, then auto-picks up any items on the new cell.
+     * Creates a MoveAction and executes it.
+     *
+     * <p>PDF §1.2: items are NOT auto-collected by walking over them. The player
+     * must click an adjacent item and choose TAKE from the action menu. Therefore
+     * no auto-pickup is performed here.</p>
      */
     public void moveHero(int deltaRow, int deltaCol) {
         MoveAction moveAction = new MoveAction(deltaRow, deltaCol);
         executeAction(moveAction);
-        pickUpItemsOnHeroCell();
     }
 
     /**

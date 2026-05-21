@@ -1085,9 +1085,6 @@ public class GameView {
         popup.initModality(Modality.APPLICATION_MODAL);
         popup.initStyle(StageStyle.UNDECORATED);
 
-        Canvas bg = new Canvas(300, 260);
-        drawDungeonBg(bg, 300, 260);
-
         Label title = new Label("ITEM MENU");
         title.setFont(Font.font("Serif", FontWeight.BOLD, 18));
         title.setTextFill(Color.web("#e8c84a"));
@@ -1155,9 +1152,14 @@ public class GameView {
         VBox content = new VBox(10, title, nameLabel, actions);
         content.setAlignment(Pos.CENTER);
         content.setPadding(new Insets(20));
-        content.setStyle("-fx-border-color: #8b794088; -fx-border-width: 2; -fx-border-radius: 6;");
+        // Solid CSS background so the popup is never blank even if the Canvas
+        // background fails to render on some platforms.
+        content.setStyle("-fx-background-color: linear-gradient(to bottom, #2a2418, #15110c); "
+                + "-fx-border-color: #8b7940; -fx-border-width: 2; "
+                + "-fx-border-radius: 6; -fx-background-radius: 6;");
 
-        StackPane root = new StackPane(bg, content);
+        StackPane root = new StackPane(content);
+        root.setStyle("-fx-background-color: #15110c;");
         popup.setScene(new Scene(root, 300, 260));
         popup.setOnShown(e -> centerPopup(popup));
         popup.setOnHidden(e -> { if (animationTimer != null) animationTimer.start(); });

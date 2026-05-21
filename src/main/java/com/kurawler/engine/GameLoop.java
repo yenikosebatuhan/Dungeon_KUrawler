@@ -284,4 +284,76 @@ public class GameLoop {
     public EnemySpawner getEnemySpawner() {
         return enemySpawner;
     }
+
+    /**
+     * PDF §2.5.2: When a Sorcerer is defeated, it may drop a magical ring
+     * that adds to DEF when worn. Scans the grid for newly-defeated sorcerers
+     * and drops a Ring onto their cell exactly once.
+     */
+    private void handleSorcererRingDrops() {
+        Map map = session.getMap();
+        if (map == null) return;
+        for (int x = 0; x < map.getGridWidth(); x++) {
+            for (int y = 0; y < map.getGridHeight(); y++) {
+                GridCell cell = map.getCellAt(x, y);
+                if (cell == null) continue;
+                Character occupant = cell.getOccupyingCharacter();
+                if (occupant instanceof com.kurawler.model.character.Sorcerer) {
+                    com.kurawler.model.character.Sorcerer s =
+                            (com.kurawler.model.character.Sorcerer) occupant;
+                    if (!s.isAlive() && !s.isRingDropped()) {
+                        // 60% chance the sorcerer was carrying a ring
+                        if (rng.nextDouble() < 0.60) {
+                            cell.addObject(com.kurawler.model.object.Ring.sorcererDrop());
+                        }
+                        s.markRingDropped();
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Phase II — Shadow Clone: every 15 seconds a Shadow Clone Scroll appears
+     * on a random walkable, unoccupied cell of the map, regardless of how many
+     * scrolls already exist.
+     *
+     * @param deltaTime milliseconds elapsed since the last frame
+     */
+    private void updateShadowCloneScrollSpawn(long deltaTime) {
+        // Shadow Clone is a single-player feature; skip it in Team Match.
+        if (session instanceof com.kurawler.model.TeamMatchSession) return;
+
+        // Frame-based fallback: even if deltaTime is 0/unreliable, advance ~16 ms per frame.
+        long step = (deltaTime > 0) ? deltaTime : 16;
+        shadowCloneScrollSpawnAccumulatorMs += step;
+        if (shadowCloneScrollSpawnAccumulatorMs < SHADOW_CLONE_SCROLL_SPAWN_INTERVAL_MS) {
+            return;
+        }
+        shadowCloneScrollSpawnAccumulatorMs = 0;
+
+        Map map = session.getMap();
+        if (map == null) return;
+
+        // Collect candidate cells: walkable, no character, no static blocker.
+        List<GridCell> candidates = new ArrayList<>();
+        for (int x = 0; x < map.getGridWidth(); x++) {
+            for (int y = 0; y < map.getGridHeight(); y++) {
+                GridCell cell = map.getCellAt(x, y);
+                if (cell == null) continue;
+                if (!cell.isWalkable()) continue;
+                if (cell.getOccupyingCharacter() != null) continue;
+                candidates.add(cell);
+            }
+        }
+        if (candidates.isEmpty()) {
+            System.out.println("[ShadowCloneScroll] spawn skipped — no candidate cells");
+            return;
+        }
+
+        GridCell target = candidates.get(rng.nextInt(candidates.size()));
+        target.addObject(new com.kurawler.model.object.ShadowCloneScroll());
+        System.out.println("[ShadowCloneScroll] spawned at row=" + target.getRow()
+                + " col=" + target.getCol());
+    }
 }

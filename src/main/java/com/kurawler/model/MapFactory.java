@@ -46,7 +46,9 @@ public class MapFactory {
             spawnCell.setOccupyingCharacter(hero);
         }
         session.setHero(hero);
-        session.setShadowClone(new ShadowClone(4, 3, map));
+        // PDF Phase II: a Shadow Clone must only appear after the player READs a
+        // Shadow Clone Scroll (which auto-spawns every 15 s), not at game start.
+        // No clone is created here on purpose.
         session.setAchievementManager(new AchievementManager());
         session.wireObservers();
 
