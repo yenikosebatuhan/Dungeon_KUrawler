@@ -9,28 +9,34 @@ import java.util.List;
 public class StaticContainer extends GameObject {
 
     private final List<Item> contents;
+    private boolean isLocked = false;
+    private String requiredKeyId = null;
 
     public StaticContainer(String name, String description) {
         super(name, description);
         this.contents = new ArrayList<>();
     }
 
-    public void addItem(Item item) {
-        contents.add(item);
+    // --- LOCK MECHANISM ---
+    public void setLock(String keyId) {
+        this.requiredKeyId = keyId;
+        this.isLocked = true;
     }
+
+    public boolean isLocked() { return isLocked; }
+    public String getRequiredKeyId() { return requiredKeyId; }
+    public void unlock() { this.isLocked = false; }
+
+    // --- INVENTORY MANAGEMENT ---
+    public void addItem(Item item) { contents.add(item); }
 
     public Item removeItem(int index) {
-        if (index < 0 || index >= contents.size()) {
-            return null;
-        }
+        if (index < 0 || index >= contents.size()) return null;
         return contents.remove(index);
     }
+    
+    public boolean removeItem(Item item) { return contents.remove(item); }
 
-    public List<Item> getContents() {
-        return new ArrayList<>(contents);
-    }
-
-    public boolean isEmpty() {
-        return contents.isEmpty();
-    }
+    public List<Item> getContents() { return new ArrayList<>(contents); }
+    public boolean isEmpty() { return contents.isEmpty(); }
 }

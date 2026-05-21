@@ -118,9 +118,13 @@ public class Hero extends Character implements HeroSubject {
         if (dRow + dCol > MELEE_REACH) return false;
 
         useEnergy(ATTACK_ENERGY_COST);
-        int damage = calculateDamage();
+        
         boolean wasAlive = target.isAlive();
+        
+        // --- BUG-07 FIX: Route Hero attacks through centralized CombatResolver ---
+        int damage = com.kurawler.engine.CombatResolver.calculateFinalDamage(this, target);
         target.takeDamage(damage);
+        
         notifyAttackResolved(damage, wasAlive && !target.isAlive());
         return true;
     }
