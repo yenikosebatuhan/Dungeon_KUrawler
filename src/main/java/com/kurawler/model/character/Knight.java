@@ -25,6 +25,17 @@ public class Knight extends Enemy {
 
     public Weapon getEquippedMatchWeapon() { return equippedMatchWeapon; }
 
+    /**
+     * PDF §2.5.1: a Knight's melee attack deals 4 HP of damage (before the
+     * defender's DEF is subtracted). Uses the attackPower field (4 by default,
+     * or 4 + weapon ATK in Team Match) instead of attackPower + strength, which
+     * was far too high (4 + 8 = 12) and killed the hero in 1-2 hits.
+     */
+    @Override
+    public int calculateDamage() {
+        return getAttackPower();
+    }
+
     @Override
     public void decideAction(Hero hero, Map map, GameSession session) {
         if (hero == null || map == null || !isAlive() || !hero.isAlive()) return;

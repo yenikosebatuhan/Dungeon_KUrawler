@@ -43,7 +43,8 @@ public class ProceduralMapGenerator {
         hero.moveToCell(spawnCell);
         session.setHero(hero);
 
-        session.setShadowClone(new ShadowClone(heroR, Math.min(heroC + 1, WIDTH - 1), map));
+        // PDF Phase II: Shadow Clone is summoned via a Shadow Clone Scroll (READ),
+        // not spawned at game start. No clone is created here on purpose.
         session.setAchievementManager(new AchievementManager());
         session.wireObservers();
 
