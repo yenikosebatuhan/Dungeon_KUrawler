@@ -125,12 +125,14 @@ public class TileRenderer {
 
     private void loadItems() {
         if (!items.isLoaded()) return;
-        potionSprite = items.getSprite(0, 0);
-        potionSprite2 = items.getSprite(0, 1);
-        keySprite = items.getSprite(0, 3);
-        scrollSprite = items.getSprite(2, 0);
-        gemSprite = items.getSprite(2, 2);
-        ringSprite = items.getSprite(2, 3);
+        // items_x3.png is a 6-col x 4-row sheet. getSprite(col, row).
+        // Row 0 = keys, Row 1 = potions/rings, Row 2 = skulls/gems/coins, Row 3 = orb/book/scrolls
+        potionSprite = items.getSprite(0, 1);   // red potion
+        potionSprite2 = items.getSprite(1, 1);  // blue potion
+        keySprite = items.getSprite(2, 0);      // gold key
+        scrollSprite = items.getSprite(2, 3);   // parchment scroll (psi rune)
+        gemSprite = items.getSprite(2, 2);      // gem
+        ringSprite = items.getSprite(4, 1);     // green ring
         if (scrollSprite == null) scrollSprite = potionSprite;
         if (gemSprite == null) gemSprite = potionSprite;
     }

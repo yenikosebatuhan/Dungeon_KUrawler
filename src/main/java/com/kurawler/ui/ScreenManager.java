@@ -228,7 +228,8 @@ public class ScreenManager {
             session.setHero(hero);
         }
 
-        session.setShadowClone(new ShadowClone(hero.getRow(), Math.min(hero.getCol() + 1, map.getWidth() - 1), map));
+        // PDF Phase II: Shadow Clone appears only after READing a Shadow Clone
+        // Scroll (auto-spawned every 15 s), not at game start.
         session.setAchievementManager(new AchievementManager());
         session.wireObservers();
     }
