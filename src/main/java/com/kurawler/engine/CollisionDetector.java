@@ -29,9 +29,16 @@ public class CollisionDetector {
     /**
      * Checks whether the given grid position is blocked (wall or out of bounds).
      *
+     * @requires map != null (enforced by constructor)
+     * @modifies nothing
+     * @effects Returns true if (row, col) is outside the map bounds
+     *          (map.getCell returns null), or if the cell exists but is not
+     *          walkable (occupied by a character or contains an impassable
+     *          StaticObject). Returns false if the cell is in bounds and walkable.
+     *
      * @param row the row coordinate to check
      * @param col the column coordinate to check
-     * @return true if the cell is out of bounds or not walkable (collision); false if clear
+     * @return true if collision detected (blocked or out of bounds); false if clear
      */
     public boolean checkCollision(int row, int col) {
         GridCell cell = map.getCell(row, col);
@@ -44,9 +51,18 @@ public class CollisionDetector {
     /**
      * Checks whether a cell is empty and walkable (valid for movement or spawning).
      *
+     * @requires map != null (enforced by constructor)
+     * @modifies nothing
+     * @effects Returns true if and only if all three conditions hold:
+     *            (1) (row, col) is within map bounds,
+     *            (2) the cell is walkable (no impassable StaticObject and no
+     *                occupying character),
+     *            (3) the cell has no GameObject items placed on it.
+     *          Returns false if any condition is not met.
+     *
      * @param row the row coordinate to check
      * @param col the column coordinate to check
-     * @return true if the cell exists, is walkable, and has no objects on it
+     * @return true if the cell exists, is walkable, and carries no objects
      */
     public boolean isCellEmpty(int row, int col) {
         GridCell cell = map.getCell(row, col);
