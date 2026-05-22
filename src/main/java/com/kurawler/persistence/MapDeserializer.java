@@ -3,13 +3,22 @@ package com.kurawler.persistence;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Map;
+import com.kurawler.model.achievement.AchievementManager;
+import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.character.Knight;
+import com.kurawler.model.character.ShadowClone;
+import com.kurawler.model.character.Sorcerer;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Key;
+import com.kurawler.model.object.PortableContainer;
+import com.kurawler.model.object.Scroll;
+import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
+import com.kurawler.model.object.Wearable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -53,7 +62,12 @@ public class MapDeserializer {
             }
 
             session.setMap(map);
+            restoreSessionFields(root, session);
             restoreHero(root, session);
+            restoreEnemies(root, session);
+            restoreShadowClone(root, session);
+            restoreAchievements(root, session);
+            session.wireObservers();
 
             System.out.println("[Persistence] Loaded game state from " + filename);
             return true;
@@ -63,6 +77,23 @@ public class MapDeserializer {
         } catch (IOException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void restoreSessionFields(LinkedHashMap<String, Object> root, GameSession session) {
+        if (root.containsKey("playDurationTimer")) {
+            session.setPlayDurationTimer((int) root.get("playDurationTimer"));
+        }
+        if (root.containsKey("currentMode")) {
+            session.setCurrentMode((String) root.get("currentMode"));
+        }
+        if (root.containsKey("targetObjective") && root.get("targetObjective") != null) {
+            GameObject target = deserializeObject(
+                    (LinkedHashMap<String, Object>) root.get("targetObjective"));
+            if (target instanceof Item) {
+                session.setTargetObjective((Item) target);
+            }
         }
     }
 
@@ -86,9 +117,13 @@ public class MapDeserializer {
         hero.setMana((int) heroJson.get("mana"));
         hero.setEnergy((int) heroJson.get("energy"));
         hero.setStrength((int) heroJson.get("str"));
-        hero.setDefensePower((int) heroJson.get("def"));
+        int savedDefense = (int) heroJson.get("def");
+        hero.setDefensePower(savedDefense);
 
         String equippedName = (String) heroJson.get("equippedWeapon");
+        String equippedWearableName = heroJson.containsKey("equippedWearable")
+                ? (String) heroJson.get("equippedWearable") : "";
+        Wearable wearableToEquip = null;
 
         List<Object> invJson = (List<Object>) heroJson.get("inventory");
         for (Object entry : invJson) {
@@ -98,12 +133,102 @@ public class MapDeserializer {
                 hero.getInventory().addItem((Item) obj);
                 if (obj instanceof Weapon && obj.getName().equals(equippedName)) {
                     hero.setEquippedWeapon((Weapon) obj);
+                } else if (obj instanceof Wearable && obj.getName().equals(equippedWearableName)) {
+                    wearableToEquip = (Wearable) obj;
                 }
             }
+        }
+        if (wearableToEquip != null) {
+            hero.setDefensePower(savedDefense - wearableToEquip.getDefenseBonus());
+            hero.equipWearable(wearableToEquip);
         }
 
         session.setHero(hero);
         session.resetActiveEnemyCount();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void restoreEnemies(LinkedHashMap<String, Object> root, GameSession session) {
+        session.clearEnemies();
+        if (!root.containsKey("enemies")) return;
+
+        for (Object entry : (List<Object>) root.get("enemies")) {
+            LinkedHashMap<String, Object> enemyJson = (LinkedHashMap<String, Object>) entry;
+            Enemy enemy = createEnemy((String) enemyJson.get("type"));
+            if (enemy == null) continue;
+
+            int row = (int) enemyJson.get("row");
+            int col = (int) enemyJson.get("col");
+            enemy.setHealth(getIntOrZero(enemyJson, "hp"));
+            enemy.setMana(getIntOrZero(enemyJson, "mana"));
+            enemy.setEnergy(getIntOrZero(enemyJson, "energy"));
+            if (enemyJson.containsKey("str")) {
+                enemy.setStrength((int) enemyJson.get("str"));
+            }
+            if (enemyJson.containsKey("def")) {
+                enemy.setDefensePower((int) enemyJson.get("def"));
+            }
+
+            GridCell cell = session.getMap().getCell(row, col);
+            if (cell != null && !cell.isBlocked()) {
+                enemy.moveToCell(cell);
+                session.addEnemy(enemy);
+            }
+        }
+    }
+
+    private Enemy createEnemy(String type) {
+        if ("Sorcerer".equals(type)) return new Sorcerer();
+        if ("Knight".equals(type)) return new Knight();
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void restoreShadowClone(LinkedHashMap<String, Object> root, GameSession session) {
+        if (!root.containsKey("shadowClone") || root.get("shadowClone") == null) {
+            Hero hero = session.getHero();
+            if (hero != null) {
+                session.setShadowClone(new ShadowClone(hero.getRow(), hero.getCol(), session.getMap()));
+            }
+            return;
+        }
+
+        LinkedHashMap<String, Object> cloneJson =
+                (LinkedHashMap<String, Object>) root.get("shadowClone");
+        ShadowClone shadowClone = new ShadowClone((int) cloneJson.get("row"),
+                (int) cloneJson.get("col"), session.getMap());
+        if (cloneJson.containsKey("hp")) {
+            shadowClone.setHealth((int) cloneJson.get("hp"));
+        }
+        session.setShadowClone(shadowClone);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void restoreAchievements(LinkedHashMap<String, Object> root, GameSession session) {
+        AchievementManager manager = new AchievementManager();
+
+        if (root.containsKey("achievements") && root.get("achievements") != null) {
+            LinkedHashMap<String, Object> achievementJson =
+                    (LinkedHashMap<String, Object>) root.get("achievements");
+            List<String> unlocked = new ArrayList<>();
+            if (achievementJson.containsKey("unlocked")) {
+                for (Object name : (List<Object>) achievementJson.get("unlocked")) {
+                    unlocked.add((String) name);
+                }
+            }
+            manager.restoreProgress(
+                    getIntOrZero(achievementJson, "totalMoves"),
+                    getIntOrZero(achievementJson, "enemiesKilled"),
+                    getIntOrZero(achievementJson, "itemsCollected"),
+                    getIntOrZero(achievementJson, "damageTaken"),
+                    unlocked);
+        }
+
+        session.setAchievementManager(manager);
+    }
+
+    private int getIntOrZero(LinkedHashMap<String, Object> values, String key) {
+        return values.containsKey(key) ? (int) values.get(key) : 0;
     }
 
     public Map loadMapFromFile(String filename) {
@@ -151,7 +276,17 @@ public class MapDeserializer {
             String soDesc = soJson.containsKey("description") ? (String) soJson.get("description") : "";
             boolean soPassable = soJson.containsKey("passable") ? (boolean) soJson.get("passable") : true;
             boolean soSearchable = soJson.containsKey("searchable") ? (boolean) soJson.get("searchable") : false;
-            cell.setStaticObject(new StaticObject(soName, soDesc, soPassable, soSearchable));
+            StaticObject staticObject = new StaticObject(soName, soDesc, soPassable, soSearchable);
+            if (soJson.containsKey("hiddenItem") && soJson.get("hiddenItem") != null) {
+                @SuppressWarnings("unchecked")
+                LinkedHashMap<String, Object> hiddenJson =
+                        (LinkedHashMap<String, Object>) soJson.get("hiddenItem");
+                GameObject hidden = deserializeObject(hiddenJson);
+                if (hidden instanceof Item) {
+                    staticObject.setHiddenItem((Item) hidden);
+                }
+            }
+            cell.setStaticObject(staticObject);
         } else if (!(boolean) cellJson.get("walkable")) {
             // Backward compat: old saves only stored "walkable": false for walls
             cell.setStaticObject(new StaticObject("Wall", "Dark wall", false, false));
@@ -188,9 +323,50 @@ public class MapDeserializer {
             case "Key":
                 String keyId = json.containsKey("keyId") ? (String) json.get("keyId") : "";
                 return new Key(name, description, keyId);
+            case "Wearable":
+                int defenseBonus = json.containsKey("defenseBonus")
+                        ? (int) json.get("defenseBonus") : 0;
+                return new Wearable(name, description, defenseBonus);
+            case "Scroll":
+                String text = json.containsKey("text") ? (String) json.get("text") : description;
+                int scrollHeal = json.containsKey("healAmount") ? (int) json.get("healAmount") : 0;
+                return new Scroll(name, description, text, scrollHeal);
+            case "PortableContainer":
+                int capacity = json.containsKey("capacity") ? (int) json.get("capacity") : 4;
+                PortableContainer portable = new PortableContainer(name, description, capacity);
+                restoreContainerContents(portable, json);
+                return portable;
+            case "StaticContainer":
+                StaticContainer fixed = new StaticContainer(name, description);
+                restoreContainerContents(fixed, json);
+                return fixed;
             default:
                 System.out.println("[Persistence] Unknown object type: " + type);
                 return null;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void restoreContainerContents(PortableContainer container,
+            LinkedHashMap<String, Object> json) {
+        if (!json.containsKey("contents")) return;
+        for (Object entry : (List<Object>) json.get("contents")) {
+            GameObject item = deserializeObject((LinkedHashMap<String, Object>) entry);
+            if (item instanceof Item) {
+                container.addItem((Item) item);
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void restoreContainerContents(StaticContainer container,
+            LinkedHashMap<String, Object> json) {
+        if (!json.containsKey("contents")) return;
+        for (Object entry : (List<Object>) json.get("contents")) {
+            GameObject item = deserializeObject((LinkedHashMap<String, Object>) entry);
+            if (item instanceof Item) {
+                container.addItem((Item) item);
+            }
         }
     }
 
@@ -238,7 +414,16 @@ public class MapDeserializer {
         if (c == '[') return parseArray();
         if (c == '"') return parseString();
         if (c == 't' || c == 'f') return parseBoolean();
+        if (c == 'n') return parseNull();
         return parseInt();
+    }
+
+    private Object parseNull() {
+        if (src.startsWith("null", pos)) {
+            pos += 4;
+            return null;
+        }
+        throw new IllegalStateException("Expected null at pos " + pos);
     }
 
     private String parseString() {

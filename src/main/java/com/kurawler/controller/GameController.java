@@ -1,6 +1,10 @@
 package com.kurawler.controller;
 
 import com.kurawler.action.Action;
+import com.kurawler.action.BreakAction;
+import com.kurawler.action.ReadAction;
+import com.kurawler.action.SearchAction;
+import com.kurawler.action.WearAction;
 import com.kurawler.action.MoveAction;
 import com.kurawler.action.TakeAction;
 import com.kurawler.effect.AddToInventoryEffect;
@@ -13,6 +17,10 @@ import com.kurawler.model.character.Hero;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
+import com.kurawler.model.object.Projectile;
+import com.kurawler.model.object.Scroll;
+import com.kurawler.model.object.StaticObject;
+import com.kurawler.model.object.Wearable;
 import com.kurawler.persistence.MapDeserializer;
 import com.kurawler.persistence.MapSerializer;
 import java.util.List;
@@ -66,12 +74,15 @@ public class GameController {
 
     /**
      * Called by the UI when the player presses a movement key.
-     * Creates a MoveAction, executes it, then auto-picks up any items on the new cell.
+     * Creates a MoveAction and executes it.
+     *
+     * <p>PDF §1.2: items are NOT auto-collected by walking over them. The player
+     * must click an adjacent item and choose TAKE from the action menu. Therefore
+     * no auto-pickup is performed here.</p>
      */
     public void moveHero(int deltaRow, int deltaCol) {
         MoveAction moveAction = new MoveAction(deltaRow, deltaCol);
         executeAction(moveAction);
-        pickUpItemsOnHeroCell();
     }
 
     /**
@@ -116,6 +127,40 @@ public class GameController {
         return false;
     }
 
+    public boolean wearItem(Wearable wearable) {
+        if (wearable == null || !session.getHero().getInventory().hasItem(wearable)) {
+            return false;
+        }
+        executeAction(new WearAction(wearable));
+        return true;
+    }
+
+    public boolean readScroll(Scroll scroll) {
+        if (scroll == null || !session.getHero().getInventory().hasItem(scroll)) {
+            return false;
+        }
+        executeAction(new ReadAction(scroll));
+        return true;
+    }
+
+    public boolean searchObject(StaticObject object) {
+        if (object == null || !object.isSearchable()) {
+            return false;
+        }
+        executeAction(new SearchAction(object));
+        return true;
+    }
+
+    public boolean breakObject(int row, int col) {
+        GridCell cell = session.getMap().getCell(row, col);
+        if (cell == null || cell.getStaticObject() == null
+                || !cell.getStaticObject().isSearchable()) {
+            return false;
+        }
+        executeAction(new BreakAction(row, col));
+        return true;
+    }
+
     /**
      * Interact with a specific item on a cell (triggered by 3x3 click menu).
      * Creates a TakeAction and runs it through the pipeline.
@@ -125,6 +170,16 @@ public class GameController {
         new RemoveFromCellEffect(row, col, item).apply(session);
         new AddToInventoryEffect(item).apply(session);
         session.advanceTurn();
+    }
+
+    public boolean heroShoot() {
+        Hero hero = session.getHero();
+        if (hero == null) return false;
+        Projectile p = hero.shootProjectile();
+        if (p == null) return false;
+        session.addProjectile(p);
+        session.advanceTurn();
+        return true;
     }
 
     public GameSession getSession() {
