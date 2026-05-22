@@ -90,7 +90,8 @@ public class GameView {
     private boolean paused;
 
     private final java.util.Map<Object, double[]> smoothPositions = new java.util.HashMap<>();
-    private final List<DustParticle> dustParticles = new ArrayList<>();
+    private final List<DustParticle> hitParticles = new ArrayList<>();
+    private int lastHeroHp = Integer.MAX_VALUE;
 
     public GameView(GameController controller, ScreenManager screenManager) {
         this.controller = controller;
@@ -485,7 +486,6 @@ public class GameView {
                 messageLabel.setText("Not enough energy, you CAN NOT MOVE!");
                 
             } else {
-                spawnDustParticles(hero);
                 controller.moveHero(dRow, dCol);
             }
         }
@@ -818,7 +818,13 @@ public class GameView {
         int heroSy = (int) heroPos[1];
         renderer.drawHeroFacing(gc, heroSx, heroSy, hero.getFacingRow(), hero.getFacingCol());
         renderer.drawHpBar(gc, heroSx, heroSy, hero.getHealth(), hero.getMaxHealth());
-        updateAndDrawDustParticles(gc);
+
+        int currentHp = hero.getHealth();
+        if (currentHp < lastHeroHp) {
+            spawnHitParticles(heroSx, heroSy);
+        }
+        lastHeroHp = currentHp;
+        updateAndDrawHitParticles(gc);
 
         if (session instanceof TeamMatchSession) {
             drawTeamIndicator(gc, heroSx, heroSy, Team.TeamColor.BLUE);
@@ -1521,19 +1527,17 @@ public class GameView {
         return cm;
     }
 
-    private void spawnDustParticles(Hero hero) {
-        double[] pos = smoothPositions.getOrDefault(hero,
-                new double[]{hero.getCol() * TILE_SIZE, hero.getRow() * TILE_SIZE});
-        double cx = pos[0] + TILE_SIZE / 2.0;
-        double cy = pos[1] + TILE_SIZE * 0.75;
-        for (int i = 0; i < 6; i++) {
-            dustParticles.add(new DustParticle(cx, cy));
+    private void spawnHitParticles(int tileSx, int tileSy) {
+        double cx = tileSx + TILE_SIZE / 2.0;
+        double cy = tileSy + TILE_SIZE / 2.0;
+        for (int i = 0; i < 10; i++) {
+            hitParticles.add(new DustParticle(cx, cy));
         }
     }
 
-    private void updateAndDrawDustParticles(GraphicsContext gc) {
+    private void updateAndDrawHitParticles(GraphicsContext gc) {
         gc.save();
-        java.util.Iterator<DustParticle> it = dustParticles.iterator();
+        java.util.Iterator<DustParticle> it = hitParticles.iterator();
         while (it.hasNext()) {
             DustParticle p = it.next();
             p.update();
@@ -1542,7 +1546,7 @@ public class GameView {
                 continue;
             }
             gc.setGlobalAlpha(p.getAlpha());
-            gc.setFill(Color.web("#c8a060"));
+            gc.setFill(Color.web("#cc1111"));
             gc.fillOval(p.x - p.getRadius(), p.y - p.getRadius(),
                     p.getRadius() * 2, p.getRadius() * 2);
         }
