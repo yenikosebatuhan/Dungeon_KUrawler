@@ -4,6 +4,19 @@ import com.kurawler.model.object.Item;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Overview: An Inventory is a bounded 2×4 grid that holds up to 8 items for a
+ * hero. Items occupy individual slots; no two items share a slot.
+ *
+ * Abstraction Function:
+ *   AF(inv) = the set { slots[r][c] | slots[r][c] != null, 0<=r<2, 0<=c<4 }
+ *   representing the collection of items currently carried by the hero.
+ *
+ * Representation Invariant:
+ *   slots != null
+ *   slots.length == 2 && slots[i].length == 4 for all i
+ *   each non-null slot holds a distinct Item reference (no duplicates)
+ */
 public class Inventory {
     private static final int ROWS = 2;
     private static final int COLS = 4;
@@ -79,6 +92,24 @@ public class Inventory {
             }
         }
         return list;
+    }
+
+    public boolean repOk() {
+        if (slots == null || slots.length != ROWS) return false;
+        for (int r = 0; r < ROWS; r++) {
+            if (slots[r] == null || slots[r].length != COLS) return false;
+        }
+        // no duplicate item references
+        List<Item> seen = new ArrayList<>();
+        for (int r = 0; r < ROWS; r++) {
+            for (int c = 0; c < COLS; c++) {
+                if (slots[r][c] != null) {
+                    if (seen.contains(slots[r][c])) return false;
+                    seen.add(slots[r][c]);
+                }
+            }
+        }
+        return true;
     }
 
     @Override
