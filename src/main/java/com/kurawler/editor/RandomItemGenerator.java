@@ -6,6 +6,7 @@ import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Key;
 import com.kurawler.model.object.PortableContainer;
+import com.kurawler.model.object.Scroll;
 import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.Wearable;
 import java.util.ArrayList;
@@ -71,17 +72,24 @@ public class RandomItemGenerator {
     }
 
     private Item generateRandomItem() {
-        int type = random.nextInt(5);
+        int type = random.nextInt(8);
 
         switch (type) {
             case 0:
                 return new Weapon("Random Sword", "A randomly forged blade", 3 + random.nextInt(5));
             case 1:
-                return new Consumable("Health Potion", "Restores HP", 10 + random.nextInt(20));
+                return new Consumable("Health Potion", "Restores HP", 10 + random.nextInt(20), 0, 0);
             case 2:
-                return new Wearable("Random Armor", "Protective gear", 1 + random.nextInt(3));
+                return new Consumable("Mana Elixir", "Restores mana", 0, 15 + random.nextInt(15), 0);
             case 3:
+                return new Consumable("Energy Apple", "Restores energy", 0, 0, 15 + random.nextInt(15));
+            case 4:
+                return new Wearable("Random Armor", "Protective gear", 1 + random.nextInt(3));
+            case 5:
                 return new Key("Random Key", "A mysterious key", "key_" + random.nextInt(100));
+            case 6:
+                return new Scroll("Healing Scroll", "A parchment covered in glowing runes",
+                        "Warm light restores your wounds.", 8 + random.nextInt(10));
             default:
                 return new PortableContainer("Pouch", "A small pouch", 3 + random.nextInt(3));
         }

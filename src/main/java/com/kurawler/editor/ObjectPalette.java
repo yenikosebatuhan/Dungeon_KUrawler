@@ -8,6 +8,7 @@ import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Key;
 import com.kurawler.model.object.PortableContainer;
+import com.kurawler.model.object.Scroll;
 import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
@@ -85,7 +86,8 @@ public class ObjectPalette {
             case "Sword":
                 return new Weapon("Sword", "A sharp blade", 5);
             case "Spell Book":
-                return new Weapon("Spell Book", "A tome of arcane power", 8);
+                return new Scroll("Spell Book", "A tome of arcane power",
+                        "The glyphs flare with restorative magic.", 12);
             case "Health Potion":
                 return new Consumable("Health Potion", "Restores 20 HP", 20);
             case "Armor":

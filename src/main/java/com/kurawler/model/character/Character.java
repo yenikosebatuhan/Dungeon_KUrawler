@@ -34,9 +34,9 @@ public abstract class Character {
     }
 
     public int calculateDamage() { return attackPower + strength; }
+ // --- BUG-07 FIX: Removed defense subtraction here, handled in CombatResolver ---
     public void takeDamage(int amount) {
-        int effective = Math.max(0, amount - defensePower);
-        this.health = Math.max(0, this.health - effective);
+        this.health = Math.max(0, this.health - amount);
     }
     public boolean isAlive() { return health > 0; }
     public void heal(int amount) { this.health = Math.min(maxHealth, this.health + amount); }

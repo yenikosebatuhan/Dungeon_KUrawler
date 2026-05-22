@@ -1,10 +1,17 @@
 package com.kurawler.model;
 
+import com.kurawler.model.achievement.AchievementManager;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Consumable;
+import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Key;
+import com.kurawler.model.object.Scroll;
 import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.StaticObject;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 public class MapFactory {
     private static final int DEFAULT_WIDTH = 16;
@@ -39,16 +46,61 @@ public class MapFactory {
             spawnCell.setOccupyingCharacter(hero);
         }
         session.setHero(hero);
+        // PDF Phase II: a Shadow Clone must only appear after the player READs a
+        // Shadow Clone Scroll (which auto-spawns every 15 s), not at game start.
+        // No clone is created here on purpose.
+        session.setAchievementManager(new AchievementManager());
+        session.wireObservers();
 
         map.placeObject(2, 2, new Weapon("Iron Sword", "A sturdy blade", 8));
-        map.placeObject(2, 12, new Consumable("Health Potion", "Restores 10 HP", 10));
-        map.placeObject(1, 14, new Consumable("Mana Elixir", "Restores 20 mana", 20));
+        map.placeObject(2, 12, new Consumable("Health Potion", "Restores 10 HP", 10, 0, 0));
+        map.placeObject(1, 14, new Consumable("Mana Elixir", "Restores 20 mana", 0, 20, 0));
         map.placeObject(10, 2, new Weapon("War Axe", "A heavy axe", 12));
         map.placeObject(9, 10, new Key("Gold Key", "Opens a golden door", "gold"));
         map.placeObject(10, 13, new Weapon("Dagger", "A small dagger", 5));
-        map.placeObject(9, 12, new Consumable("Energy Apple", "Restores energy", 15));
+        map.placeObject(9, 12, new Consumable("Energy Apple", "Restores energy", 0, 0, 25));
+        map.placeObject(8, 10, new Scroll("Healing Scroll", "A parchment covered in glowing runes",
+                "Ancient magic knits your wounds back together.", 12));
+
+        placeTargetObjective(map, session);
 
         return session;
+    }
+
+    private static void placeTargetObjective(Map map, GameSession session) {
+        Random rng = new Random();
+        String[] targetNames = {"Crystal Orb", "Ancient Relic", "Dragon Gem", "Golden Idol"};
+        String name = targetNames[rng.nextInt(targetNames.length)];
+        Key target = new Key(name, "A precious artifact — find it to win!", "objective");
+        session.setTargetObjective(target);
+
+        List<GridCell> searchableSpots = new ArrayList<>();
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int c = 0; c < map.getWidth(); c++) {
+                GridCell cell = map.getCell(r, c);
+                if (cell != null && cell.getStaticObject() != null
+                        && cell.getStaticObject().isSearchable()) {
+                    searchableSpots.add(cell);
+                }
+            }
+        }
+
+        if (searchableSpots.isEmpty()) {
+            int[][] candidates = {{9, 9}, {10, 10}, {8, 3}, {2, 13}};
+            for (int[] pos : candidates) {
+                GridCell cell = map.getCell(pos[0], pos[1]);
+                if (cell != null && cell.isWalkable()) {
+                    StaticObject pedestal = new StaticObject(
+                            "Mysterious Pedestal", "Something glimmers inside...", true, true);
+                    pedestal.setHiddenItem(target);
+                    cell.setStaticObject(pedestal);
+                    return;
+                }
+            }
+        } else {
+            GridCell chosen = searchableSpots.get(rng.nextInt(searchableSpots.size()));
+            chosen.getStaticObject().setHiddenItem(target);
+        }
     }
 
     private static void carveRoom(Map map, int startRow, int startCol, int height, int width) {
