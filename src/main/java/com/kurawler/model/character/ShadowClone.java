@@ -6,7 +6,8 @@ import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.observer.HeroObserver;
 
 /**
- * Shadow clone that observes Hero and mirrors the hero's movement direction.
+ * Shadow clone that observes the Hero and mirrors its movement in reverse.
+ * Enemies treat it as the real Hero. Expires after {@link #LIFETIME_MS} ms.
  *
  * The clone is intentionally ethereal: it has coordinates and is rendered by
  * the view, but it is not registered as a GridCell occupant and does not block
@@ -14,11 +15,15 @@ import com.kurawler.model.observer.HeroObserver;
  */
 public class ShadowClone extends Character implements HeroObserver {
 
+    public static final long LIFETIME_MS = 7_000L;
+
     private final Map map;
+    private long remainingMs;
 
     public ShadowClone(int startRow, int startCol, Map map) {
         super("Shadow Clone", 8, 0, 0, 4, 40, 50);
         this.map = map;
+        this.remainingMs = LIFETIME_MS;
         setPosition(startRow, startCol);
     }
 
@@ -30,20 +35,16 @@ public class ShadowClone extends Character implements HeroObserver {
     /**
      * @requires map != null && (deltaRow != 0 || deltaCol != 0)
      * @modifies this.row, this.col
-     * @effects If this clone is alive and the target cell at
-     *          (this.row - deltaRow, this.col - deltaCol) exists and is not a wall,
-     *          moves the clone to that cell (opposite direction of the hero).
-     *          Otherwise the clone's position is unchanged.
-     *
-     * NOTE (BUG): current implementation uses +deltaRow/+deltaCol (same direction).
-     * Spec requires -deltaRow/-deltaCol. See ShadowCloneTest for failing tests.
+     * @effects Moves the clone one step in the direction opposite to the hero
+     *          (i.e., -deltaRow, -deltaCol). If the target cell is out of bounds
+     *          or a wall, the clone's position is unchanged.
      */
     @Override
     public void onHeroMoved(int newRow, int newCol, int deltaRow, int deltaCol) {
         if (!isAlive() || map == null) return;
 
-        int targetRow = getRow() + deltaRow;
-        int targetCol = getCol() + deltaCol;
+        int targetRow = getRow() - deltaRow;
+        int targetCol = getCol() - deltaCol;
         GridCell cell = map.getCell(targetRow, targetCol);
         if (cell != null && !isWall(cell)) {
             setPosition(targetRow, targetCol);
@@ -71,8 +72,24 @@ public class ShadowClone extends Character implements HeroObserver {
         // No behavior for this event yet.
     }
 
+    /**
+     * Advances the clone's lifetime countdown.
+     *
+     * @param deltaMs milliseconds elapsed since the last game update
+     */
+    public void tick(long deltaMs) {
+        remainingMs -= deltaMs;
+    }
+
+    /** Returns true once the 7-second lifetime has elapsed. */
+    public boolean isExpired() {
+        return remainingMs <= 0;
+    }
+
+    public long getRemainingMs() { return remainingMs; }
+
     private boolean isWall(GridCell cell) {
-        StaticObject staticObject = cell.getStaticObject();
-        return staticObject != null && !staticObject.isPassable();
+        StaticObject obj = cell.getStaticObject();
+        return obj != null && !obj.isPassable();
     }
 }
