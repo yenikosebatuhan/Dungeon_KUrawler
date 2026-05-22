@@ -26,6 +26,13 @@ public class CombatResolver {
     /**
      * Calculates the exact damage applying STR, ATK, and subtracting the defender's DEF.
      * Ensures damage is at least 1.
+     *
+     * @requires attacker != null && defender != null
+     * @modifies none
+     * @effects Calculates and returns the final damage value as an integer based on the 
+     * formula: Max(1, (attacker.STR / 2 + attacker.ATK) - defender.DEF). 
+     * If the attacker is a Hero, the equipped weapon's damage is included in ATK.
+     * Does not mutate the state of the attacker or the defender.
      */
     public static int calculateFinalDamage(Character attacker, Character defender) {
         int str = attacker.getStrength();
