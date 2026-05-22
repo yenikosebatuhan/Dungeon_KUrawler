@@ -420,19 +420,9 @@ javac -cp out/main:lib/junit-5.10.2.jar -d out/test src/test/java/com/kurawler/*
 
 # Run with JUnit console launcher
 java -jar lib/junit-standalone.jar --cp out/main:out/test --scan-classpath
-```
 
----
 
-## Git Commits
 
-| Commit | Message | Branch |
-|--------|---------|--------|
-| `fe100b1` | test: Add Stat System & Equipment Tests for HP/Mana/Energy and DEF changes | Furkan_Test |
-| `90b4232` | docs: Add comprehensive test plan for Stat System & Equipment tests | Furkan_Test |
-| `9904e04` | docs: Add comprehensive REQUIRES/MODIFIES/EFFECTS specifications to Character and Hero methods | Furkan_Test |
-
----
 
 ## Checklist: Assignment Requirements
 
@@ -448,7 +438,7 @@ java -jar lib/junit-standalone.jar --cp out/main:out/test --scan-classpath
 
 ---
 
-## Next Steps for Meeting
+## Next Steps
 
 1. **Demo git usage:**
    ```bash
@@ -475,4 +465,4 @@ java -jar lib/junit-standalone.jar --cp out/main:out/test --scan-classpath
 
 ---
 
-**Status:** ✅ COMPLETE - Ready for submission and meeting demonstration.
+
