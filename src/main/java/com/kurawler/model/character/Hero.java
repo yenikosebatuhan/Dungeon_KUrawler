@@ -87,6 +87,37 @@ public class Hero extends Character implements HeroSubject {
         return getStrength() + weaponDmg;
     }
 
+    /**
+     * @requires direction != null
+     *           && direction.toUpperCase() in {"UP", "DOWN", "LEFT", "RIGHT"}
+     *           && map != null
+     *           && this.currentCell != null (hero must be placed on the map)
+     *
+     * @modifies this.row, this.col, this.currentCell,
+     *           this.facingRow, this.facingCol,
+     *           this.currentCell (previous).occupyingCharacter,
+     *           targetCell.occupyingCharacter,
+     *           every registered HeroObserver (notified via onHeroMoved)
+     *
+     * @effects  Let (dRow, dCol) be the unit delta for direction
+     *           and targetCell = map.getCell(this.row + dRow, this.col + dCol).
+     *           - If direction == null, map == null, or direction is not a
+     *             recognised cardinal string: returns false, this unchanged.
+     *           - Else if targetCell == null (out of bounds) or
+     *             targetCell.isBlocked() (wall or occupied character):
+     *             returns false, this unchanged.
+     *           - Else: moves hero to targetCell —
+     *               this.row     = targetCell.row,
+     *               this.col     = targetCell.col,
+     *               this.currentCell = targetCell,
+     *               this.facingRow/facingCol = (dRow, dCol),
+     *               previous cell's occupyingCharacter set to null,
+     *               targetCell.occupyingCharacter set to this,
+     *               all HeroObservers notified with new position and delta;
+     *             returns true.
+     *           Note: session is accepted for API consistency but is not
+     *           read or modified by this method.
+     */
     public boolean move(String direction, Map map, GameSession session) {
         if (direction == null || map == null) return false;
         int dRow = 0, dCol = 0;
