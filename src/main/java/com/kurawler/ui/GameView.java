@@ -779,9 +779,9 @@ public class GameView {
                     } else if (obj instanceof Wearable) {
                         renderer.drawItem(gc, sx, sy, "Wearable");
                     } else if (obj instanceof Consumable) {
-                        Consumable c = (Consumable) obj;
-                        String pt = c.getManaAmount() > 0 ? "ManaPotion"
-                                  : c.getEnergyAmount() > 0 ? "EnergyPotion"
+                        Consumable cons = (Consumable) obj;
+                        String pt = cons.getManaAmount() > 0 ? "ManaPotion"
+                                  : cons.getEnergyAmount() > 0 ? "EnergyPotion"
                                   : "HealthPotion";
                         renderer.drawConsumable(gc, sx, sy, pt);
                     } else if (obj instanceof Key) {
