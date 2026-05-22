@@ -26,7 +26,7 @@ public class AttackAction implements Action {
         List<Effect> effects = new ArrayList<>();
 
         if (attacker.isAlive() && defender.isAlive()) {
-            int damage = attacker.calculateDamage();
+            int damage = com.kurawler.engine.CombatResolver.calculateFinalDamage(attacker, defender);
             effects.add(new DamageEffect(attacker, defender, damage));
         }
 
