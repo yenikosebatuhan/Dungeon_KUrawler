@@ -4,7 +4,7 @@ import com.kurawler.model.object.Item;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Inventory {
+public class cd ~/IdeaProjects/comp302-group7Inventory {
     private static final int ROWS = 2;
     private static final int COLS = 4;
     private final Item[][] slots;
@@ -14,9 +14,9 @@ public class Inventory {
     }
 
     /**
-     * REQUIRES: item != null
-     * MODIFIES: this (the inventory's slot array)
-     * EFFECTS:  If the inventory has at least one empty slot, places item in the
+     * @requires item != null
+     * @modifies this (the inventory's slot array)
+     * @effects  If the inventory has at least one empty slot, places item in the
      *           first empty slot (row-major order) and returns true. Otherwise
      *           the inventory is left unchanged and returns false.
      */
@@ -33,9 +33,9 @@ public class Inventory {
     }
 
     /**
-     * REQUIRES: item != null
-     * MODIFIES: this
-     * EFFECTS:  If item currently occupies a slot, empties that slot and returns
+     * @requires item != null
+     * @modifies this
+     * @effects  If item currently occupies a slot, empties that slot and returns
      *           true; otherwise the inventory is left unchanged and returns false.
      */
     public boolean removeItem(Item item) {
@@ -56,9 +56,9 @@ public class Inventory {
     }
 
     /**
-     * REQUIRES: true (no precondition)
-     * MODIFIES: nothing (pure query)
-     * EFFECTS:  Returns true iff all ROWS*COLS (8) slots are occupied.
+     * @requires true (no precondition)
+     * @modifies nothing (pure query)
+     * @effects  Returns true iff all ROWS*COLS (8) slots are occupied.
      */
     public boolean isFull() {
         for (int r = 0; r < ROWS; r++) {
