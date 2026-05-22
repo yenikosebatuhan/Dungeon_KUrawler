@@ -1,5 +1,8 @@
 package com.kurawler.model;
 
+import com.kurawler.action.EquipAction;
+import com.kurawler.effect.Effect;
+import com.kurawler.model.character.Hero;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Weapon;
@@ -106,5 +109,54 @@ class InventoryTest {
         inv.addItem(new Consumable("P8", "h", 5));
         assertTrue(inv.isFull());                       // 8 items -> full
         assertTrue(repOk(inv));
+    }
+
+    @Test
+    void equipKeepsWeaponInInventory() {              // USE-EQUIP: TAKE != EQUIP (PDF §2.4.2)
+        Hero hero = new Hero("TestHero");
+        Weapon sword = new Weapon("Iron Sword", "blade", 8);
+        assertTrue(hero.getInventory().addItem(sword));
+
+        applyEquipAction(hero, sword);
+
+        assertSame(sword, hero.getEquippedWeapon());
+        assertTrue(hero.getInventory().hasItem(sword));
+        assertEquals(1, hero.getInventory().getItemCount());
+        assertTrue(repOk(hero.getInventory()));
+    }
+
+    @Test
+    void unequipKeepsWeaponInInventory() {            // USE-EQUIP toggle off; item stays in container
+        Hero hero = new Hero("TestHero");
+        Weapon sword = new Weapon("Iron Sword", "blade", 8);
+        hero.getInventory().addItem(sword);
+        applyEquipAction(hero, sword);
+        applyEquipAction(hero, sword);                // second apply unequips
+
+        assertNull(hero.getEquippedWeapon());
+        assertTrue(hero.getInventory().hasItem(sword));
+        assertEquals(1, hero.getInventory().getItemCount());
+        assertTrue(repOk(hero.getInventory()));
+    }
+
+    @Test
+    void equipFailsWhenWeaponNotInInventory() {       // USE-EQUIP requires item in container
+        Hero hero = new Hero("TestHero");
+        Weapon sword = new Weapon("Ghost Blade", "not owned", 5);
+        GameSession session = new GameSession();
+        session.setHero(hero);
+
+        assertTrue(new EquipAction(sword).resolve(session).isEmpty());
+        assertNull(hero.getEquippedWeapon());
+        assertFalse(hero.getInventory().hasItem(sword));
+        assertTrue(repOk(hero.getInventory()));
+    }
+
+    private static void applyEquipAction(Hero hero, Weapon weapon) {
+        GameSession session = new GameSession();
+        session.setHero(hero);
+        for (Effect effect : new EquipAction(weapon).resolve(session)) {
+            effect.apply(session);
+        }
     }
 }
