@@ -61,6 +61,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -89,6 +90,7 @@ public class GameView {
     private boolean paused;
 
     private final java.util.Map<Object, double[]> smoothPositions = new java.util.HashMap<>();
+    private final List<DustParticle> dustParticles = new ArrayList<>();
 
     public GameView(GameController controller, ScreenManager screenManager) {
         this.controller = controller;
@@ -483,10 +485,11 @@ public class GameView {
                 messageLabel.setText("Not enough energy, you CAN NOT MOVE!");
                 
             } else {
+                spawnDustParticles(hero);
                 controller.moveHero(dRow, dCol);
             }
         }
-        
+
         render();
     }
 
@@ -815,6 +818,7 @@ public class GameView {
         int heroSy = (int) heroPos[1];
         renderer.drawHeroFacing(gc, heroSx, heroSy, hero.getFacingRow(), hero.getFacingCol());
         renderer.drawHpBar(gc, heroSx, heroSy, hero.getHealth(), hero.getMaxHealth());
+        updateAndDrawDustParticles(gc);
 
         if (session instanceof TeamMatchSession) {
             drawTeamIndicator(gc, heroSx, heroSy, Team.TeamColor.BLUE);
@@ -1515,5 +1519,33 @@ public class GameView {
                 + "-fx-border-color: #8b7940; -fx-border-width: 2; "
                 + "-fx-padding: 4;");
         return cm;
+    }
+
+    private void spawnDustParticles(Hero hero) {
+        double[] pos = smoothPositions.getOrDefault(hero,
+                new double[]{hero.getCol() * TILE_SIZE, hero.getRow() * TILE_SIZE});
+        double cx = pos[0] + TILE_SIZE / 2.0;
+        double cy = pos[1] + TILE_SIZE * 0.75;
+        for (int i = 0; i < 6; i++) {
+            dustParticles.add(new DustParticle(cx, cy));
+        }
+    }
+
+    private void updateAndDrawDustParticles(GraphicsContext gc) {
+        gc.save();
+        java.util.Iterator<DustParticle> it = dustParticles.iterator();
+        while (it.hasNext()) {
+            DustParticle p = it.next();
+            p.update();
+            if (p.isExpired()) {
+                it.remove();
+                continue;
+            }
+            gc.setGlobalAlpha(p.getAlpha());
+            gc.setFill(Color.web("#c8a060"));
+            gc.fillOval(p.x - p.getRadius(), p.y - p.getRadius(),
+                    p.getRadius() * 2, p.getRadius() * 2);
+        }
+        gc.restore();
     }
 }
