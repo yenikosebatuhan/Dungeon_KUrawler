@@ -42,6 +42,39 @@ public class MapDeserializer {
 
     // ── Public API ───────────────────────────────────────────────────────────
 
+    /**
+     * @requires filename != null
+     *           && the file at filename exists and is readable
+     *           && the file contains valid JSON produced by MapSerializer.saveGameState
+     *           && session != null
+     *
+     * @modifies session.map, session.hero, session.enemies, session.shadowClone,
+     *           session.achievementManager, session.playDurationTimer,
+     *           session.currentMode, session.targetObjective,
+     *           session.activeEnemyCount,
+     *           GridCell.occupyingCharacter for every cell that holds a
+     *           restored character (hero or enemy)
+     *
+     * @effects  Parses the JSON save file at filename and fully replaces the
+     *           state of session:
+     *           - session.map is set to a new Map(width, height) with all cells
+     *             reconstructed from the "cells" array (StaticObjects, hidden
+     *             items, and floor objects restored);
+     *           - session.hero is replaced by a new Hero whose position, stats
+     *             (HP, mana, energy, STR, DEF), inventory items, equipped weapon,
+     *             and equipped wearable match the saved values; the hero's cell
+     *             has its occupyingCharacter set to the new Hero;
+     *           - all previously tracked enemies are cleared and replaced by new
+     *             Enemy instances (Knight or Sorcerer) with saved stats, each
+     *             placed on its saved cell via moveToCell;
+     *           - session.shadowClone, achievements, playDurationTimer,
+     *             currentMode, and targetObjective are restored from the file;
+     *           - observer relationships are re-wired via session.wireObservers();
+     *           - returns true on success.
+     *           If filename does not exist, returns false and session is unchanged.
+     *           If an IOException occurs, prints the stack trace, returns false,
+     *           and session may be partially modified.
+     */
     public boolean loadGameState(String filename, GameSession session) {
         try {
             String content = new String(Files.readAllBytes(Paths.get(filename)));

@@ -263,6 +263,28 @@ public class TileRenderer {
         drawSprite(gc, sprite, screenX, screenY, fallback);
     }
 
+    public void drawConsumable(GraphicsContext gc, int screenX, int screenY, String potionType) {
+        Image sprite;
+        Color glowColor;
+        switch (potionType) {
+            case "ManaPotion":
+                sprite = potionSprite2;
+                glowColor = Color.web("#e040fb");
+                break;
+            case "EnergyPotion":
+                sprite = ringSprite;
+                glowColor = Color.web("#66bb6a");
+                break;
+            default: // HealthPotion
+                sprite = potionSprite;
+                glowColor = Color.web("#ef5350");
+                break;
+        }
+        gc.setFill(Color.color(glowColor.getRed(), glowColor.getGreen(), glowColor.getBlue(), 0.30));
+        gc.fillOval(screenX + 6, screenY + 6, tileSize - 12, tileSize - 12);
+        drawSprite(gc, sprite, screenX, screenY, glowColor);
+    }
+
     public void drawWeaponByName(GraphicsContext gc, int screenX, int screenY, String weaponName) {
         Image sprite = swordSprite;
         if (weaponName != null) {
