@@ -61,6 +61,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -89,6 +90,8 @@ public class GameView {
     private boolean paused;
 
     private final java.util.Map<Object, double[]> smoothPositions = new java.util.HashMap<>();
+    private final List<DustParticle> hitParticles = new ArrayList<>();
+    private int lastHeroHp = Integer.MAX_VALUE;
 
     public GameView(GameController controller, ScreenManager screenManager) {
         this.controller = controller;
@@ -486,7 +489,7 @@ public class GameView {
                 controller.moveHero(dRow, dCol);
             }
         }
-        
+
         render();
     }
 
@@ -776,7 +779,11 @@ public class GameView {
                     } else if (obj instanceof Wearable) {
                         renderer.drawItem(gc, sx, sy, "Wearable");
                     } else if (obj instanceof Consumable) {
-                        renderer.drawItem(gc, sx, sy, "Consumable");
+                        Consumable cons = (Consumable) obj;
+                        String pt = cons.getManaAmount() > 0 ? "ManaPotion"
+                                  : cons.getEnergyAmount() > 0 ? "EnergyPotion"
+                                  : "HealthPotion";
+                        renderer.drawConsumable(gc, sx, sy, pt);
                     } else if (obj instanceof Key) {
                         renderer.drawItem(gc, sx, sy, "Key");
                     } else if (obj instanceof Item) {
@@ -815,6 +822,13 @@ public class GameView {
         int heroSy = (int) heroPos[1];
         renderer.drawHeroFacing(gc, heroSx, heroSy, hero.getFacingRow(), hero.getFacingCol());
         renderer.drawHpBar(gc, heroSx, heroSy, hero.getHealth(), hero.getMaxHealth());
+
+        int currentHp = hero.getHealth();
+        if (currentHp < lastHeroHp) {
+            spawnHitParticles(heroSx, heroSy);
+        }
+        lastHeroHp = currentHp;
+        updateAndDrawHitParticles(gc);
 
         if (session instanceof TeamMatchSession) {
             drawTeamIndicator(gc, heroSx, heroSy, Team.TeamColor.BLUE);
@@ -1515,5 +1529,31 @@ public class GameView {
                 + "-fx-border-color: #8b7940; -fx-border-width: 2; "
                 + "-fx-padding: 4;");
         return cm;
+    }
+
+    private void spawnHitParticles(int tileSx, int tileSy) {
+        double cx = tileSx + TILE_SIZE / 2.0;
+        double cy = tileSy + TILE_SIZE / 2.0;
+        for (int i = 0; i < 10; i++) {
+            hitParticles.add(new DustParticle(cx, cy));
+        }
+    }
+
+    private void updateAndDrawHitParticles(GraphicsContext gc) {
+        gc.save();
+        java.util.Iterator<DustParticle> it = hitParticles.iterator();
+        while (it.hasNext()) {
+            DustParticle p = it.next();
+            p.update();
+            if (p.isExpired()) {
+                it.remove();
+                continue;
+            }
+            gc.setGlobalAlpha(p.getAlpha());
+            gc.setFill(Color.web("#cc1111"));
+            gc.fillOval(p.x - p.getRadius(), p.y - p.getRadius(),
+                    p.getRadius() * 2, p.getRadius() * 2);
+        }
+        gc.restore();
     }
 }

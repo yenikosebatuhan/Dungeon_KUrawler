@@ -25,16 +25,22 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MapSerializer {
 
     public boolean saveGameState(GameSession session, String filename) {
+        String saveName = deriveSaveName(filename);
+        return saveGameState(session, filename, saveName);
+    }
+
+    public boolean saveGameState(GameSession session, String filename, String saveName) {
         try {
             ensureParentDirectory(filename);
             try (FileWriter writer = new FileWriter(filename)) {
-                writer.write(buildStateJson(session));
+                writer.write(buildStateJson(session, saveName));
             }
             System.out.println("[Persistence] Saved game state to " + filename);
             return true;
@@ -44,10 +50,17 @@ public class MapSerializer {
         }
     }
 
-    private String buildStateJson(GameSession session) {
+    private String deriveSaveName(String filename) {
+        String base = Paths.get(filename).getFileName().toString();
+        return base.endsWith(".json") ? base.substring(0, base.length() - 5) : base;
+    }
+
+    private String buildStateJson(GameSession session, String saveName) {
         Map map = session.getMap();
         StringBuilder sb = new StringBuilder();
         sb.append("{\n");
+        sb.append("  \"saveName\": \"").append(escape(saveName)).append("\",\n");
+        sb.append("  \"savedAt\": \"").append(Instant.now()).append("\",\n");
         sb.append("  \"width\": ").append(map.getWidth()).append(",\n");
         sb.append("  \"height\": ").append(map.getHeight()).append(",\n");
         sb.append("  \"playDurationTimer\": ").append(session.getPlayDurationTimer()).append(",\n");
