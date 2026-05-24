@@ -143,11 +143,11 @@ public class GameController {
         return true;
     }
 
-    public boolean searchObject(StaticObject object) {
+    public boolean searchObject(StaticObject object, int row, int col) {
         if (object == null || !object.isSearchable()) {
             return false;
         }
-        executeAction(new SearchAction(object));
+        executeAction(new SearchAction(object, row, col));
         return true;
     }
 

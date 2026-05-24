@@ -633,13 +633,12 @@ public class GameView {
                 StaticObject so = cell.getStaticObject();
                 if (so != null) {
                     Item hidden = so.getHiddenItem();
-                    boolean searched = controller.searchObject(so);
-                    if (hidden != null && hero.getInventory().hasItem(hidden))
+                    boolean searched = controller.searchObject(so, row, col);
+                    if (searched && hidden != null)
                         messageLabel.setText("Found: " + hidden.getName() + "!");
                     else if (searched) messageLabel.setText("Nothing found.");
                     else messageLabel.setText("Cannot search.");
-                    
-                    AudioManager.getInstance().play("interact"); // Added interact sound
+                    AudioManager.getInstance().play("interact");
                 }
                 break;
             case "break":
