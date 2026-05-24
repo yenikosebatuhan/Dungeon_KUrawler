@@ -12,7 +12,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * JUnit tests for the Inventory abstract data type (Issue #33).
+ * JUnit tests for the Inventory abstract data type (Issue #33, #41).
  *
  * Overview:
  *   An Inventory is a fixed-capacity (2 x 4 = 8 slot) container of Items
@@ -25,7 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
  *   - 0 <= getItemCount() <= 8
  *   - no Item reference appears in more than one slot (no duplicates)
  *
- * repOk() below checks this invariant after each operation.
+ * Tests target required spec behaviour (TAKE, DISCARD, container, USE-EQUIP),
+ * not incidental UI or movement bugs. repOk() checks the RI after each test.
  */
 class InventoryTest {
 
@@ -36,7 +37,12 @@ class InventoryTest {
         inv = new Inventory();
     }
 
-    /** Verifies the representation invariant of an Inventory. */
+    /**
+     * Verifies the representation invariant of an Inventory after mutations.
+     *
+     * @param inv inventory to check
+     * @return true if count is in [0, 8] and no duplicate item references exist
+     */
     private boolean repOk(Inventory inv) {
         int count = inv.getItemCount();
         if (count < 0 || count > 8) {
@@ -53,6 +59,9 @@ class InventoryTest {
         return true;
     }
 
+    /**
+     * Container: a newly created inventory must start empty and not report full.
+     */
     @Test
     void newInventoryIsEmpty() {
         assertEquals(0, inv.getItemCount());
@@ -60,8 +69,11 @@ class InventoryTest {
         assertTrue(repOk(inv));
     }
 
+    /**
+     * TAKE: addItem on an empty inventory must succeed (item enters a slot).
+     */
     @Test
-    void addItemToEmptyInventorySucceeds() {            // TAKE action core
+    void addItemToEmptyInventorySucceeds() {
         Item sword = new Weapon("Iron Sword", "A sturdy blade", 8);
         assertTrue(inv.addItem(sword));
         assertEquals(1, inv.getItemCount());
@@ -69,21 +81,27 @@ class InventoryTest {
         assertTrue(repOk(inv));
     }
 
+    /**
+     * TAKE: when all 8 slots are full, addItem must fail and leave inventory unchanged.
+     */
     @Test
-    void addItemToFullInventoryFails() {                // TAKE when inventory full
+    void addItemToFullInventoryFails() {
         for (int i = 0; i < 8; i++) {
             assertTrue(inv.addItem(new Consumable("Potion" + i, "heals", 5)));
         }
         assertTrue(inv.isFull());
         Item extra = new Weapon("War Axe", "A heavy axe", 12);
-        assertFalse(inv.addItem(extra));                // rejected: no empty slot
+        assertFalse(inv.addItem(extra));
         assertEquals(8, inv.getItemCount());
         assertFalse(inv.hasItem(extra));
         assertTrue(repOk(inv));
     }
 
+    /**
+     * DISCARD: removeItem must succeed when the item is present in the inventory.
+     */
     @Test
-    void removeExistingItemSucceeds() {                 // DISCARD action core
+    void removeExistingItemSucceeds() {
         Item sword = new Weapon("Iron Sword", "blade", 8);
         inv.addItem(sword);
         assertTrue(inv.removeItem(sword));
@@ -92,27 +110,36 @@ class InventoryTest {
         assertTrue(repOk(inv));
     }
 
+    /**
+     * DISCARD: removeItem must fail when the item was never added; count stays 0.
+     */
     @Test
-    void removeNonExistentItemFails() {                 // DISCARD of an absent item
+    void removeNonExistentItemFails() {
         Item ghost = new Weapon("Ghost Blade", "not added", 1);
         assertFalse(inv.removeItem(ghost));
         assertEquals(0, inv.getItemCount());
         assertTrue(repOk(inv));
     }
 
+    /**
+     * Container: isFull must be false with 7 items and true with 8 (2x4 capacity).
+     */
     @Test
-    void isFullBoundary() {                             // capacity boundary 7 vs 8
+    void isFullBoundary() {
         for (int i = 0; i < 7; i++) {
             inv.addItem(new Consumable("P" + i, "h", 5));
         }
-        assertFalse(inv.isFull());                      // 7 items -> not full
+        assertFalse(inv.isFull());
         inv.addItem(new Consumable("P8", "h", 5));
-        assertTrue(inv.isFull());                       // 8 items -> full
+        assertTrue(inv.isFull());
         assertTrue(repOk(inv));
     }
 
+    /**
+     * USE-EQUIP: EquipAction equips the weapon but must not remove it from inventory (TAKE != EQUIP).
+     */
     @Test
-    void equipKeepsWeaponInInventory() {              // USE-EQUIP: TAKE != EQUIP (PDF §2.4.2)
+    void equipKeepsWeaponInInventory() {
         Hero hero = new Hero("TestHero");
         Weapon sword = new Weapon("Iron Sword", "blade", 8);
         assertTrue(hero.getInventory().addItem(sword));
@@ -125,13 +152,16 @@ class InventoryTest {
         assertTrue(repOk(hero.getInventory()));
     }
 
+    /**
+     * USE-EQUIP: a second EquipAction on the same weapon unequips it; item still remains in inventory.
+     */
     @Test
-    void unequipKeepsWeaponInInventory() {            // USE-EQUIP toggle off; item stays in container
+    void unequipKeepsWeaponInInventory() {
         Hero hero = new Hero("TestHero");
         Weapon sword = new Weapon("Iron Sword", "blade", 8);
         hero.getInventory().addItem(sword);
         applyEquipAction(hero, sword);
-        applyEquipAction(hero, sword);                // second apply unequips
+        applyEquipAction(hero, sword);
 
         assertNull(hero.getEquippedWeapon());
         assertTrue(hero.getInventory().hasItem(sword));
@@ -139,8 +169,11 @@ class InventoryTest {
         assertTrue(repOk(hero.getInventory()));
     }
 
+    /**
+     * USE-EQUIP: EquipAction must produce no effects if the weapon is not in the hero's inventory.
+     */
     @Test
-    void equipFailsWhenWeaponNotInInventory() {       // USE-EQUIP requires item in container
+    void equipFailsWhenWeaponNotInInventory() {
         Hero hero = new Hero("TestHero");
         Weapon sword = new Weapon("Ghost Blade", "not owned", 5);
         GameSession session = new GameSession();
@@ -152,6 +185,7 @@ class InventoryTest {
         assertTrue(repOk(hero.getInventory()));
     }
 
+    /** Resolves and applies EquipAction the same way as the game (resolve → effect.apply). */
     private static void applyEquipAction(Hero hero, Weapon weapon) {
         GameSession session = new GameSession();
         session.setHero(hero);
