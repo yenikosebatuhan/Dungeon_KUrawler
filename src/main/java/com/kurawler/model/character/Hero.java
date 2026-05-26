@@ -81,8 +81,16 @@ public class Hero extends Character implements HeroSubject {
         }
     }
 
+    /**
+     * Returns the total damage including strength and equipped weapon.
+     *
+     * @requires none
+     * @modifies none
+     * @effects Returns calculated damage as strength + weapon damage.
+     */
     @Override
     public int calculateDamage() {
+        // Logic: STR + Weapon ATK
         int weaponDmg = (equippedWeapon != null) ? equippedWeapon.getDamage() : 0;
         return getStrength() + weaponDmg;
     }
@@ -235,6 +243,17 @@ public class Hero extends Character implements HeroSubject {
 
     public Inventory getInventory() { return inventory; }
     public Weapon getEquippedWeapon() { return equippedWeapon; }
-    public void setEquippedWeapon(Weapon weapon) { this.equippedWeapon = weapon; }
+    /**
+     * Equips a weapon and notifies all observers of the stat change.
+     *
+     * @requires weapon != null
+     * @modifies this.equippedWeapon, observers
+     * @effects Sets the equipped weapon and triggers a stats update notification for the UI.
+     */
+    public void setEquippedWeapon(Weapon weapon) { 
+        this.equippedWeapon = weapon; 
+    }
+
+
     public Wearable getEquippedWearable() { return equippedWearable; }
 }
