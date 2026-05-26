@@ -13,7 +13,7 @@ public class Knight extends Enemy {
     private Weapon equippedMatchWeapon;
 
     public Knight() {
-        super("Knight", 20, 4, 1, 8, 0, 80);
+        super("Knight", 20, 1, 1, 1, 0, 80);
     }
 
     public void equipMatchWeapon(Weapon weapon) {
