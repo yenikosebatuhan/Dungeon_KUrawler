@@ -90,6 +90,11 @@ public class GameView {
     private TeamMatchGameLoop teamMatchGameLoop;
     private AnimationTimer animationTimer;
     private boolean paused;
+    private class Splatter {
+        double x, y, life = 1.0;
+        Splatter(double x, double y) { this.x = x; this.y = y; }
+    }
+    private final java.util.List<Splatter> hitSplatters = new java.util.ArrayList<>();
 
     private final java.util.Map<Object, double[]> smoothPositions = new java.util.HashMap<>();
     private final List<DustParticle> hitParticles = new ArrayList<>();
@@ -165,14 +170,10 @@ public class GameView {
             session.setCurrentMode("Play");
         }
 
-        // PDF §4.1.2: Show target item popup at the start of a new play session.
-        // Team Match has no target item, so skip in that mode.
-        // IMPORTANT: defer startGameLoop() until the popup is dismissed so that
-        // enemies do not move/attack while the player is still reading the quest.
         if (!(session instanceof TeamMatchSession) && session.getTargetObjective() != null) {
             javafx.application.Platform.runLater(() -> {
                 new TargetItemPopup(stage, session.getTargetObjective()).show();
-                startGameLoop(session);   // blocks above: showAndWait() returns only after dismiss
+                startGameLoop(session);   
             });
         } else {
             startGameLoop(session);
@@ -260,8 +261,6 @@ public class GameView {
         }
         animationTimer.start();
     }
-
-
 
     private void showGameOver() {
         AudioManager.getInstance().play("gameOver");
@@ -425,9 +424,6 @@ public class GameView {
         popup.showAndWait();
     }
     
-    /**
-     * BUG-04 / SECTION 2.4: Displays the Character Sheet (Stats & Equipment)
-     */
     private void showCharacterSheetPopup(GameSession session) {
         if (animationTimer != null) animationTimer.stop();
         Hero hero = session.getHero();
@@ -460,7 +456,7 @@ public class GameView {
         addStatRow(grid, 2, "Mana (MP):", hero.getMana() + " / " + hero.getMaxMana());
         addStatRow(grid, 3, "Energy (EN):", hero.getEnergy() + " / " + hero.getMaxEnergy());
         
-        // Combat Stats (Dynamic reading ensures correct values)
+        // Combat Stats
         addStatRow(grid, 4, "Strength (STR):", String.valueOf(hero.getStrength()));
         addStatRow(grid, 5, "Defense (DEF):", String.valueOf(hero.getDefensePower()));
         addStatRow(grid, 6, "Total Damage:", String.valueOf(hero.calculateDamage()));
@@ -483,11 +479,13 @@ public class GameView {
         StackPane root = new StackPane(bg, content);
         popup.setScene(new Scene(root, popW, popH));
         popup.setOnShown(e -> centerPopup(popup));
-        popup.setOnHidden(e -> { if (animationTimer != null) animationTimer.start(); });
+        popup.setOnHidden(e -> { 
+            if (animationTimer != null) animationTimer.start(); 
+            Platform.runLater(() -> canvas.requestFocus()); 
+        });
         popup.showAndWait();
     }
 
-    /** Helper method for Character Sheet layout */
     private void addStatRow(GridPane grid, int row, String labelText, String valueText) {
         Label lbl = new Label(labelText);
         lbl.setFont(Font.font("Serif", FontWeight.BOLD, 15));
@@ -500,6 +498,7 @@ public class GameView {
         grid.add(lbl, 0, row);
         grid.add(val, 1, row);
     }
+
     private void handleKeyPress(KeyEvent event) {
         if (paused && event.getCode() != javafx.scene.input.KeyCode.ESCAPE) {
             return;
@@ -514,7 +513,43 @@ public class GameView {
             case S: case DOWN:  isMoveKey = true; dRow = 1; dCol = 0; break;
             case A: case LEFT:  isMoveKey = true; dRow = 0; dCol = -1; break;
             case D: case RIGHT: isMoveKey = true; dRow = 0; dCol = 1; break;
-            case E:             controller.useFirstConsumable(); break;
+            case E:
+                Item itemToTake = null;
+                GridCell targetCell = null;
+
+                for (int dr = -1; dr <= 1; dr++) {
+                    for (int dc = -1; dc <= 1; dc++) {
+                        int r = hero.getRow() + dr;
+                        int c = hero.getCol() + dc;
+                        GridCell cell = controller.getSession().getMap().getCell(r, c);
+                        
+                        if (cell != null) {
+                            for (GameObject obj : cell.getObjects()) {
+                                if (obj instanceof Item) {
+                                    itemToTake = (Item) obj;
+                                    targetCell = cell;
+                                    break; 
+                                }
+                            }
+                        }
+                        if (itemToTake != null) break;
+                    }
+                    if (itemToTake != null) break;
+                }
+
+                if (itemToTake != null) {
+                    if (hero.getInventory().isFull()) {
+                        messageLabel.setText("Inventory is full!");
+                        AudioManager.getInstance().play("error");
+                    } else {
+                        controller.interactWithObject(targetCell.getRow(), targetCell.getCol(), itemToTake);
+                        AudioManager.getInstance().play("item");
+                        messageLabel.setText("Picked up " + itemToTake.getName());
+                    }
+                } else {
+                    messageLabel.setText("Nothing to pick up nearby.");
+                }
+                break;
             case C:             
                 AudioManager.getInstance().play("button");
                 showCharacterSheetPopup(controller.getSession()); 
@@ -532,11 +567,29 @@ public class GameView {
                     messageLabel.setText("Not enough mana to shoot!");
                 }
                 break;
+            case SPACE: 
+                event.consume(); 
+                int tRow = hero.getRow() + hero.getFacingRow();
+                int tCol = hero.getCol() + hero.getFacingCol();
+                
+                if (hero.getEnergy() < 1) {
+                    messageLabel.setText("Not enough energy to attack!");
+                    AudioManager.getInstance().play("error");
+                    break;
+                }
+                
+                boolean hit = controller.attackEnemyAt(tRow, tCol);
+                if (hit) {
+                    AudioManager.getInstance().play("attack");
+                    spawnHitParticles(tCol * TILE_SIZE + (TILE_SIZE / 2.0), tRow * TILE_SIZE + (TILE_SIZE / 2.0));
+                } else {
+                    messageLabel.setText("No enemy there!");
+                }
+                break;
             case ESCAPE:        showInGameMenu(); return;
             default:            return;
         }
 
-        // --- ENERJİ KONTROLÜ (BUG-01 FIX) ---
         if (isMoveKey) {
             if (hero.getEnergy() < 1) {
                 messageLabel.setText("Not enough energy, you CAN NOT MOVE!");
@@ -549,7 +602,6 @@ public class GameView {
         render();
     }
 
-    /** 3x3 Interaction: click an adjacent cell to interact with objects on it. */
     private void handleMouseClick(MouseEvent event) {
         int col = (int) (event.getX() / TILE_SIZE);
         int row = (int) (event.getY() / TILE_SIZE);
@@ -575,7 +627,6 @@ public class GameView {
             if (obj instanceof StaticContainer) {
                 StaticContainer sc = (StaticContainer) obj;
                 if (sc.isLocked()) {
-                    // Check if Hero has the required key
                     boolean hasKey = false;
                     for (Item invItem : hero.getInventory().getItems()) {
                         if (invItem instanceof com.kurawler.model.object.Key && 
@@ -642,7 +693,6 @@ public class GameView {
 
             Button btn = popupButton(verb + " " + target, color);
             
-            // --- BUG-02 FIX: Disable TAKE button if inventory is full ---
             if ("take".equals(type) && hero.getInventory().isFull()) {
                 btn.setDisable(true);
                 btn.setText(verb + " " + target + " (Full)");
@@ -667,7 +717,10 @@ public class GameView {
         StackPane root = new StackPane(bg, content);
         popup.setScene(new Scene(root, popW, popH));
         popup.setOnShown(e -> centerPopup(popup));
-        popup.setOnHidden(e -> { if (animationTimer != null) animationTimer.start(); });
+        popup.setOnHidden(e -> { 
+            if (animationTimer != null) animationTimer.start(); 
+            Platform.runLater(() -> canvas.requestFocus()); 
+        });
         popup.showAndWait();
     }
 
@@ -699,27 +752,35 @@ public class GameView {
                     else if (searched) messageLabel.setText("Nothing found.");
                     else messageLabel.setText("Cannot search.");
                     
-                    AudioManager.getInstance().play("interact"); // Added interact sound
+                    AudioManager.getInstance().play("interact");
                 }
                 break;
             case "break":
                 boolean broken = controller.breakObject(row, col);
                 messageLabel.setText(broken ? "Broke it!" : "Cannot break.");
-                AudioManager.getInstance().play("interact"); // Added interact sound
+                AudioManager.getInstance().play("interact");
                 break;
             case "attack":
                 if (cell.getOccupyingCharacter() instanceof Enemy) {
                     Enemy enemy = (Enemy) cell.getOccupyingCharacter();
-                    hero.attack(enemy);
-                    if (!enemy.isAlive()) {
-                        cell.setOccupyingCharacter(null);
-                        session.decrementEnemyCount();
-                        session.incrementEnemiesDefeated();
-                        AudioManager.getInstance().play("enemyDown");
-                        messageLabel.setText(enemy.getName() + " defeated!");
-                    } else {
-                        AudioManager.getInstance().play("attack");
-                        messageLabel.setText("Hit " + enemy.getName() + "! HP:" + enemy.getHealth());
+                    boolean wasAlive = enemy.isAlive();
+                    
+                    // Respect main branch's architectural refactor:
+                    boolean success = controller.attackEnemyAt(row, col);
+                    
+                    if (success) {
+                        // Keep main branch's visual features:
+                        spawnHitParticles(col * TILE_SIZE + (TILE_SIZE / 2.0), row * TILE_SIZE + (TILE_SIZE / 2.0));
+                        
+                        // Merge with our branch's detailed feedback and stat tracking:
+                        if (wasAlive && !enemy.isAlive()) {
+                            session.incrementEnemiesDefeated();
+                            AudioManager.getInstance().play("enemyDown");
+                            messageLabel.setText(enemy.getName() + " defeated!");
+                        } else {
+                            AudioManager.getInstance().play("attack");
+                            messageLabel.setText("Hit " + enemy.getName() + "! HP:" + enemy.getHealth());
+                        }
                     }
                 }
                 break;
@@ -733,7 +794,6 @@ public class GameView {
                             messageLabel.setText("Unlocked " + target + "!");
                         }
                         AudioManager.getInstance().play("interact");
-                        // Wait for any previous popup to close, then open contents
                         Platform.runLater(() -> showContainerContentsPopup(sc, session));
                         break;
                     }
@@ -741,7 +801,7 @@ public class GameView {
                 break;
             case "locked_info":
                 messageLabel.setText("It is locked. You need a specific key.");
-                AudioManager.getInstance().play("error"); // Optional error sound
+                AudioManager.getInstance().play("error");
                 break;
         }
         render();
@@ -797,7 +857,6 @@ public class GameView {
         render();
     }
 
-    /** Render the entire game state by reading the model. */
     private void render() {
         GameSession session = controller.getSession();
         com.kurawler.model.Map map = session.getMap();
@@ -903,6 +962,22 @@ public class GameView {
                 }
             }
         }
+        
+        for (int i = hitSplatters.size() - 1; i >= 0; i--) {
+            Splatter s = hitSplatters.get(i);
+            
+            double safeAlpha = Math.max(0.0, Math.min(1.0, s.life));
+            gc.setGlobalAlpha(safeAlpha);
+            
+            gc.setFill(Color.web("#ff3333")); 
+            gc.fillOval(s.x - 18, s.y - 18, 36, 36); 
+            gc.setFill(Color.web("#990000")); 
+            gc.fillOval(s.x - 8, s.y - 8, 16, 16);
+            gc.setGlobalAlpha(1.0);
+            
+            s.life -= 0.02; 
+            if (s.life <= 0) hitSplatters.remove(i);
+        }
 
         drawHud(session);
     }
@@ -922,11 +997,9 @@ public class GameView {
             } catch (Exception ignored) {}
         }
 
-        // Dark background
         gc.setFill(Color.web("#0e0c0a"));
         gc.fillRect(0, 0, w, h);
 
-        // Gold border lines
         gc.setStroke(Color.web("#c8a840"));
         gc.setLineWidth(2);
         gc.strokeLine(0, 0, w, 0);
@@ -938,14 +1011,12 @@ public class GameView {
 
         double pad = 6;
 
-        // ── SECTION 1: Hero portrait (pad, pad) ──
         double portraitSize = h - pad * 2;
         drawGoldPanel(gc, pad, pad, portraitSize, portraitSize);
         renderer.drawHeroFacing(gc, (int)(pad + (portraitSize - TILE_SIZE) / 2),
                 (int)(pad + (portraitSize - TILE_SIZE) / 2),
                 hero.getFacingRow(), hero.getFacingCol());
 
-        // ── SECTION 2: Stat bars ──
         double barStartX = pad + portraitSize + 8;
         double barW = 150;
         double barH = 18;
@@ -959,10 +1030,8 @@ public class GameView {
         drawStatBar(gc, barStartX, barsTopY + (barH + barGap) * 2, barW, barH,
                 "EN", hero.getEnergy(), hero.getMaxEnergy(), "#4a3d00", "#f9a825", "#f4d03f");
 
-        // ── SECTION 3: Stats text ──
         double statsX = barStartX + barW + 14;
 
-        // Gold divider line
         gc.setStroke(Color.web("#c8a840", 0.4));
         gc.setLineWidth(1);
         gc.strokeLine(statsX - 7, pad + 4, statsX - 7, h - pad - 4);
@@ -983,7 +1052,6 @@ public class GameView {
         gc.setFill(Color.web("#aa9870"));
         gc.fillText("Foes " + session.getActiveEnemyCount(), statsX2, barsTopY + 14 + 40);
 
-        // ── SECTION 4: Achievements (trophy icon) ──
         double achX = statsX2 + 110;
         gc.setStroke(Color.web("#c8a840", 0.4));
         gc.strokeLine(achX - 7, pad + 4, achX - 7, h - pad - 4);
@@ -1005,7 +1073,6 @@ public class GameView {
         gc.setFill(Color.web("#ffffff", 0.9));
         gc.fillText(achUnlocked + "/" + achTotal, achX + 14, pad + 58);
 
-        // ── SECTION 5: Bag button ──
         double bagBtnX = achX + 68;
         gc.setStroke(Color.web("#c8a840", 0.4));
         gc.strokeLine(bagBtnX - 7, pad + 4, bagBtnX - 7, h - pad - 4);
@@ -1019,7 +1086,6 @@ public class GameView {
         gc.setFill(Color.web("#e8c84a"));
         gc.fillText(inv.getItemCount() + "/8", bagBtnX + 16, h - pad - 4);
 
-        // ── SECTION 6: Pause & Menu buttons ──
         double btnX = bagBtnX + 68;
         double btnSize = (h - pad * 2 - 8) / 2 - 2;
 
@@ -1071,7 +1137,6 @@ public class GameView {
         gc.setFill(Color.web("#ffffff", 0.95));
         gc.fillText(label + " " + val + "/" + max, x + 4, y + h - 4);
     }
-
 
     private void showAchievementPopup(Achievement achievement) {
         achievementPopupLabel.setText("\uD83C\uDFC6 " + achievement.getName() + " unlocked!");
@@ -1137,8 +1202,9 @@ public class GameView {
         Scene scene = new Scene(root);
         scene.setFill(Color.TRANSPARENT);
         popup.setScene(scene);
-        popup.setOnHidden(e -> {
-            if (animationTimer != null) animationTimer.start();
+        popup.setOnHidden(e -> { 
+            if (animationTimer != null) animationTimer.start(); 
+            Platform.runLater(() -> canvas.requestFocus()); 
         });
         popup.show();
         centerPopup(popup);
@@ -1189,6 +1255,10 @@ public class GameView {
         return sb.toString();
     }
 
+    private void spawnHitParticles(double x, double y) {
+        hitSplatters.add(new Splatter(x, y));
+    }
+    
     private void buildInventoryUI(GameSession session) {
     }
 
@@ -1304,7 +1374,10 @@ public class GameView {
         scene.setFill(Color.TRANSPARENT);
         popup.setScene(scene);
         popup.setOnShown(e -> centerPopup(popup));
-        popup.setOnHidden(e -> { if (animationTimer != null) animationTimer.start(); });
+        popup.setOnHidden(e -> { 
+            if (animationTimer != null) animationTimer.start(); 
+            Platform.runLater(() -> canvas.requestFocus()); 
+        });
         popup.showAndWait();
     }
 
@@ -1334,7 +1407,6 @@ public class GameView {
             boolean equipped = weapon == hero.getEquippedWeapon();
             Button btn = popupButton(equipped ? "Unequip" : "Equip " + weapon.getName(), "#e8c84a");
             btn.setOnAction(e -> {
-                // Use EquipAction pipeline
                 com.kurawler.action.Action action = new com.kurawler.action.EquipAction(weapon);
                 for (com.kurawler.effect.Effect eff : action.resolve(session)) {
                     eff.apply(session);
@@ -1370,7 +1442,6 @@ public class GameView {
             Consumable cons = (Consumable) item;
             Button btn = popupButton("Eat " + cons.getName(), "#55efc4");
             btn.setOnAction(e -> {
-                // Use EatAction pipeline
                 com.kurawler.action.Action action = new com.kurawler.action.EatAction(cons);
                 for (com.kurawler.effect.Effect eff : action.resolve(session)) {
                     eff.apply(session);
@@ -1393,7 +1464,6 @@ public class GameView {
 
         Button discardBtn = popupButton("Discard", "#e74c3c");
         discardBtn.setOnAction(e -> {
-            // Use DiscardAction pipeline
             com.kurawler.action.Action action = new com.kurawler.action.DiscardAction(item);
             for (com.kurawler.effect.Effect eff : action.resolve(session)) {
                 eff.apply(session);
@@ -1410,8 +1480,6 @@ public class GameView {
         VBox content = new VBox(10, title, nameLabel, actions);
         content.setAlignment(Pos.CENTER);
         content.setPadding(new Insets(20));
-        // Solid CSS background so the popup is never blank even if the Canvas
-        // background fails to render on some platforms.
         content.setStyle("-fx-background-color: linear-gradient(to bottom, #2a2418, #15110c); "
                 + "-fx-border-color: #8b7940; -fx-border-width: 2; "
                 + "-fx-border-radius: 6; -fx-background-radius: 6;");
@@ -1420,12 +1488,15 @@ public class GameView {
         root.setStyle("-fx-background-color: #15110c;");
         popup.setScene(new Scene(root, 300, 260));
         popup.setOnShown(e -> centerPopup(popup));
-        popup.setOnHidden(e -> { if (animationTimer != null) animationTimer.start(); });
+        popup.setOnHidden(e -> { 
+            if (animationTimer != null) animationTimer.start(); 
+            Platform.runLater(() -> canvas.requestFocus()); 
+        });
         popup.showAndWait();
     }
 
     private void showContainerContentsPopup(Object containerObj, GameSession session) {
-        if (animationTimer != null) animationTimer.start(); // Keep background alive
+        if (animationTimer != null) animationTimer.start(); 
         Hero hero = session.getHero();
         
         String containerName = (containerObj instanceof StaticContainer) 
@@ -1481,7 +1552,6 @@ public class GameView {
                         }
                         AudioManager.getInstance().play("item");
                         popup.close();
-                        // Re-open to refresh the UI
                         Platform.runLater(() -> showContainerContentsPopup(containerObj, session));
                     });
                 }
@@ -1502,8 +1572,12 @@ public class GameView {
         StackPane root = new StackPane(bg, content);
         popup.setScene(new Scene(root, popW, popH));
         popup.setOnShown(e -> centerPopup(popup));
+        popup.setOnHidden(e -> { 
+            if (animationTimer != null) animationTimer.start(); 
+            Platform.runLater(() -> canvas.requestFocus()); 
+        });
         popup.showAndWait();
-        render(); // Re-render when done
+        render(); 
     }
     private void showItemActions(Item item, GameSession session, MouseEvent event) {
         showItemActionPopup(item, session);
