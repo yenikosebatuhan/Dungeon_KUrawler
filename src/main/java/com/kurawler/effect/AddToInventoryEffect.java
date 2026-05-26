@@ -16,12 +16,17 @@ public class AddToInventoryEffect implements Effect {
 
     @Override
     public void apply(GameSession session) {
+        // Envantere ekle
         boolean added = session.getHero().getInventory().addItem(item);
+        
+        // --- PBI-03 ACCEPTANCE CRITERIA: repOk() passes ---
+        if (!session.getHero().getInventory().repOk()) {
+            throw new AssertionError("Inventory invariant violated after AddToInventoryEffect!");
+        }
+
         if (added) {
             System.out.println("[Effect] " + item.getName() + " added to inventory.");
             session.getHero().notifyItemCollected();
-        } else {
-            System.out.println("[Effect] Inventory full! Could not add " + item.getName() + ".");
         }
     }
 
