@@ -458,7 +458,43 @@ public class GameView {
             case S: case DOWN:  isMoveKey = true; dRow = 1; dCol = 0; break;
             case A: case LEFT:  isMoveKey = true; dRow = 0; dCol = -1; break;
             case D: case RIGHT: isMoveKey = true; dRow = 0; dCol = 1; break;
-            case E:             controller.useFirstConsumable(); break;
+            case E:
+                Item itemToTake = null;
+                GridCell targetCell = null;
+
+                for (int dr = -1; dr <= 1; dr++) {
+                    for (int dc = -1; dc <= 1; dc++) {
+                        int r = hero.getRow() + dr;
+                        int c = hero.getCol() + dc;
+                        GridCell cell = controller.getSession().getMap().getCell(r, c);
+                        
+                        if (cell != null) {
+                            for (GameObject obj : cell.getObjects()) {
+                                if (obj instanceof Item) {
+                                    itemToTake = (Item) obj;
+                                    targetCell = cell;
+                                    break; 
+                                }
+                            }
+                        }
+                        if (itemToTake != null) break;
+                    }
+                    if (itemToTake != null) break;
+                }
+
+                if (itemToTake != null) {
+                    if (hero.getInventory().isFull()) {
+                        messageLabel.setText("Inventory is full!");
+                        AudioManager.getInstance().play("error");
+                    } else {
+                        controller.interactWithObject(targetCell.getRow(), targetCell.getCol(), itemToTake);
+                        AudioManager.getInstance().play("item");
+                        messageLabel.setText("Picked up " + itemToTake.getName());
+                    }
+                } else {
+                    messageLabel.setText("Nothing to pick up nearby.");
+                }
+                break;
             case C:             
                 AudioManager.getInstance().play("button");
                 showCharacterSheetPopup(controller.getSession()); 
@@ -480,7 +516,6 @@ public class GameView {
             default:            return;
         }
 
-        // --- ENERJİ KONTROLÜ (BUG-01 FIX) ---
         if (isMoveKey) {
             if (hero.getEnergy() < 1) {
                 messageLabel.setText("Not enough energy, you CAN NOT MOVE!");
