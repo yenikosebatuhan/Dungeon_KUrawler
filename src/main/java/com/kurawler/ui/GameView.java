@@ -761,27 +761,10 @@ public class GameView {
                 AudioManager.getInstance().play("interact");
                 break;
             case "attack":
-                if (cell.getOccupyingCharacter() instanceof Enemy) {
-                    Enemy enemy = (Enemy) cell.getOccupyingCharacter();
-                    boolean wasAlive = enemy.isAlive();
-                    
-                    // Respect main branch's architectural refactor:
-                    boolean success = controller.attackEnemyAt(row, col);
-                    
-                    if (success) {
-                        // Keep main branch's visual features:
-                        spawnHitParticles(col * TILE_SIZE + (TILE_SIZE / 2.0), row * TILE_SIZE + (TILE_SIZE / 2.0));
-                        
-                        // Merge with our branch's detailed feedback and stat tracking:
-                        if (wasAlive && !enemy.isAlive()) {
-                            session.incrementEnemiesDefeated();
-                            AudioManager.getInstance().play("enemyDown");
-                            messageLabel.setText(enemy.getName() + " defeated!");
-                        } else {
-                            AudioManager.getInstance().play("attack");
-                            messageLabel.setText("Hit " + enemy.getName() + "! HP:" + enemy.getHealth());
-                        }
-                    }
+                boolean success = controller.attackEnemyAt(row, col);
+                if (success) {
+                    spawnHitParticles(col * TILE_SIZE + (TILE_SIZE / 2.0), row * TILE_SIZE + (TILE_SIZE / 2.0));
+                    AudioManager.getInstance().play("attack");
                 }
                 break;
             case "open_container":
@@ -962,20 +945,25 @@ public class GameView {
                 }
             }
         }
-        
+        /**
+         * @requires gc is initialized, hitSplatters is valid
+         * @modifies hitSplatters, gc state
+         * @effects Draws hit splatters and safely fades them out without negative alpha exceptions.
+         */
+        // --- Red Hit-Splatter Particle Rendering ---
         for (int i = hitSplatters.size() - 1; i >= 0; i--) {
             Splatter s = hitSplatters.get(i);
             
             double safeAlpha = Math.max(0.0, Math.min(1.0, s.life));
             gc.setGlobalAlpha(safeAlpha);
             
-            gc.setFill(Color.web("#ff3333")); 
+            gc.setFill(Color.web("#ff3333")); // Bright red splash
             gc.fillOval(s.x - 18, s.y - 18, 36, 36); 
-            gc.setFill(Color.web("#990000")); 
+            gc.setFill(Color.web("#990000")); // Dark red core
             gc.fillOval(s.x - 8, s.y - 8, 16, 16);
             gc.setGlobalAlpha(1.0);
             
-            s.life -= 0.02; 
+            s.life -= 0.02; // Slower fade out
             if (s.life <= 0) hitSplatters.remove(i);
         }
 
@@ -1255,6 +1243,13 @@ public class GameView {
         return sb.toString();
     }
 
+    /**
+     * Creates a temporary hit-splatter particle at the specified screen coordinates.
+     *
+     * @requires x and y > 0
+     * @modifies hitSplatters list
+     * @effects Instantiates a Splatter object that will be rendered and faded out over time.
+     */
     private void spawnHitParticles(double x, double y) {
         hitSplatters.add(new Splatter(x, y));
     }
@@ -1379,6 +1374,8 @@ public class GameView {
             Platform.runLater(() -> canvas.requestFocus()); 
         });
         popup.showAndWait();
+        
+        
     }
 
     private void showItemActionPopup(Item item, GameSession session) {
@@ -1490,6 +1487,7 @@ public class GameView {
         popup.setOnShown(e -> centerPopup(popup));
         popup.setOnHidden(e -> { 
             if (animationTimer != null) animationTimer.start(); 
+            // Force keyboard focus back to the game canvas!
             Platform.runLater(() -> canvas.requestFocus()); 
         });
         popup.showAndWait();
