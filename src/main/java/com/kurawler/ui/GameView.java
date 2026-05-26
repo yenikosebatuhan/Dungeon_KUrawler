@@ -88,6 +88,11 @@ public class GameView {
     private TeamMatchGameLoop teamMatchGameLoop;
     private AnimationTimer animationTimer;
     private boolean paused;
+    private class Splatter {
+        double x, y, life = 1.0;
+        Splatter(double x, double y) { this.x = x; this.y = y; }
+    }
+    private final java.util.List<Splatter> hitSplatters = new java.util.ArrayList<>();
 
     private final java.util.Map<Object, double[]> smoothPositions = new java.util.HashMap<>();
     private final List<DustParticle> hitParticles = new ArrayList<>();
@@ -427,7 +432,11 @@ public class GameView {
         StackPane root = new StackPane(bg, content);
         popup.setScene(new Scene(root, popW, popH));
         popup.setOnShown(e -> centerPopup(popup));
-        popup.setOnHidden(e -> { if (animationTimer != null) animationTimer.start(); });
+        popup.setOnHidden(e -> { 
+            if (animationTimer != null) animationTimer.start(); 
+            // Force keyboard focus back to the game canvas!
+            Platform.runLater(() -> canvas.requestFocus()); 
+        });
         popup.showAndWait();
     }
 
@@ -474,6 +483,25 @@ public class GameView {
                     messageLabel.setText("Fired a projectile! (MP -10)");
                 } else {
                     messageLabel.setText("Not enough mana to shoot!");
+                }
+                break;
+            case SPACE: 
+                event.consume(); // PREVENTS JavaFX from clicking hidden buttons
+                int tRow = hero.getRow() + hero.getFacingRow();
+                int tCol = hero.getCol() + hero.getFacingCol();
+                
+                if (hero.getEnergy() < 1) {
+                    messageLabel.setText("Not enough energy to attack!");
+                    AudioManager.getInstance().play("error");
+                    break;
+                }
+                
+                boolean hit = controller.attackEnemyAt(tRow, tCol);
+                if (hit) {
+                    AudioManager.getInstance().play("attack");
+                    spawnHitParticles(tCol * TILE_SIZE + (TILE_SIZE / 2.0), tRow * TILE_SIZE + (TILE_SIZE / 2.0));
+                } else {
+                    messageLabel.setText("No enemy there!");
                 }
                 break;
             case ESCAPE:        showInGameMenu(); return;
@@ -611,7 +639,11 @@ public class GameView {
         StackPane root = new StackPane(bg, content);
         popup.setScene(new Scene(root, popW, popH));
         popup.setOnShown(e -> centerPopup(popup));
-        popup.setOnHidden(e -> { if (animationTimer != null) animationTimer.start(); });
+        popup.setOnHidden(e -> { 
+            if (animationTimer != null) animationTimer.start(); 
+            // Force keyboard focus back to the game canvas!
+            Platform.runLater(() -> canvas.requestFocus()); 
+        });
         popup.showAndWait();
     }
 
@@ -651,18 +683,10 @@ public class GameView {
                 AudioManager.getInstance().play("interact"); // Added interact sound
                 break;
             case "attack":
-                if (cell.getOccupyingCharacter() instanceof Enemy) {
-                    Enemy enemy = (Enemy) cell.getOccupyingCharacter();
-                    hero.attack(enemy);
-                    if (!enemy.isAlive()) {
-                        cell.setOccupyingCharacter(null);
-                        session.decrementEnemyCount();
-                        AudioManager.getInstance().play("enemyDown");
-                        messageLabel.setText(enemy.getName() + " defeated!");
-                    } else {
-                        AudioManager.getInstance().play("attack");
-                        messageLabel.setText("Hit " + enemy.getName() + "! HP:" + enemy.getHealth());
-                    }
+                boolean success = controller.attackEnemyAt(row, col);
+                if (success) {
+                    spawnHitParticles(col * TILE_SIZE + (TILE_SIZE / 2.0), row * TILE_SIZE + (TILE_SIZE / 2.0));
+                    AudioManager.getInstance().play("attack");
                 }
                 break;
             case "open_container":
@@ -844,6 +868,27 @@ public class GameView {
                     renderer.drawProjectile(gc, (int) pPos[0], (int) pPos[1]);
                 }
             }
+        }
+        /**
+         * @requires gc is initialized, hitSplatters is valid
+         * @modifies hitSplatters, gc state
+         * @effects Draws hit splatters and safely fades them out without negative alpha exceptions.
+         */
+        // --- Red Hit-Splatter Particle Rendering ---
+        for (int i = hitSplatters.size() - 1; i >= 0; i--) {
+            Splatter s = hitSplatters.get(i);
+            
+            double safeAlpha = Math.max(0.0, Math.min(1.0, s.life));
+            gc.setGlobalAlpha(safeAlpha);
+            
+            gc.setFill(Color.web("#ff3333")); // Bright red splash
+            gc.fillOval(s.x - 18, s.y - 18, 36, 36); 
+            gc.setFill(Color.web("#990000")); // Dark red core
+            gc.fillOval(s.x - 8, s.y - 8, 16, 16);
+            gc.setGlobalAlpha(1.0);
+            
+            s.life -= 0.02; // Slower fade out
+            if (s.life <= 0) hitSplatters.remove(i);
         }
 
         drawHud(session);
@@ -1079,8 +1124,10 @@ public class GameView {
         Scene scene = new Scene(root);
         scene.setFill(Color.TRANSPARENT);
         popup.setScene(scene);
-        popup.setOnHidden(e -> {
-            if (animationTimer != null) animationTimer.start();
+        popup.setOnHidden(e -> { 
+            if (animationTimer != null) animationTimer.start(); 
+            // Force keyboard focus back to the game canvas!
+            Platform.runLater(() -> canvas.requestFocus()); 
         });
         popup.show();
         centerPopup(popup);
@@ -1131,6 +1178,17 @@ public class GameView {
         return sb.toString();
     }
 
+    /**
+     * Creates a temporary hit-splatter particle at the specified screen coordinates.
+     *
+     * @requires x and y > 0
+     * @modifies hitSplatters list
+     * @effects Instantiates a Splatter object that will be rendered and faded out over time.
+     */
+    private void spawnHitParticles(double x, double y) {
+        hitSplatters.add(new Splatter(x, y));
+    }
+    
     private void buildInventoryUI(GameSession session) {
     }
 
@@ -1246,8 +1304,14 @@ public class GameView {
         scene.setFill(Color.TRANSPARENT);
         popup.setScene(scene);
         popup.setOnShown(e -> centerPopup(popup));
-        popup.setOnHidden(e -> { if (animationTimer != null) animationTimer.start(); });
+        popup.setOnHidden(e -> { 
+            if (animationTimer != null) animationTimer.start(); 
+            // Force keyboard focus back to the game canvas!
+            Platform.runLater(() -> canvas.requestFocus()); 
+        });
         popup.showAndWait();
+        
+        
     }
 
     private void showItemActionPopup(Item item, GameSession session) {
@@ -1362,7 +1426,11 @@ public class GameView {
         root.setStyle("-fx-background-color: #15110c;");
         popup.setScene(new Scene(root, 300, 260));
         popup.setOnShown(e -> centerPopup(popup));
-        popup.setOnHidden(e -> { if (animationTimer != null) animationTimer.start(); });
+        popup.setOnHidden(e -> { 
+            if (animationTimer != null) animationTimer.start(); 
+            // Force keyboard focus back to the game canvas!
+            Platform.runLater(() -> canvas.requestFocus()); 
+        });
         popup.showAndWait();
     }
 
@@ -1444,6 +1512,10 @@ public class GameView {
         StackPane root = new StackPane(bg, content);
         popup.setScene(new Scene(root, popW, popH));
         popup.setOnShown(e -> centerPopup(popup));
+        popup.setOnHidden(e -> { 
+            if (animationTimer != null) animationTimer.start(); 
+            Platform.runLater(() -> canvas.requestFocus()); 
+        });
         popup.showAndWait();
         render(); // Re-render when done
     }
