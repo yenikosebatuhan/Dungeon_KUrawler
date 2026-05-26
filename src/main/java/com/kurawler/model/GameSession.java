@@ -19,7 +19,6 @@ public class GameSession {
     private final List<Enemy> enemies;
     private final List<Projectile> projectiles; 
     
-    // Caner's Core Logic
     private int playDurationTimer;
     private int activeEnemyCount;
     private String currentMode; 
