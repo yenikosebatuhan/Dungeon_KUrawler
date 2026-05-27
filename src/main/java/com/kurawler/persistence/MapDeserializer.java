@@ -294,6 +294,47 @@ public class MapDeserializer {
         }
     }
 
+    /**
+     * Reads just the saveName and savedAt fields from a save file without
+     * deserializing the full game state. Used by the load dialog to populate
+     * its list without the cost of loading every save fully.
+     *
+     * @requires filename != null
+     * @effects  Returns a two-element array [saveName, savedAt] read from the
+     *           JSON. Either element may be null if the field is absent or the
+     *           file cannot be read.
+     */
+    public String[] readSaveMetadata(String filename) {
+        String saveName = null;
+        String savedAt  = null;
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(filename));
+            for (String line : lines) {
+                String t = line.trim();
+                if (saveName == null && t.startsWith("\"saveName\"")) {
+                    saveName = extractStringValue(t);
+                }
+                if (savedAt == null && t.startsWith("\"savedAt\"")) {
+                    savedAt = extractStringValue(t);
+                }
+                if (saveName != null && savedAt != null) break;
+                if (t.startsWith("\"width\"")) break; // past metadata section
+            }
+        } catch (IOException ignored) {}
+        return new String[]{saveName, savedAt};
+    }
+
+    private String extractStringValue(String jsonLine) {
+        int colon = jsonLine.indexOf(':');
+        if (colon < 0) return null;
+        String after = jsonLine.substring(colon + 1).trim();
+        if (after.startsWith("\"")) {
+            int end = after.indexOf('"', 1);
+            if (end > 0) return after.substring(1, end);
+        }
+        return null;
+    }
+
     // ── Deserialization helpers ───────────────────────────────────────────────
 
     private void deserializeCell(LinkedHashMap<String, Object> cellJson, Map map) {
