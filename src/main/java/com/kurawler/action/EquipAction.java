@@ -1,14 +1,19 @@
 package com.kurawler.action;
 
+import com.kurawler.effect.EquipEffect;
 import com.kurawler.effect.Effect;
 import com.kurawler.model.GameSession;
-import com.kurawler.model.character.Hero;
 import com.kurawler.model.object.Weapon;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * Action: Hero equips or unequips a Weapon.
+ * Action: Hero equips or unequips a Weapon (toggle).
+ *
+ * @requires weapon != null
+ * @modifies none (delegates all state changes to EquipEffect)
+ * @effects If weapon is in the hero's inventory, returns a singleton list
+ *          containing a new EquipEffect; otherwise returns an empty list.
  */
 public class EquipAction implements Action {
 
@@ -20,29 +25,9 @@ public class EquipAction implements Action {
 
     @Override
     public List<Effect> resolve(GameSession session) {
-        Hero hero = session.getHero();
-        
-        if (!hero.getInventory().hasItem(weapon)) {
+        if (!session.getHero().getInventory().hasItem(weapon)) {
             return Collections.emptyList();
         }
-
-        return Collections.singletonList(new Effect() {
-            @Override
-            public void apply(GameSession s) {
-                Hero h = s.getHero();
-                if (h.getEquippedWeapon() == weapon) {
-                    h.setEquippedWeapon(null);
-                    System.out.println("[Effect] " + weapon.getName() + " unequipped.");
-                } else {
-                    h.setEquippedWeapon(weapon);
-                    System.out.println("[Effect] " + weapon.getName() + " equipped.");
-                }
-            }
-
-            @Override
-            public String describe() {
-                return "Equips or unequips " + weapon.getName();
-            }
-        });
+        return Collections.singletonList(new EquipEffect(weapon));
     }
 }
