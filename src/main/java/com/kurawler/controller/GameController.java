@@ -2,6 +2,7 @@ package com.kurawler.controller;
 
 import com.kurawler.action.Action;
 import com.kurawler.action.BreakAction;
+import com.kurawler.action.EquipAction;
 import com.kurawler.action.ReadAction;
 import com.kurawler.action.SearchAction;
 import com.kurawler.action.WearAction;
@@ -21,6 +22,7 @@ import com.kurawler.model.object.Projectile;
 import com.kurawler.model.object.Scroll;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Wearable;
+import com.kurawler.model.object.Weapon;
 import com.kurawler.persistence.MapDeserializer;
 import com.kurawler.persistence.MapSerializer;
 import java.util.List;
@@ -132,6 +134,38 @@ public class GameController {
             return false;
         }
         executeAction(new WearAction(wearable));
+        return true;
+    }
+
+    /**
+     * Equips or unequips a weapon (toggle). If the weapon is already equipped,
+     * it is unequipped; otherwise it replaces any current weapon.
+     *
+     * @requires weapon != null && weapon is in hero inventory
+     * @modifies hero.equippedWeapon
+     * @effects Delegates to EquipAction → EquipEffect.
+     */
+    public boolean equipWeapon(Weapon weapon) {
+        if (weapon == null || !session.getHero().getInventory().hasItem(weapon)) {
+            return false;
+        }
+        executeAction(new EquipAction(weapon));
+        return true;
+    }
+
+    /**
+     * Unequips the hero's currently worn wearable, restoring the DEF bonus.
+     *
+     * @requires hero.equippedWearable != null
+     * @modifies hero.equippedWearable, hero.defensePower
+     * @effects Calls hero.unequipWearable() if something is currently worn.
+     */
+    public boolean unequipWearable() {
+        Hero hero = session.getHero();
+        if (hero.getEquippedWearable() == null) {
+            return false;
+        }
+        hero.unequipWearable();
         return true;
     }
 
