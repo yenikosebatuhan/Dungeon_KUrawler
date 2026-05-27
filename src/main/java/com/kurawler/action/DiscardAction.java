@@ -1,14 +1,20 @@
 package com.kurawler.action;
 
+import com.kurawler.effect.DiscardEffect;
 import com.kurawler.effect.Effect;
 import com.kurawler.model.GameSession;
-import com.kurawler.model.character.Hero;
 import com.kurawler.model.object.Item;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * Action: Hero permanently discards an Item from the inventory.
+ * Action: Hero discards an Item from the inventory, dropping it on the
+ * current map cell.
+ *
+ * @requires item != null
+ * @modifies none (delegates all state changes to DiscardEffect)
+ * @effects If item is in the hero's inventory, returns a singleton list
+ *          containing a new DiscardEffect; otherwise returns an empty list.
  */
 public class DiscardAction implements Action {
 
@@ -20,32 +26,9 @@ public class DiscardAction implements Action {
 
     @Override
     public List<Effect> resolve(GameSession session) {
-        Hero hero = session.getHero();
-        
-        if (!hero.getInventory().hasItem(item)) {
+        if (!session.getHero().getInventory().hasItem(item)) {
             return Collections.emptyList();
         }
-
-        return Collections.singletonList(new Effect() {
-            @Override
-            public void apply(GameSession s) {
-                Hero h = s.getHero();
-                // Safe unequip checks before discarding
-                if (item == h.getEquippedWeapon()) {
-                    h.setEquippedWeapon(null);
-                }
-                if (item == h.getEquippedWearable()) {
-                    h.unequipWearable();
-                }
-                
-                h.getInventory().removeItem(item);
-                System.out.println("[Effect] " + item.getName() + " permanently discarded.");
-            }
-
-            @Override
-            public String describe() {
-                return "Discards " + item.getName();
-            }
-        });
+        return Collections.singletonList(new DiscardEffect(item));
     }
 }
