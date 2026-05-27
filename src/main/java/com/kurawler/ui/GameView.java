@@ -778,6 +778,7 @@ public class GameView {
                 if (cell.getOccupyingCharacter() instanceof Enemy) {
                     Enemy enemy = (Enemy) cell.getOccupyingCharacter();
                     hero.attack(enemy);
+                    spawnHitParticles(col * TILE_SIZE, row * TILE_SIZE);
                     if (!enemy.isAlive()) {
                         cell.setOccupyingCharacter(null);
                         session.decrementEnemyCount();
@@ -788,10 +789,6 @@ public class GameView {
                         AudioManager.getInstance().play("attack");
                         messageLabel.setText("Hit " + enemy.getName() + "! HP:" + enemy.getHealth());
                     }
-                boolean success = controller.attackEnemyAt(row, col);
-                if (success) {
-                    spawnHitParticles(col * TILE_SIZE + (TILE_SIZE / 2.0), row * TILE_SIZE + (TILE_SIZE / 2.0));
-                    AudioManager.getInstance().play("attack");
                 }
                 break;
             case "open_container":
