@@ -242,9 +242,13 @@ public class GameView {
                     }
                     render();
 
-                    if (!teamMatchGameLoop.isRunning() && tmSession.getMatchResult() != null) {
+                    if (tmSession.isGameOver()) {
                         animationTimer.stop();
-                        showTeamMatchResult(tmSession.getMatchResult());
+                        if (tmSession.getMatchResult() != null) {
+                            showTeamMatchResult(tmSession.getMatchResult());
+                        } else {
+                            showTeamMatchGameOver();
+                        }
                     }
                 }
             };
@@ -321,15 +325,35 @@ public class GameView {
     }
 
     private void showTeamMatchResult(String result) {
+        GameSession session = controller.getSession();
+        boolean heroWon = "Team B Wins!".equals(result);
+        String accent  = heroWon ? "#4a9eff" : "#ff4a4a";
+        String bgTint  = heroWon ? "#0a1a3a" : "#2a0a0a";
+        String title   = heroWon ? "\u2694 VICTORY \u2694" : "\u2620 DEFEAT \u2620";
+        String stats   = String.format("Result: %s\nTime Played: %s\nTurns: %d",
+                result,
+                formatTime(session.getPlayDurationTimer()),
+                session.getTurnCount());
+        Platform.runLater(() -> showEndScreen(title, result, stats, accent, bgTint, screenManager::startTeamMatch));
+    }
+
+    private void showTeamMatchGameOver() {
+        GameSession session = controller.getSession();
+        String stats = String.format("Result: Hero Eliminated\nTime Played: %s\nTurns: %d",
+                formatTime(session.getPlayDurationTimer()),
+                session.getTurnCount());
         Platform.runLater(() -> showEndScreen(
-                "\u2694 MATCH OVER \u2694", 
-                result, 
-                "Turns Played: " + controller.getSession().getTurnCount(),
-                "#6fc3df", "#1a2a3a"
-        ));
+                "\u2620 HERO FALLEN \u2620",
+                "Your hero was eliminated!\nTeam A claims victory.",
+                stats, "#ff4a4a", "#2a0a0a",
+                screenManager::startTeamMatch));
     }
 
     private void showEndScreen(String title, String message, String statsText, String accent, String bgTint) {
+        showEndScreen(title, message, statsText, accent, bgTint, screenManager::startNewGame);
+    }
+
+    private void showEndScreen(String title, String message, String statsText, String accent, String bgTint, Runnable playAgain) {
         Stage popup = new Stage();
         popup.initOwner(stage);
         popup.initModality(Modality.APPLICATION_MODAL);
@@ -413,7 +437,7 @@ public class GameView {
         playAgainBtn.setPrefWidth(160);
         playAgainBtn.setOnAction(e -> {
             popup.close();
-            screenManager.startNewGame();
+            playAgain.run();
         });
 
         buttonBox.getChildren().addAll(menuBtn, playAgainBtn);
@@ -936,7 +960,8 @@ public class GameView {
                         TeamMatchSession tmSession = (TeamMatchSession) session;
                         Team team = tmSession.getTeamForCharacter(occupant);
                         if (team != null) {
-                            drawTeamIndicator(gc, (int) pos[0], (int) pos[1], team.getColor());
+                            String lbl = (occupant instanceof Knight) ? "KNIGHT" : "SORCER";
+                            drawTeamIndicator(gc, (int) pos[0], (int) pos[1], team.getColor(), lbl);
                         }
                     }
                 }
@@ -964,7 +989,7 @@ public class GameView {
         updateAndDrawHitParticles(gc);
 
         if (session instanceof TeamMatchSession) {
-            drawTeamIndicator(gc, heroSx, heroSy, Team.TeamColor.BLUE);
+            drawTeamIndicator(gc, heroSx, heroSy, Team.TeamColor.BLUE, "HERO");
         }
 
         if (gameLoop != null) {
@@ -976,6 +1001,13 @@ public class GameView {
                 } else {
                     renderer.drawProjectile(gc, (int) pPos[0], (int) pPos[1]);
                 }
+            }
+        }
+        if (teamMatchGameLoop != null) {
+            for (com.kurawler.model.object.Projectile proj : teamMatchGameLoop.getActiveProjectiles()) {
+                double[] pPos = lerpPosition(proj,
+                        proj.getPositionCol() * TILE_SIZE, proj.getPositionRow() * TILE_SIZE);
+                renderer.drawProjectile(gc, (int) pPos[0], (int) pPos[1]);
             }
         }
         /**
@@ -1076,8 +1108,22 @@ public class GameView {
         gc.setFill(Color.web("#c8b880"));
         gc.fillText("\u23F1 " + formatTime(session.getPlayDurationTimer()), statsX2, barsTopY + 14);
         gc.fillText("Turn " + session.getTurnCount(), statsX2, barsTopY + 14 + 20);
-        gc.setFill(Color.web("#aa9870"));
-        gc.fillText("Foes " + session.getActiveEnemyCount(), statsX2, barsTopY + 14 + 40);
+        if (session instanceof TeamMatchSession) {
+            TeamMatchSession tms = (TeamMatchSession) session;
+            int aAlive = tms.getTeamA().getAliveMembers().size();
+            int aTotal = tms.getTeamA().getMembers().size();
+            int bAlive = tms.getTeamB().getAliveMembers().size();
+            int bTotal = tms.getTeamB().getMembers().size();
+            gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 11));
+            gc.setFill(Color.rgb(255, 90, 90));
+            gc.fillText("\u25A0 A: " + aAlive + "/" + aTotal, statsX2, barsTopY + 14 + 40);
+            gc.setFill(Color.rgb(90, 150, 255));
+            gc.fillText("\u25A0 B: " + bAlive + "/" + bTotal, statsX2 + 62, barsTopY + 14 + 40);
+            gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
+        } else {
+            gc.setFill(Color.web("#aa9870"));
+            gc.fillText("Foes " + session.getActiveEnemyCount(), statsX2, barsTopY + 14 + 40);
+        }
 
         // ── SECTION 4: Achievements (trophy icon) ──
         double achX = statsX2 + 110;
@@ -1252,22 +1298,46 @@ public class GameView {
     }
 
     private void drawTeamIndicator(GraphicsContext gc, int sx, int sy, Team.TeamColor teamColor) {
-        Color borderColor = (teamColor == Team.TeamColor.RED)
-                ? Color.rgb(255, 60, 60, 0.9)
-                : Color.rgb(60, 120, 255, 0.9);
-        Color dotColor = (teamColor == Team.TeamColor.RED)
-                ? Color.rgb(255, 80, 80)
-                : Color.rgb(80, 140, 255);
+        drawTeamIndicator(gc, sx, sy, teamColor, null);
+    }
 
-        gc.setStroke(borderColor);
+    private void drawTeamIndicator(GraphicsContext gc, int sx, int sy, Team.TeamColor teamColor, String label) {
+        boolean isRed  = (teamColor == Team.TeamColor.RED);
+        Color primary  = isRed ? Color.rgb(255, 46, 62)  : Color.rgb(46, 91, 255);
+        Color glow     = isRed ? Color.rgb(255, 46, 62, 0.30) : Color.rgb(46, 91, 255, 0.30);
+        Color tint     = isRed ? Color.rgb(255, 46, 62, 0.10) : Color.rgb(46, 91, 255, 0.10);
+        Color nameplateBg = isRed ? Color.rgb(153, 10, 20, 0.92) : Color.rgb(10, 40, 153, 0.92);
+
+        // subtle tint over entire tile
+        gc.setFill(tint);
+        gc.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+
+        // simulated glow: outer translucent ring → inner solid border
+        gc.setStroke(glow);
+        gc.setLineWidth(5);
+        gc.strokeRect(sx - 1, sy - 1, TILE_SIZE + 2, TILE_SIZE + 2);
+        gc.setStroke(primary);
         gc.setLineWidth(2.5);
         gc.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
 
-        gc.setFill(dotColor);
-        gc.fillOval(sx + TILE_SIZE - 12, sy + 2, 9, 9);
-        gc.setStroke(Color.web("#000000", 0.6));
+        // nameplate ABOVE the sprite
+        String text = (label != null && !label.isEmpty()) ? label : (isRed ? "A" : "B");
+        double plateW = TILE_SIZE;
+        double plateH = 13;
+        double plateY = sy - plateH - 1;
+
+        gc.setFill(nameplateBg);
+        gc.fillRoundRect(sx, plateY, plateW, plateH, 4, 4);
+        gc.setStroke(primary);
         gc.setLineWidth(1);
-        gc.strokeOval(sx + TILE_SIZE - 12, sy + 2, 9, 9);
+        gc.strokeRoundRect(sx, plateY, plateW, plateH, 4, 4);
+
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 9));
+        gc.setTextAlign(TextAlignment.CENTER);
+        gc.fillText(text, sx + TILE_SIZE / 2.0, plateY + plateH - 2);
+        gc.setTextAlign(TextAlignment.LEFT);
+        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
     }
 
     private String teamRoster(Team team) {
