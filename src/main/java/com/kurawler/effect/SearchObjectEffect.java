@@ -1,6 +1,7 @@
 package com.kurawler.effect;
 
 import com.kurawler.model.GameSession;
+import com.kurawler.model.GridCell;
 import com.kurawler.model.object.Item;
 import com.kurawler.model.object.StaticObject;
 
@@ -17,19 +18,24 @@ public class SearchObjectEffect implements Effect {
             return;
         }
 
+        object.markSearched();
         Item found = object.revealHiddenItem();
-        object.setSearchable(false);
-
         if (found == null) {
             return;
         }
 
-        boolean added = session.getHero().getInventory().addItem(found);
-        if (added) {
-            session.getHero().notifyItemCollected();
-        } else {
-            object.setHiddenItem(found);
+        com.kurawler.model.Map map = session.getMap();
+        for (int row = 0; row < map.getHeight(); row++) {
+            for (int col = 0; col < map.getWidth(); col++) {
+                GridCell cell = map.getCell(row, col);
+                if (cell != null && cell.getStaticObject() == object) {
+                    cell.addObject(found);
+                    return;
+                }
+            }
         }
+
+        object.setHiddenItem(found);
     }
 
     @Override

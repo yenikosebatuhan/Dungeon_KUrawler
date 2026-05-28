@@ -69,6 +69,8 @@ public class TileRenderer {
     private Image altarSprite;
     private Image columnSprite;
     private Image bookshelfSprite;
+    private Image doorSprite;
+    private Image doorOpenSprite;
 
     public TileRenderer(int tileSize) {
         this.tileSize = tileSize;
@@ -178,12 +180,15 @@ public class TileRenderer {
         poolSprite = statics.getSprite(8, 5);
         pedestalSprite = statics.getSprite(10, 5);
         altarSprite = statics.getSprite(12, 5);
-        columnSprite = statics.getSprite(10, 6);
-        bookshelfSprite = statics.getSprite(16, 5);
+        columnSprite = statics.getSprite(14, 5);
+        bookshelfSprite = statics.getSprite(12, 4);
+        doorSprite = statics.getSprite(9, 4);
+        doorOpenSprite = statics.getSprite(10, 4);
         if (poolSprite == null) poolSprite = statics.getSprite(6, 5);
         if (pedestalSprite == null) pedestalSprite = statics.getSprite(7, 5);
-        if (columnSprite == null) columnSprite = statics.getSprite(14, 5);
-        if (bookshelfSprite == null) bookshelfSprite = pedestalSprite;
+        if (bookshelfSprite == null) bookshelfSprite = crateSprite;
+        if (doorSprite == null) doorSprite = columnSprite;
+        if (doorOpenSprite == null) doorOpenSprite = doorSprite;
     }
 
     private void removeNulls(Image[] arr) {
@@ -295,6 +300,27 @@ public class TileRenderer {
         drawSprite(gc, sprite, screenX, screenY, glowColor);
     }
 
+    public void drawItemObject(GraphicsContext gc, int screenX, int screenY,
+            com.kurawler.model.object.Item item) {
+        if (item instanceof com.kurawler.model.object.Weapon) {
+            drawWeaponByName(gc, screenX, screenY, item.getName());
+        } else if (item instanceof com.kurawler.model.object.Wearable) {
+            drawItem(gc, screenX, screenY, "Wearable");
+        } else if (item instanceof com.kurawler.model.object.Scroll) {
+            drawItem(gc, screenX, screenY, "Scroll");
+        } else if (item instanceof com.kurawler.model.object.Consumable) {
+            com.kurawler.model.object.Consumable cons = (com.kurawler.model.object.Consumable) item;
+            String pt = cons.getManaAmount() > 0 ? "ManaPotion"
+                    : cons.getEnergyAmount() > 0 ? "EnergyPotion"
+                    : "HealthPotion";
+            drawConsumable(gc, screenX, screenY, pt);
+        } else if (item instanceof com.kurawler.model.object.Key) {
+            drawItem(gc, screenX, screenY, "Key");
+        } else {
+            drawItem(gc, screenX, screenY, "Item");
+        }
+    }
+
     public void drawWeaponByName(GraphicsContext gc, int screenX, int screenY, String weaponName) {
         Image sprite = swordSprite;
         if (weaponName != null) {
@@ -325,28 +351,131 @@ public class TileRenderer {
         drawSprite(gc, sprite, screenX, screenY, Color.web("#795548"));
     }
 
-    public void drawContainerOpen(GraphicsContext gc, int screenX, int screenY) {
-        drawSprite(gc, chestOpenSprite, screenX, screenY, Color.web("#795548"));
-    }
-
-    // ---------- STATIC OBJECTS (furniture, searchable) ----------
-
-    public void drawStaticObject(GraphicsContext gc, int screenX, int screenY, String name) {
-        Image sprite = pedestalSprite;
-        Color fallback = Color.web("#887744");
-        if (name != null) {
-            String lower = name.toLowerCase();
-            if (lower.contains("pool") || lower.contains("gargoyle")) { sprite = poolSprite; fallback = Color.web("#4a6741"); }
-            else if (lower.contains("altar")) { sprite = altarSprite; fallback = Color.web("#6b4fa0"); }
-            else if (lower.contains("column") || lower.contains("pillar")) { sprite = columnSprite; fallback = Color.web("#7a7060"); }
-            else if (lower.contains("bookshelf") || lower.contains("shelf") || lower.contains("tome")) { sprite = bookshelfSprite; fallback = Color.web("#5a3e28"); }
-        }
-        drawSprite(gc, sprite, screenX, screenY, fallback);
-    }
+    // ---------- STATIC OBJECTS (searchable) ----------
 
     public void drawSearchable(GraphicsContext gc, int screenX, int screenY, String name) {
-        drawStaticObject(gc, screenX, screenY, name);
+        if (name != null) {
+            String lower = name.toLowerCase();
+            if (lower.contains("bookshelf")) {
+                drawBookshelfProp(gc, screenX, screenY);
+            } else if (lower.contains("pool") || lower.contains("gargoyle")) {
+                drawPoolProp(gc, screenX, screenY);
+            } else if (lower.contains("column") || lower.contains("pillar")) {
+                drawColumnProp(gc, screenX, screenY);
+            } else if (lower.contains("shelf")) {
+                drawBookshelfProp(gc, screenX, screenY);
+            } else {
+                drawSprite(gc, pedestalSprite, screenX, screenY, Color.web("#887744"));
+            }
+        } else {
+            drawSprite(gc, pedestalSprite, screenX, screenY, Color.web("#887744"));
+        }
         drawSearchableMarker(gc, screenX, screenY);
+        drawSearchableLabel(gc, screenX, screenY, name);
+    }
+
+    /** Tall bookshelf — not a floor hatch / chest (vault key is hidden here in Entry Hall). */
+    private void drawColumnProp(GraphicsContext gc, int screenX, int screenY) {
+        double cx = screenX + tileSize / 2.0 - 6;
+        double baseY = screenY + tileSize - 10;
+        gc.setFill(Color.web("#6a6a7a"));
+        gc.fillRect(cx, baseY - 22, 12, 22);
+        gc.setFill(Color.web("#8a8a9a"));
+        gc.fillRect(cx + 2, baseY - 20, 8, 18);
+        gc.setStroke(Color.web("#4a4a5a"));
+        gc.setLineWidth(1);
+        gc.strokeLine(cx + 6, baseY - 22, cx + 6, baseY - 28);
+    }
+
+    private void drawPoolProp(GraphicsContext gc, int screenX, int screenY) {
+        double cx = screenX + tileSize / 2.0;
+        double cy = screenY + tileSize / 2.0 + 4;
+        gc.setFill(Color.web("#1a4a6a", 0.9));
+        gc.fillOval(cx - 14, cy - 8, 28, 16);
+        gc.setFill(Color.web("#4fc3f7", 0.5));
+        gc.fillOval(cx - 10, cy - 6, 20, 10);
+    }
+
+    private void drawBookshelfProp(GraphicsContext gc, int screenX, int screenY) {
+        double x = screenX + 8;
+        double y = screenY + 4;
+        double w = tileSize - 16;
+        double h = tileSize - 8;
+        gc.setFill(Color.web("#4a3520"));
+        gc.fillRect(x, y, w, h);
+        gc.setStroke(Color.web("#6d4c2a"));
+        gc.setLineWidth(1);
+        for (int i = 1; i < 4; i++) {
+            double ly = y + (h * i) / 4.0;
+            gc.strokeLine(x, ly, x + w, ly);
+        }
+        gc.setFill(Color.web("#8b4513"));
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 4; col++) {
+                gc.fillRect(x + 3 + col * (w - 6) / 4.0, y + 4 + row * 6, 4, 8);
+            }
+        }
+    }
+
+    private void drawSearchableLabel(GraphicsContext gc, int screenX, int screenY, String name) {
+        if (name == null) {
+            return;
+        }
+        String lower = name.toLowerCase();
+        String label;
+        if (lower.contains("bookshelf")) {
+            label = "BOOKSHELF";
+        } else if (lower.contains("pool") || lower.contains("gargoyle")) {
+            label = "POOL";
+        } else if (lower.contains("column") || lower.contains("pillar")) {
+            label = "COLUMN";
+        } else if (lower.contains("shelf")) {
+            label = "SHELF";
+        } else {
+            label = "SEARCH";
+        }
+        gc.setFill(Color.web("#ffd54f"));
+        gc.setFont(javafx.scene.text.Font.font("Monospaced", javafx.scene.text.FontWeight.BOLD, 8));
+        gc.fillText(label, screenX + 4, screenY + tileSize - 6);
+    }
+
+    /**
+     * Clear door graphic — asset sheet coords looked like a chest/shelf.
+     * Gold frame + DOOR label so it is not confused with searchable furniture.
+     */
+    public void drawPortal(GraphicsContext gc, int screenX, int screenY, boolean open, String portalName) {
+        int pad = 6;
+        double x = screenX + pad;
+        double y = screenY + pad;
+        double w = tileSize - pad * 2;
+        double h = tileSize - pad * 2;
+
+        boolean iron = portalName != null && portalName.toLowerCase().contains("iron");
+
+        gc.setFill(Color.web("#1a1208", 0.85));
+        gc.fillRect(x, y, w, h);
+
+        gc.setStroke(Color.web(open ? "#ffd54f" : "#e74c3c"));
+        gc.setLineWidth(2.5);
+        gc.strokeRect(x + 2, y + 2, w - 4, h - 4);
+
+        gc.setFill(Color.web(open ? "#8b6914" : "#4a3520"));
+        double gap = open ? w * 0.22 : 0;
+        gc.fillRect(x + 4, y + 4, (w - 8 - gap) / 2, h - 8);
+        gc.fillRect(x + 4 + (w - 8 - gap) / 2 + gap, y + 4, (w - 8 - gap) / 2, h - 8);
+
+        if (!open) {
+            gc.setFill(Color.web("#e74c3c", 0.9));
+            gc.fillOval(screenX + tileSize / 2.0 - 6, screenY + tileSize / 2.0 - 8, 12, 12);
+        }
+
+        gc.setFill(Color.web("#ffd54f"));
+        gc.setFont(javafx.scene.text.Font.font("Monospaced", javafx.scene.text.FontWeight.BOLD, 9));
+        String label = iron ? "IRON DOOR" : "DOOR";
+        gc.fillText(label, screenX + tileSize / 2.0 - (iron ? 22 : 14), screenY + tileSize - 8);
+        if (open) {
+            gc.fillText("\u2192", screenX + tileSize / 2.0 - 4, screenY + 10);
+        }
     }
 
     // ---------- VISUAL EFFECTS ----------
@@ -371,13 +500,16 @@ public class TileRenderer {
     }
 
     public void drawSearchableMarker(GraphicsContext gc, int screenX, int screenY) {
-        gc.setStroke(Color.web("#ffd54f", 0.5));
-        gc.setLineWidth(1);
-        gc.setLineDashes(4, 3);
-        gc.strokeRect(screenX + 3, screenY + 3, tileSize - 6, tileSize - 6);
+        gc.setStroke(Color.web("#ffd54f", 0.85));
+        gc.setLineWidth(2);
+        gc.setLineDashes(5, 4);
+        gc.strokeRect(screenX + 2, screenY + 2, tileSize - 4, tileSize - 4);
         gc.setLineDashes(null);
-        gc.setFill(Color.web("#ffd54f", 0.7));
-        gc.fillOval(screenX + tileSize - 10, screenY + 2, 7, 7);
+        gc.setFill(Color.web("#ffd54f"));
+        gc.fillOval(screenX + tileSize - 11, screenY + 2, 9, 9);
+        gc.setFill(Color.web("#1a1a2e"));
+        gc.fillText("?", screenX + tileSize - 9, screenY + 9);
+        gc.setFont(javafx.scene.text.Font.font("Monospaced", javafx.scene.text.FontWeight.BOLD, 8));
     }
 
     public void drawHeroProjectile(GraphicsContext gc, int screenX, int screenY) {
@@ -429,6 +561,97 @@ public class TileRenderer {
         if (item instanceof Scroll) return scrollSprite;
         if (item instanceof Key)    return keySprite;
         return gemSprite;
+    }
+
+    /** Small preview for level-editor palette chips (PBI-16). */
+    public void drawEditorPaletteIcon(GraphicsContext gc, double size, String objectName) {
+        if (gc == null || objectName == null) {
+            return;
+        }
+        int s = (int) size;
+        gc.clearRect(0, 0, s, s);
+        gc.setFill(Color.web("#141428"));
+        gc.fillRect(0, 0, s, s);
+
+        switch (objectName) {
+            case "Wall":
+                drawScaled(gc, pickWallSprite(0, 0), s);
+                break;
+            case "Floor":
+                drawScaled(gc, pickFloorSprite(0, 0), s);
+                break;
+            case "Gargoyle Pool":
+                drawScaled(gc, poolSprite, s);
+                break;
+            case "Ancient Bookshelf":
+            case "Wall Shelf":
+                drawScaled(gc, bookshelfSprite != null ? bookshelfSprite : crateSprite, s);
+                break;
+            case "Stone Column":
+                drawScaled(gc, columnSprite, s);
+                break;
+            case "Sword":
+                drawScaled(gc, swordSprite, s);
+                break;
+            case "Spell Book":
+                drawScaled(gc, scrollSprite, s);
+                break;
+            case "Health Potion":
+                drawScaled(gc, potionSprite, s);
+                break;
+            case "Armor":
+                drawScaled(gc, armorSprite != null ? armorSprite : shieldSprite, s);
+                break;
+            case "Golden Key":
+                drawScaled(gc, keySprite, s);
+                break;
+            case "Chest":
+                drawScaled(gc, chestSprite, s);
+                break;
+            case "Pouch":
+                drawScaled(gc, crateSprite, s);
+                break;
+            case "Adventurer":
+                drawScaled(gc, heroSprite, s);
+                break;
+            case "Knight":
+                drawScaled(gc, knightSprite, s);
+                break;
+            case "Sorcerer":
+                drawScaled(gc, sorcererSprite, s);
+                break;
+            case "Erase":
+                gc.setFill(Color.web("#4a2020"));
+                gc.fillRoundRect(2, 2, s - 4, s - 4, 4, 4);
+                gc.setStroke(Color.web("#ff6b6b"));
+                gc.strokeLine(4, 4, s - 4, s - 4);
+                gc.strokeLine(s - 4, 4, 4, s - 4);
+                break;
+            default:
+                gc.setFill(Color.web("#553355"));
+                gc.fillRoundRect(4, 4, s - 8, s - 8, 4, 4);
+                break;
+        }
+    }
+
+    private Image pickWallSprite(int sx, int sy) {
+        if (wallSprites != null && wallSprites.length > 0) {
+            return wallSprites[tileHash(sx, sy) % wallSprites.length];
+        }
+        return null;
+    }
+
+    private Image pickFloorSprite(int sx, int sy) {
+        if (floorSprites != null && floorSprites.length > 0) {
+            return floorSprites[tileHash(sx, sy) % floorSprites.length];
+        }
+        return null;
+    }
+
+    private void drawScaled(GraphicsContext gc, Image img, int size) {
+        if (img != null) {
+            gc.drawImage(img, 0, 0, size, size);
+        }
     }
 
     // ---------- HELPERS ----------

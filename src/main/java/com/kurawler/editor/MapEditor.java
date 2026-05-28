@@ -14,6 +14,7 @@ public class MapEditor {
     private final ObjectPalette palette;
     private final PlacementValidator validator;
     private final RandomItemGenerator itemGenerator;
+    private final EditorUndoStack undoStack = new EditorUndoStack();
     private GameObject selectedObject;
     private Character selectedCharacter;
 
@@ -28,6 +29,27 @@ public class MapEditor {
         this.itemGenerator = new RandomItemGenerator();
     }
 
+    public void pushUndoSnapshot() {
+        undoStack.push(currentMap);
+    }
+
+    public boolean undo() {
+        Map restored = undoStack.popRestore();
+        if (restored == null) {
+            return false;
+        }
+        currentMap = restored;
+        return true;
+    }
+
+    public boolean canUndo() {
+        return undoStack.canUndo();
+    }
+
+    public void clearUndoHistory() {
+        undoStack.clear();
+    }
+
     public boolean placeObject(GameObject obj, int x, int y) {
         GridCell cell = currentMap.getCellAt(x, y);
 
@@ -35,6 +57,7 @@ public class MapEditor {
             return false;
         }
 
+        pushUndoSnapshot();
         if (obj instanceof StaticObject) {
             cell.setStaticObject((StaticObject) obj);
         } else {
@@ -51,6 +74,7 @@ public class MapEditor {
             return false;
         }
 
+        pushUndoSnapshot();
         cell.setOccupyingCharacter(character);
         character.setPosition(cell.getRow(), cell.getCol());
         return true;
@@ -64,11 +88,13 @@ public class MapEditor {
         }
 
         if (cell.getStaticObject() != null) {
+            pushUndoSnapshot();
             cell.setStaticObject(null);
             return true;
         }
 
         if (cell.getOccupyingCharacter() != null) {
+            pushUndoSnapshot();
             cell.setOccupyingCharacter(null);
             return true;
         }
@@ -78,6 +104,7 @@ public class MapEditor {
             return false;
         }
 
+        pushUndoSnapshot();
         return cell.removeObject(objects.get(objects.size() - 1));
     }
 
@@ -108,6 +135,7 @@ public class MapEditor {
     }
 
     public void clearMap() {
+        pushUndoSnapshot();
         for (int x = 0; x < currentMap.getGridWidth(); x++) {
             for (int y = 0; y < currentMap.getGridHeight(); y++) {
                 GridCell cell = currentMap.getCellAt(x, y);
@@ -126,7 +154,13 @@ public class MapEditor {
         itemGenerator.generateRandomItems(currentMap, count);
     }
 
-    public Item generateRandomItem(int x, int y) {
+    /** PDF §4.2 random loot: 5 floor items + 1 hidden searchable + container rolls. */
+    public RandomItemGenerator.PopulateResult populateRandomItemsPerSpec() {
+        pushUndoSnapshot();
+        return itemGenerator.populatePerDesignDocument(currentMap);
+    }
+
+    public GameObject generateRandomItem(int x, int y) {
         return itemGenerator.generateAndPlaceRandomItem(currentMap, x, y);
     }
 

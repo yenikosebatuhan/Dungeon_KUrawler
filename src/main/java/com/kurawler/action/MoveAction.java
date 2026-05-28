@@ -1,9 +1,12 @@
 package com.kurawler.action;
 
 import com.kurawler.effect.Effect;
+import com.kurawler.effect.MapTransitionEffect;
 import com.kurawler.effect.MoveEffect;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
+import com.kurawler.model.object.MapPortal;
+import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.character.Hero;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +38,29 @@ public class MoveAction implements Action {
         }
 
         GridCell target = session.getMap().getCell(newRow, newCol);
-        if (target != null && target.isWalkable()) {
+        if (target == null) {
+            return effects;
+        }
+
+        StaticObject staticObj = target.getStaticObject();
+        if (staticObj instanceof MapPortal) {
+            MapPortal portal = (MapPortal) staticObj;
+            if (!target.isWalkable()) {
+                if (portal.tryUnlock(hero)) {
+                    effects.add(new MoveEffect(hero, newRow, newCol));
+                    effects.add(new MapTransitionEffect(portal));
+                } else {
+                    session.setLastPortalMessage(portal.getLockHint());
+                    System.out.println("[Action] " + portal.getName() + " is locked.");
+                }
+                return effects;
+            }
+            effects.add(new MoveEffect(hero, newRow, newCol));
+            effects.add(new MapTransitionEffect(portal));
+            return effects;
+        }
+
+        if (target.isWalkable()) {
             effects.add(new MoveEffect(hero, newRow, newCol));
         }
 

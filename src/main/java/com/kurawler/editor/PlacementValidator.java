@@ -14,8 +14,24 @@ public class PlacementValidator {
             return false;
         }
 
-        if (obj instanceof StaticObject || obj instanceof StaticContainer) {
-            return cell.getStaticObject() == null
+        if (obj instanceof StaticContainer) {
+            StaticObject floor = cell.getStaticObject();
+            boolean walkableFloor = floor == null
+                    || (floor.isPassable() && !floor.isSearchable());
+            return walkableFloor
+                    && cell.getOccupyingCharacter() == null
+                    && !cell.hasObjects();
+        }
+
+        if (obj instanceof StaticObject) {
+            StaticObject existing = cell.getStaticObject();
+            StaticObject placing = (StaticObject) obj;
+            if (placing.isPassable()) {
+                return cell.getOccupyingCharacter() == null
+                        && !cell.hasObjects()
+                        && (existing == null || existing.isPassable());
+            }
+            return existing == null
                     && cell.getOccupyingCharacter() == null
                     && !cell.hasObjects();
         }

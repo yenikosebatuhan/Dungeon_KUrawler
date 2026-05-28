@@ -29,7 +29,11 @@ public class ObjectPalette {
 
     private void initializePalette() {
         availableObjects.add(createObjectByName("Wall"));
+        availableObjects.add(createObjectByName("Floor"));
         availableObjects.add(createObjectByName("Gargoyle Pool"));
+        availableObjects.add(createObjectByName("Ancient Bookshelf"));
+        availableObjects.add(createObjectByName("Wall Shelf"));
+        availableObjects.add(createObjectByName("Stone Column"));
         availableObjects.add(createObjectByName("Sword"));
         availableObjects.add(createObjectByName("Spell Book"));
         availableObjects.add(createObjectByName("Health Potion"));
@@ -81,8 +85,16 @@ public class ObjectPalette {
         switch (name) {
             case "Wall":
                 return new StaticObject("Wall", "A solid wall that blocks movement", false, false);
+            case "Floor":
+                return new StaticObject("Floor", "Stone floor tile", true, false);
             case "Gargoyle Pool":
                 return new StaticObject("Gargoyle Pool", "A searchable stone pool", true, true);
+            case "Ancient Bookshelf":
+                return new StaticObject("Ancient Bookshelf", "Search the dusty tomes", true, true);
+            case "Wall Shelf":
+                return new StaticObject("Wall Shelf", "A ledge along the wall", true, true);
+            case "Stone Column":
+                return new StaticObject("Stone Column", "A stone pillar", false, true);
             case "Sword":
                 return new Weapon("Sword", "A sharp blade", 5);
             case "Spell Book":
@@ -91,9 +103,9 @@ public class ObjectPalette {
             case "Health Potion":
                 return new Consumable("Health Potion", "Restores 20 HP", 20);
             case "Armor":
-                return new Wearable("Armor", "Protective armor", 3);
+                return new Wearable("Armor", "Protective armor (+5 DEF)", Wearable.ARMOR_DEFENSE_BONUS);
             case "Golden Key":
-                return new Key("Golden Key", "Opens a golden lock", "key_001");
+                return new Key("Golden Key", "Opens a golden lock", "gold");
             case "Chest":
                 return new StaticContainer("Chest", "A wooden chest");
             case "Pouch":

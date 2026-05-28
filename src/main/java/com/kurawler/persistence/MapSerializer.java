@@ -226,6 +226,11 @@ public class MapSerializer {
         }
     }
 
+    /** JSON snapshot for editor undo / in-memory round-trip. */
+    public String mapToJson(Map map) {
+        return buildMapJson(map);
+    }
+
     private String buildMapJson(Map map) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\n");
