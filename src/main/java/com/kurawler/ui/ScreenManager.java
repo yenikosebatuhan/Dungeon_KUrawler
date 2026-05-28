@@ -83,6 +83,10 @@ public class ScreenManager {
         }
         return serializer.saveMapToFile(currentSession.getMap(), filename);
     }
+    
+    public boolean hasActiveSession() {
+        return currentSession != null;
+    }
 
     public boolean saveCurrentGameAs(String saveName) {
         if (currentSession == null) {
