@@ -7,6 +7,7 @@ import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Key;
 import com.kurawler.model.object.Scroll;
+import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.StaticObject;
 import java.util.ArrayList;
@@ -52,6 +53,8 @@ public class MapFactory {
         session.setAchievementManager(new AchievementManager());
         session.wireObservers();
 
+        placeFurniture(map);
+
         map.placeObject(2, 2, new Weapon("Iron Sword", "A sturdy blade", 8));
         map.placeObject(2, 12, new Consumable("Health Potion", "Restores 10 HP", 10, 0, 0));
         map.placeObject(1, 14, new Consumable("Mana Elixir", "Restores 20 mana", 0, 20, 0));
@@ -62,9 +65,57 @@ public class MapFactory {
         map.placeObject(8, 10, new Scroll("Healing Scroll", "A parchment covered in glowing runes",
                 "Ancient magic knits your wounds back together.", 12));
 
+        placeContainers(map);
         placeTargetObjective(map, session);
 
         return session;
+    }
+
+    private static void placeFurniture(Map map) {
+        // Room 0 (rows 1-5, cols 1-5): columns + bookshelf against north/south walls
+        setFurniture(map, 1, 2, "Stone Column", "A weathered stone column", false, true);
+        setFurniture(map, 1, 4, "Ancient Bookshelf", "Dusty tomes line the shelves", false, true);
+        setFurniture(map, 5, 4, "Stone Column", "A weathered stone column", false, false);
+
+        // Room 1 (rows 1-4, cols 10-14)
+        setFurniture(map, 1, 11, "Stone Column", "A weathered stone column", false, true);
+        setFurniture(map, 1, 13, "Stone Column", "A weathered stone column", false, false);
+
+        // Room 2 (rows 8-12, cols 1-4): decorative column
+        setFurniture(map, 8, 2, "Stone Column", "A weathered stone column", false, false);
+
+        // Room 3 (rows 8-12, cols 8-14): two searchable spots + decoration
+        setFurniture(map, 8, 9,  "Stone Column",     "A weathered stone column",      false, true);
+        setFurniture(map, 8, 13, "Ancient Bookshelf","Dusty tomes line the shelves",  false, true);
+        setFurniture(map, 12, 9, "Stone Column",     "A weathered stone column",      false, false);
+    }
+
+    private static void setFurniture(Map map, int row, int col,
+                                     String name, String desc,
+                                     boolean passable, boolean searchable) {
+        GridCell cell = map.getCell(row, col);
+        if (cell != null && cell.isWalkable()) {
+            cell.setStaticObject(new StaticObject(name, desc, passable, searchable));
+        }
+    }
+
+    private static void placeContainers(Map map) {
+        StaticContainer oakChest = new StaticContainer("Oak Chest", "A sturdy oak chest");
+        oakChest.addItem(new Consumable("Healing Draught", "Restores 20 HP", 20, 0, 0));
+        map.placeObject(4, 4, oakChest);
+
+        StaticContainer woodenChest = new StaticContainer("Wooden Chest", "A simple wooden chest");
+        woodenChest.addItem(new Consumable("Mind Potion", "Restores 15 mana", 0, 15, 0));
+        map.placeObject(3, 12, woodenChest);
+
+        StaticContainer barrel = new StaticContainer("Barrel", "A large wooden barrel");
+        barrel.addItem(new Consumable("Stamina Brew", "Restores energy", 0, 0, 30));
+        map.placeObject(11, 3, barrel);
+
+        StaticContainer goldChest = new StaticContainer("Gold Chest", "A chest sealed with a golden lock");
+        goldChest.setLock("gold");
+        goldChest.addItem(new Weapon("Enchanted Blade", "A blade imbued with magic", 15));
+        map.placeObject(11, 13, goldChest);
     }
 
     private static void placeTargetObjective(Map map, GameSession session) {
@@ -85,19 +136,7 @@ public class MapFactory {
             }
         }
 
-        if (searchableSpots.isEmpty()) {
-            int[][] candidates = {{9, 9}, {10, 10}, {8, 3}, {2, 13}};
-            for (int[] pos : candidates) {
-                GridCell cell = map.getCell(pos[0], pos[1]);
-                if (cell != null && cell.isWalkable()) {
-                    StaticObject pedestal = new StaticObject(
-                            "Mysterious Pedestal", "Something glimmers inside...", true, true);
-                    pedestal.setHiddenItem(target);
-                    cell.setStaticObject(pedestal);
-                    return;
-                }
-            }
-        } else {
+        if (!searchableSpots.isEmpty()) {
             GridCell chosen = searchableSpots.get(rng.nextInt(searchableSpots.size()));
             chosen.getStaticObject().setHiddenItem(target);
         }

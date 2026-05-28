@@ -62,6 +62,7 @@ public class TileRenderer {
     private Image pedestalSprite;
     private Image altarSprite;
     private Image columnSprite;
+    private Image bookshelfSprite;
 
     public TileRenderer(int tileSize) {
         this.tileSize = tileSize;
@@ -171,9 +172,12 @@ public class TileRenderer {
         poolSprite = statics.getSprite(8, 5);
         pedestalSprite = statics.getSprite(10, 5);
         altarSprite = statics.getSprite(12, 5);
-        columnSprite = statics.getSprite(14, 5);
+        columnSprite = statics.getSprite(10, 6);
+        bookshelfSprite = statics.getSprite(16, 5);
         if (poolSprite == null) poolSprite = statics.getSprite(6, 5);
         if (pedestalSprite == null) pedestalSprite = statics.getSprite(7, 5);
+        if (columnSprite == null) columnSprite = statics.getSprite(14, 5);
+        if (bookshelfSprite == null) bookshelfSprite = pedestalSprite;
     }
 
     private void removeNulls(Image[] arr) {
@@ -315,17 +319,23 @@ public class TileRenderer {
         drawSprite(gc, sprite, screenX, screenY, Color.web("#795548"));
     }
 
-    // ---------- STATIC OBJECTS (searchable) ----------
+    // ---------- STATIC OBJECTS (furniture, searchable) ----------
 
-    public void drawSearchable(GraphicsContext gc, int screenX, int screenY, String name) {
+    public void drawStaticObject(GraphicsContext gc, int screenX, int screenY, String name) {
         Image sprite = pedestalSprite;
+        Color fallback = Color.web("#887744");
         if (name != null) {
             String lower = name.toLowerCase();
-            if (lower.contains("pool") || lower.contains("gargoyle")) sprite = poolSprite;
-            else if (lower.contains("altar")) sprite = altarSprite;
-            else if (lower.contains("column") || lower.contains("pillar")) sprite = columnSprite;
+            if (lower.contains("pool") || lower.contains("gargoyle")) { sprite = poolSprite; fallback = Color.web("#4a6741"); }
+            else if (lower.contains("altar")) { sprite = altarSprite; fallback = Color.web("#6b4fa0"); }
+            else if (lower.contains("column") || lower.contains("pillar")) { sprite = columnSprite; fallback = Color.web("#7a7060"); }
+            else if (lower.contains("bookshelf") || lower.contains("shelf") || lower.contains("tome")) { sprite = bookshelfSprite; fallback = Color.web("#5a3e28"); }
         }
-        drawSprite(gc, sprite, screenX, screenY, Color.web("#887744"));
+        drawSprite(gc, sprite, screenX, screenY, fallback);
+    }
+
+    public void drawSearchable(GraphicsContext gc, int screenX, int screenY, String name) {
+        drawStaticObject(gc, screenX, screenY, name);
         drawSearchableMarker(gc, screenX, screenY);
     }
 

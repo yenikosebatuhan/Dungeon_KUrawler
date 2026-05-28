@@ -88,7 +88,7 @@ public class ScreenManager {
         if (currentSession == null) {
             currentSession = MapFactory.createDefaultMap();
         }
-        return serializer.saveGameState(currentSession, savePath(saveName).toString());
+        return serializer.saveGameState(currentSession, savePath(saveName).toString(), saveName);
     }
 
     public boolean showSaveDialog() {
@@ -277,13 +277,30 @@ public class ScreenManager {
         }
         try (Stream<Path> paths = Files.list(SAVES_DIR)) {
             paths
-                    .filter(path -> path.getFileName().toString().endsWith(".json"))
+                    .filter(p -> p.getFileName().toString().endsWith(".json"))
                     .sorted(Comparator.comparing(this::lastModifiedSafe).reversed())
-                    .forEach(path -> saves.add(new SaveEntry(path, lastModifiedSafe(path))));
+                    .forEach(p -> {
+                        String[] meta = deserializer.readSaveMetadata(p.toString());
+                        String saveName = meta[0] != null ? meta[0]
+                                : p.getFileName().toString().replaceFirst("\\.json$", "");
+                        String savedAt  = meta[1] != null ? formatSavedAt(meta[1])
+                                : SAVE_TIME_FORMAT.format(lastModifiedSafe(p));
+                        saves.add(new SaveEntry(p, saveName, savedAt));
+                    });
         } catch (IOException e) {
             showInfo("Load Game", "Could not read saves folder.");
         }
         return saves;
+    }
+
+    private String formatSavedAt(String isoInstant) {
+        try {
+            java.time.Instant instant = java.time.Instant.parse(isoInstant);
+            LocalDateTime ldt = LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault());
+            return SAVE_TIME_FORMAT.format(ldt);
+        } catch (Exception e) {
+            return isoInstant;
+        }
     }
 
     private LocalDateTime lastModifiedSafe(Path path) {
@@ -305,17 +322,18 @@ public class ScreenManager {
 
     private static class SaveEntry {
         private final Path path;
-        private final LocalDateTime modifiedAt;
+        private final String saveName;
+        private final String savedAt;
 
-        private SaveEntry(Path path, LocalDateTime modifiedAt) {
+        private SaveEntry(Path path, String saveName, String savedAt) {
             this.path = path;
-            this.modifiedAt = modifiedAt;
+            this.saveName = saveName;
+            this.savedAt  = savedAt;
         }
 
         @Override
         public String toString() {
-            String fileName = path.getFileName().toString().replaceFirst("\\.json$", "");
-            return fileName + "  (" + SAVE_TIME_FORMAT.format(modifiedAt) + ")";
+            return saveName + "  (" + savedAt + ")";
         }
     }
 }
