@@ -50,7 +50,9 @@ public class ScreenManager {
         stage.setScene(menu.createScene());
         stage.setTitle("Dungeon KUrawler");
         stage.setResizable(false);
+        stage.sizeToScene(); 
         stage.show();
+        stage.centerOnScreen();
     }
 
     public void startNewGame() {
@@ -71,6 +73,10 @@ public class ScreenManager {
         GameController controller = new GameController(session);
         GameView view = new GameView(controller, this);
         view.show(stage);
+    }
+    
+    public boolean hasActiveSession() {
+        return currentSession != null;
     }
 
     public boolean saveCurrentMap(String filename) {

@@ -1,6 +1,8 @@
 package com.kurawler.ui;
 
 import com.kurawler.editor.LevelEditor;
+import javafx.scene.layout.StackPane;
+import javafx.scene.control.ScrollPane;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Map;
@@ -54,9 +56,14 @@ public class EditorView {
         this.renderer = new TileRenderer(TILE_SIZE);
     }
 
+
+
     public void show(Stage stage) {
         Map map = editor.getMap();
-        canvas = new Canvas(map.getWidth() * TILE_SIZE, map.getHeight() * TILE_SIZE);
+        int canvasW = map.getWidth() * TILE_SIZE;
+        int canvasH = map.getHeight() * TILE_SIZE;
+        
+        canvas = new Canvas(canvasW, canvasH);
         canvas.setOnMouseClicked(e -> handleMapClick(
                 (int) (e.getY() / TILE_SIZE),
                 (int) (e.getX() / TILE_SIZE)));
@@ -67,16 +74,40 @@ public class EditorView {
         statusLabel.setWrapText(true);
 
         VBox sidebar = buildSidebar();
-        BorderPane root = new BorderPane(canvas, null, sidebar, null, null);
+
+        // --- AUTO-SCALING LOGIC FOR EDITOR ---
+        // Leave room for the sidebar on the width
+        double maxCanvasW = 1280.0 - SIDEBAR_WIDTH;
+        double maxCanvasH = 720.0;
+
+        double scaleX = maxCanvasW / canvasW;
+        double scaleY = maxCanvasH / canvasH;
+        double scale = Math.min(1.0, Math.min(scaleX, scaleY));
+
+        canvas.getTransforms().clear();
+        canvas.getTransforms().add(new javafx.scene.transform.Scale(scale, scale));
+
+        // Group ensures the layout bounds reflect the scaled canvas size
+        javafx.scene.Group canvasGroup = new javafx.scene.Group(canvas);
+        StackPane mapContainer = new StackPane(canvasGroup);
+        mapContainer.setStyle("-fx-background-color: #0f0f23;");
+        // -------------------------------------
+
+        BorderPane root = new BorderPane(mapContainer, null, sidebar, null, null);
         root.setStyle("-fx-background-color: #0f0f23;");
 
         stage.setTitle("Dungeon KUrawler - Level Editor");
-        stage.setScene(new Scene(root, canvas.getWidth() + SIDEBAR_WIDTH, canvas.getHeight()));
+        stage.setScene(new Scene(root));
         stage.setResizable(false);
+        
+        // Snap and center the window
+        stage.sizeToScene();
         stage.show();
+        stage.centerOnScreen();
+        
         render();
     }
-
+    
     private VBox buildSidebar() {
         Label title = new Label("LEVEL EDITOR");
         title.setFont(Font.font("Monospaced", FontWeight.BOLD, 18));
