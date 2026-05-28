@@ -157,7 +157,7 @@ public class GameLoop {
             if (!enemy.isAlive()) {
                 continue;
             }
-            enemy.decideAction(hero, map, session);
+            enemy.decideAction((Character) hero, map, session);
         }
     }
 
