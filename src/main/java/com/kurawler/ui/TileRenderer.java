@@ -1,5 +1,11 @@
 package com.kurawler.ui;
 
+import com.kurawler.model.object.Consumable;
+import com.kurawler.model.object.Item;
+import com.kurawler.model.object.Key;
+import com.kurawler.model.object.Scroll;
+import com.kurawler.model.object.Weapon;
+import com.kurawler.model.object.Wearable;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
@@ -396,6 +402,33 @@ public class TileRenderer {
 
     public int getTileSize() {
         return tileSize;
+    }
+
+    /** Returns the best sprite Image for rendering an Item in the inventory popup. */
+    public Image getSpriteForItem(Item item) {
+        if (item instanceof Weapon) {
+            String n = item.getName().toLowerCase();
+            if (n.contains("axe"))                         return axeSprite;
+            if (n.contains("bow"))                         return bowSprite;
+            if (n.contains("staff") || n.contains("spell")) return staffSprite;
+            if (n.contains("dagger") || n.contains("knife")) return daggerSprite;
+            if (n.contains("hammer") || n.contains("mace")) return hammerSprite;
+            return swordSprite;
+        }
+        if (item instanceof Wearable) {
+            String n = item.getName().toLowerCase();
+            if (n.contains("shield")) return shieldSprite;
+            return armorSprite;
+        }
+        if (item instanceof Consumable) {
+            String n = item.getName().toLowerCase();
+            if (n.contains("mana"))   return potionSprite2;
+            if (n.contains("energy")) return ringSprite;
+            return potionSprite;
+        }
+        if (item instanceof Scroll) return scrollSprite;
+        if (item instanceof Key)    return keySprite;
+        return gemSprite;
     }
 
     // ---------- HELPERS ----------
