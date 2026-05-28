@@ -8,10 +8,15 @@ import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Key;
 import com.kurawler.model.object.Projectile; 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class GameSession {
     private Map map;
+    private final java.util.Map<String, Map> worldMaps = new HashMap<>();
+    private String currentMapId;
+    private String lastPortalMessage;
+    private boolean mapChanged;
     private Hero hero;
     private ShadowClone shadowClone;
     private AchievementManager achievementManager;
@@ -24,8 +29,10 @@ public class GameSession {
     private int enemiesDefeatedCount;
     private int itemsCollectedCount;
     private int floorsClearedCount;
-    private String currentMode; 
+    private String currentMode;
     private Item targetObjective;
+  /** True when playing a map launched from the level editor (no game-over popup on editor). */
+    private boolean editorTestPlay;
 
     public GameSession() {
         this.turnCount = 0;
@@ -102,6 +109,73 @@ public class GameSession {
     // --- TEAM'S METHODS ---
     public Map getMap() { return map; }
     public void setMap(Map map) { this.map = map; }
+
+    public void registerWorldMap(String mapId, Map worldMap) {
+        if (mapId != null && worldMap != null) {
+            worldMaps.put(mapId, worldMap);
+        }
+    }
+
+    public String getCurrentMapId() { return currentMapId; }
+
+    public void setCurrentMapId(String mapId) { this.currentMapId = mapId; }
+
+    public void setLastPortalMessage(String message) {
+        this.lastPortalMessage = message;
+    }
+
+    public String consumeLastPortalMessage() {
+        String msg = lastPortalMessage;
+        lastPortalMessage = null;
+        return msg;
+    }
+
+    /**
+     * Moves the hero to another registered map (door / stairs).
+     *
+     * @return true if the transition succeeded
+     */
+    public boolean transitionHeroTo(String mapId, int row, int col) {
+        Map next = worldMaps.get(mapId);
+        if (next == null) {
+            lastPortalMessage = "That passage leads nowhere.";
+            return false;
+        }
+        GridCell dest = next.getCell(row, col);
+        if (dest == null || !dest.isWalkable()) {
+            lastPortalMessage = "The other side is blocked.";
+            return false;
+        }
+        if (hero != null && hero.getCurrentCell() != null) {
+            hero.getCurrentCell().setOccupyingCharacter(null);
+        }
+        this.map = next;
+        this.currentMapId = mapId;
+        clearEnemies();
+        if (shadowClone != null) {
+            shadowClone = null;
+        }
+        if (hero != null) {
+            hero.moveToCell(dest);
+        }
+        incrementFloorsCleared();
+        mapChanged = true;
+        lastPortalMessage = "Entered " + mapDisplayName(mapId) + ".";
+        return true;
+    }
+
+    public boolean consumeMapChanged() {
+        boolean changed = mapChanged;
+        mapChanged = false;
+        return changed;
+    }
+
+    private static String mapDisplayName(String mapId) {
+        if ("hall".equals(mapId)) return "Entry Hall";
+        if ("catacombs".equals(mapId)) return "Catacombs";
+        if ("vault".equals(mapId)) return "Treasure Vault";
+        return mapId;
+    }
     public Hero getHero() { return hero; }
     public void setHero(Hero hero) { this.hero = hero; }
     public ShadowClone getShadowClone() { return shadowClone; }
@@ -147,6 +221,12 @@ public class GameSession {
         return null;
     }
     public boolean isGameOver() { return hero != null && !hero.isAlive(); }
+
+    public boolean isEditorTestPlay() { return editorTestPlay; }
+
+    public void setEditorTestPlay(boolean editorTestPlay) {
+        this.editorTestPlay = editorTestPlay;
+    }
     public int getEnemiesDefeatedCount() { return enemiesDefeatedCount; }
     public void incrementEnemiesDefeated() { this.enemiesDefeatedCount++; }
 

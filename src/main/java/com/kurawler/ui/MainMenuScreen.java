@@ -65,6 +65,9 @@ public class MainMenuScreen {
         Button newGameBtn = stoneButton("\u2694  New Game");
         newGameBtn.setOnAction(e -> screenManager.startNewGame());
 
+        Button customMapBtn = stoneButton("\u2694  New Game (Custom Map)");
+        customMapBtn.setOnAction(e -> screenManager.startNewGameFromCustomMap());
+
         Button randomBtn = stoneButton("\u2728  Random Dungeon");
         randomBtn.setOnAction(e -> screenManager.startRandomDungeon());
 
@@ -103,7 +106,7 @@ public class MainMenuScreen {
 
         VBox menu = new VBox(18,
                 title, subtitle, ornament,
-                newGameBtn, randomBtn, teamMatchBtn, editorBtn,
+                newGameBtn, customMapBtn, randomBtn, teamMatchBtn, editorBtn,
                 ornament2, bottomRow, version);
         menu.setAlignment(Pos.CENTER);
         menu.setPadding(new Insets(40, 40, 24, 40));
