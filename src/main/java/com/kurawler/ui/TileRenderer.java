@@ -319,6 +319,10 @@ public class TileRenderer {
         drawSprite(gc, sprite, screenX, screenY, Color.web("#795548"));
     }
 
+    public void drawContainerOpen(GraphicsContext gc, int screenX, int screenY) {
+        drawSprite(gc, chestOpenSprite, screenX, screenY, Color.web("#795548"));
+    }
+
     // ---------- STATIC OBJECTS (furniture, searchable) ----------
 
     public void drawStaticObject(GraphicsContext gc, int screenX, int screenY, String name) {
