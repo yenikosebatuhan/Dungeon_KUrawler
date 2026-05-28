@@ -555,6 +555,32 @@ public class GameView {
             case A: case LEFT:  isMoveKey = true; dRow = 0; dCol = -1; break;
             case D: case RIGHT: isMoveKey = true; dRow = 0; dCol = 1; break;
             case E:
+                // Priority 1: open an adjacent StaticContainer
+                StaticContainer adjacentContainer = null;
+                eKeyOuter:
+                for (int dr = -1; dr <= 1; dr++) {
+                    for (int dc = -1; dc <= 1; dc++) {
+                        if (dr == 0 && dc == 0) continue;
+                        GridCell cell = controller.getSession().getMap()
+                                .getCell(hero.getRow() + dr, hero.getCol() + dc);
+                        if (cell != null) {
+                            for (GameObject obj : cell.getObjects()) {
+                                if (obj instanceof StaticContainer) {
+                                    adjacentContainer = (StaticContainer) obj;
+                                    break eKeyOuter;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (adjacentContainer != null) {
+                    AudioManager.getInstance().play("interact");
+                    final StaticContainer scToOpen = adjacentContainer;
+                    Platform.runLater(() -> showContainerContentsPopup(scToOpen, controller.getSession()));
+                    break;
+                }
+
+                // Priority 2: pick up an adjacent Item
                 Item itemToTake = null;
                 GridCell targetCell = null;
 
@@ -563,13 +589,13 @@ public class GameView {
                         int r = hero.getRow() + dr;
                         int c = hero.getCol() + dc;
                         GridCell cell = controller.getSession().getMap().getCell(r, c);
-                        
+
                         if (cell != null) {
                             for (GameObject obj : cell.getObjects()) {
                                 if (obj instanceof Item) {
                                     itemToTake = (Item) obj;
                                     targetCell = cell;
-                                    break; 
+                                    break;
                                 }
                             }
                         }
@@ -588,7 +614,7 @@ public class GameView {
                         messageLabel.setText("Picked up " + itemToTake.getName());
                     }
                 } else {
-                    messageLabel.setText("Nothing to pick up nearby.");
+                    messageLabel.setText("Nothing nearby.");
                 }
                 break;
             case C:             
@@ -932,7 +958,12 @@ public class GameView {
 
                 for (GameObject obj : cell.getObjects()) {
                     if (obj instanceof StaticContainer) {
-                        renderer.drawContainerByName(gc, sx, sy, obj.getName());
+                        StaticContainer sc = (StaticContainer) obj;
+                        if (sc.isEmpty()) {
+                            renderer.drawContainerOpen(gc, sx, sy);
+                        } else {
+                            renderer.drawContainerByName(gc, sx, sy, obj.getName());
+                        }
                     } else if (obj instanceof Weapon) {
                         renderer.drawWeaponByName(gc, sx, sy, obj.getName());
                     } else if (obj instanceof Scroll) {
@@ -1614,7 +1645,11 @@ public class GameView {
     }
 
     private void showContainerContentsPopup(Object containerObj, GameSession session) {
-        if (animationTimer != null) animationTimer.start(); // Keep background alive
+        boolean wasPaused = paused;
+        if (!wasPaused) {
+            paused = true;
+            session.setCurrentMode("Paused");
+        }
         Hero hero = session.getHero();
         
         String containerName = (containerObj instanceof StaticContainer) 
@@ -1639,6 +1674,15 @@ public class GameView {
         title.setFont(Font.font("Serif", FontWeight.BOLD, 18));
         title.setTextFill(Color.web("#e8c84a"));
 
+        boolean inventoryFull = hero.getInventory().isFull();
+
+        Label invFullLabel = new Label("Inventory Full — discard an item first.");
+        invFullLabel.setFont(Font.font("Serif", 12));
+        invFullLabel.setTextFill(Color.web("#ff6b6b"));
+        invFullLabel.setStyle("-fx-background-color: rgba(80,0,0,0.55); "
+                + "-fx-padding: 3 10 3 10; -fx-background-radius: 3;");
+        invFullLabel.setVisible(inventoryFull);
+
         VBox itemBox = new VBox(8);
         itemBox.setAlignment(Pos.CENTER);
 
@@ -1650,31 +1694,29 @@ public class GameView {
             for (Item item : contents) {
                 HBox row = new HBox(10);
                 row.setAlignment(Pos.CENTER);
-                
+
                 Label nameLbl = new Label(item.getName());
-                nameLbl.setPrefWidth(140);
+                nameLbl.setPrefWidth(150);
                 nameLbl.setTextFill(Color.web("#c8b880"));
-                
+
                 Button takeBtn = popupButton("Take", "#55efc4");
                 takeBtn.setPrefWidth(80);
                 takeBtn.setPrefHeight(30);
-                
-                if (hero.getInventory().isFull()) {
-                    takeBtn.setDisable(true);
-                    takeBtn.setText("Full");
-                } else {
+                takeBtn.setDisable(inventoryFull);
+
+                if (!inventoryFull) {
                     takeBtn.setOnAction(e -> {
-                        com.kurawler.action.Action action = new com.kurawler.action.TakeFromContainerAction(containerObj, item);
+                        com.kurawler.action.Action action =
+                                new com.kurawler.action.TakeFromContainerAction(containerObj, item);
                         for (com.kurawler.effect.Effect eff : action.resolve(session)) {
                             eff.apply(session);
                         }
                         AudioManager.getInstance().play("item");
                         popup.close();
-                        // Re-open to refresh the UI
                         Platform.runLater(() -> showContainerContentsPopup(containerObj, session));
                     });
                 }
-                
+
                 row.getChildren().addAll(nameLbl, takeBtn);
                 itemBox.getChildren().add(row);
             }
@@ -1683,20 +1725,25 @@ public class GameView {
         Button closeBtn = popupButton("Close", "#a09070");
         closeBtn.setOnAction(e -> popup.close());
 
-        VBox content = new VBox(15, title, itemBox, closeBtn);
+        VBox content = new VBox(12, title, invFullLabel, itemBox, closeBtn);
         content.setAlignment(Pos.CENTER);
         content.setPadding(new Insets(20));
-        content.setStyle("-fx-border-color: #8b794088; -fx-border-width: 2; -fx-border-radius: 6;");
+        content.setStyle("-fx-border-color: #c8a840; -fx-border-width: 2; -fx-border-radius: 6;");
 
         StackPane root = new StackPane(bg, content);
         popup.setScene(new Scene(root, popW, popH));
         popup.setOnShown(e -> centerPopup(popup));
-        popup.setOnHidden(e -> { 
-            if (animationTimer != null) animationTimer.start(); 
-            Platform.runLater(() -> canvas.requestFocus()); 
+        popup.setOnHidden(e -> {
+            if (!wasPaused) {
+                paused = false;
+                session.setCurrentMode(
+                        session instanceof TeamMatchSession ? "TeamMatch" : "Play");
+            }
+            if (animationTimer != null) animationTimer.start();
+            Platform.runLater(() -> canvas.requestFocus());
         });
         popup.showAndWait();
-        render(); // Re-render when done
+        render();
     }
     private void showItemActions(Item item, GameSession session, MouseEvent event) {
         showItemActionPopup(item, session);
