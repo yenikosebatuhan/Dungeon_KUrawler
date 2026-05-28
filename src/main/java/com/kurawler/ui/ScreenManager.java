@@ -50,7 +50,9 @@ public class ScreenManager {
         stage.setScene(menu.createScene());
         stage.setTitle("Dungeon KUrawler");
         stage.setResizable(false);
+        stage.sizeToScene(); 
         stage.show();
+        stage.centerOnScreen();
     }
 
     public void startNewGame() {
