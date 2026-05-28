@@ -37,45 +37,39 @@ public class Knight extends Enemy {
     }
 
     @Override
-    public void decideAction(Hero hero, Map map, GameSession session) {
-        if (hero == null || map == null || !isAlive() || !hero.isAlive()) return;
-        int dRow = hero.getRow() - getRow();
-        int dCol = hero.getCol() - getCol();
+    public void decideAction(Character target, Map map, GameSession session) {
+        if (target == null || map == null || !isAlive() || !target.isAlive()) return;
+        int dRow = target.getRow() - getRow();
+        int dCol = target.getCol() - getCol();
 
         if (Math.abs(dRow) + Math.abs(dCol) == 1) {
-            System.out.println("[AI] Knight: Attacking hero!");
-            // --- BUG-07 FIX: Route AI attacks through centralized CombatResolver ---
-            com.kurawler.engine.CombatResolver.performMeleeAttack(this, hero);
+            com.kurawler.engine.CombatResolver.performMeleeAttack(this, target);
             return;
         }
 
         double euclid = Math.sqrt(dRow * dRow + dCol * dCol);
         if (euclid <= SIGHT_RADIUS) {
-            System.out.println("[AI] Knight: Chasing hero");
             if (Math.abs(dRow) >= Math.abs(dCol)) {
-                if (!tryStep(Integer.signum(dRow), 0, map, session, hero))
-                    tryStep(0, Integer.signum(dCol), map, session, hero);
+                if (!tryStep(Integer.signum(dRow), 0, map))
+                    tryStep(0, Integer.signum(dCol), map);
             } else {
-                if (!tryStep(0, Integer.signum(dCol), map, session, hero))
-                    tryStep(Integer.signum(dRow), 0, map, session, hero);
+                if (!tryStep(0, Integer.signum(dCol), map))
+                    tryStep(Integer.signum(dRow), 0, map);
             }
         } else {
-            System.out.println("[AI] Knight: Roaming");
             int[][] dirs = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
             int[] d = dirs[RNG.nextInt(4)];
-            tryStep(d[0], d[1], map, session, hero);
+            tryStep(d[0], d[1], map);
         }
     }
 
-    private boolean tryStep(int dRow, int dCol, Map map, GameSession session, Hero hero) {
+    private boolean tryStep(int dRow, int dCol, Map map) {
         if (dRow == 0 && dCol == 0) return false;
         int nr = getRow() + dRow;
         int nc = getCol() + dCol;
-        GridCell target = map.getCell(nr, nc);
-        
-        if (target == null || target.isBlocked()) return false;
-        
-        moveToCell(target);
+        GridCell cell = map.getCell(nr, nc);
+        if (cell == null || cell.isBlocked()) return false;
+        moveToCell(cell);
         return true;
     }
 

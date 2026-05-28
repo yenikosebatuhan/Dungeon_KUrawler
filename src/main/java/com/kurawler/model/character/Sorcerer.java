@@ -31,21 +31,20 @@ public class Sorcerer extends Enemy {
     public void markRingDropped() { this.ringDropped = true; }
 
     @Override
-    public void decideAction(Hero hero, Map map, GameSession session) {
-        if (hero == null || map == null || !isAlive() || !hero.isAlive()) return;
+    public void decideAction(Character target, Map map, GameSession session) {
+        if (target == null || map == null || !isAlive() || !target.isAlive()) return;
 
         ticksSinceLastAttack++;
 
-        int dist = Math.abs(hero.getRow() - getRow()) + Math.abs(hero.getCol() - getCol());
+        int dist = Math.abs(target.getRow() - getRow()) + Math.abs(target.getCol() - getCol());
         boolean teleported = false;
         if (dist <= 1 && RNG.nextFloat() < TELEPORT_CHANCE) {
-            System.out.println("[AI] Sorcerer: Teleporting");
-            teleportToRandomWalkable(map, session, hero);
+            teleportToRandomWalkable(map, target);
             teleported = true;
         }
 
         if (!teleported && ticksSinceLastAttack >= ATTACK_COOLDOWN) {
-            Projectile p = castSpell(hero, map);
+            Projectile p = castSpell(target, map);
             if (p != null && session != null) {
                 session.addProjectile(p);
             }
@@ -53,49 +52,45 @@ public class Sorcerer extends Enemy {
         }
     }
 
-    public Projectile castSpell(Hero hero, Map map) {
-        if (hero == null || !hero.isAlive() || map == null) return null;
-        if (!hasLineOfSight(hero, map)) return null;
-        int dr = Integer.signum(hero.getRow() - getRow());
-        int dc = Integer.signum(hero.getCol() - getCol());
+    public Projectile castSpell(Character target, Map map) {
+        if (target == null || !target.isAlive() || map == null) return null;
+        if (!hasLineOfSight(target, map)) return null;
+        int dr = Integer.signum(target.getRow() - getRow());
+        int dc = Integer.signum(target.getCol() - getCol());
         Projectile p = new Projectile("Arcane Bolt", "Crackling magic energy", SPELL_DAMAGE, dr, dc);
         p.setPosition(getRow() + dr, getCol() + dc);
         this.lastSpell = p;
         return p;
     }
 
-    private boolean hasLineOfSight(Hero hero, Map map) {
+    private boolean hasLineOfSight(Character target, Map map) {
         int r = getRow(), c = getCol();
-        int dr = Integer.signum(hero.getRow() - r);
-        int dc = Integer.signum(hero.getCol() - c);
+        int dr = Integer.signum(target.getRow() - r);
+        int dc = Integer.signum(target.getCol() - c);
         if (dr == 0 && dc == 0) return false;
-        
-        if (dr != 0 && dc != 0 && Math.abs(hero.getRow()-r) != Math.abs(hero.getCol()-c)) return false;
+        if (dr != 0 && dc != 0 && Math.abs(target.getRow() - r) != Math.abs(target.getCol() - c)) return false;
         r += dr; c += dc;
-        while (r != hero.getRow() || c != hero.getCol()) {
+        while (r != target.getRow() || c != target.getCol()) {
             GridCell cell = map.getCell(r, c);
             if (cell == null) return false;
-            
             if (cell.getStaticObject() != null && !cell.getStaticObject().isPassable()) return false;
             r += dr; c += dc;
         }
         return true;
     }
 
-    private void teleportToRandomWalkable(Map map, GameSession session, Hero hero) {
+    private void teleportToRandomWalkable(Map map, Character avoid) {
         List<GridCell> candidates = new ArrayList<>();
         for (int r = 0; r < map.getHeight(); r++) {
             for (int c = 0; c < map.getWidth(); c++) {
                 GridCell cell = map.getCell(r, c);
                 if (cell == null || cell.isBlocked()) continue;
-                if (hero.getRow() == r && hero.getCol() == c) continue;
+                if (avoid != null && avoid.getRow() == r && avoid.getCol() == c) continue;
                 candidates.add(cell);
             }
         }
         if (candidates.isEmpty()) return;
-        GridCell pick = candidates.get(RNG.nextInt(candidates.size()));
-        
-        moveToCell(pick);
+        moveToCell(candidates.get(RNG.nextInt(candidates.size())));
     }
 
     public float getTeleportChance() { return TELEPORT_CHANCE; }
