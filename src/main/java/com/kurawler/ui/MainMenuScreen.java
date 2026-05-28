@@ -23,7 +23,7 @@ import javafx.scene.text.TextAlignment;
 public class MainMenuScreen {
 
     private static final int W = 1280; // PBI-18: Standard width
-    private static final int H = 800;  // PBI-18: Standard height
+    private static final int H = 720;  // PBI-18: Standard height
     private static final int BG_TILE = 48;
 
     private final ScreenManager screenManager;
