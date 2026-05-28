@@ -36,15 +36,18 @@ public class ShadowClone extends Character implements HeroObserver {
      * @requires map != null && (deltaRow != 0 || deltaCol != 0)
      * @modifies this.row, this.col
      * @effects Moves the clone one step in the direction opposite to the hero
-     *          (i.e., -deltaRow, -deltaCol). If the target cell is out of bounds
-     *          or a wall, the clone's position is unchanged.
+     * (i.e., -deltaRow, -deltaCol). If the target cell is out of bounds
+     * or a wall, the clone's position is unchanged.
      */
     @Override
     public void onHeroMoved(int newRow, int newCol, int deltaRow, int deltaCol) {
         if (!isAlive() || map == null) return;
 
+        // --- BUG-01 FIX: Move in reverse direction ---
+        // As per PBI-07: must move clone to (row - deltaRow, col - deltaCol)
         int targetRow = getRow() - deltaRow;
         int targetCol = getCol() - deltaCol;
+        
         GridCell cell = map.getCell(targetRow, targetCol);
         if (cell != null && !isWall(cell)) {
             setPosition(targetRow, targetCol);
@@ -58,8 +61,8 @@ public class ShadowClone extends Character implements HeroObserver {
 
     @Override
     public void onHeroDamageTaken(int amount) {
-        if (!isAlive() || amount <= 0) return;
-        takeDamage(Math.max(1, amount / 2));
+        // --- BUG-02 FIX: Clone should be invulnerable ---
+        // Do absolutely nothing. The clone must not take damage when the hero takes damage.
     }
 
     @Override
@@ -79,6 +82,7 @@ public class ShadowClone extends Character implements HeroObserver {
      */
     public void tick(long deltaMs) {
         remainingMs -= deltaMs;
+        // Expired clone logic is handled in the GameLoop (it sets clone to null)
     }
 
     /** Returns true once the 7-second lifetime has elapsed. */

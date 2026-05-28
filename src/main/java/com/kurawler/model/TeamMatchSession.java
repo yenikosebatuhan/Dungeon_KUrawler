@@ -32,9 +32,23 @@ public class TeamMatchSession extends GameSession {
     }
 
     public void initializeMatch() {
+        clearMapEnemies();
         createTeams();
         placeTeams();
         placeWeapons();
+    }
+
+    private void clearMapEnemies() {
+        Map map = getMap();
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int c = 0; c < map.getWidth(); c++) {
+                GridCell cell = map.getCell(r, c);
+                if (cell == null) continue;
+                if (cell.getOccupyingCharacter() instanceof com.kurawler.model.character.Enemy) {
+                    cell.setOccupyingCharacter(null);
+                }
+            }
+        }
     }
 
     private void createTeams() {
@@ -133,12 +147,16 @@ public class TeamMatchSession extends GameSession {
             matchResult = "Team A Wins!";
             return true;
         }
+        if (getHero() != null && !getHero().isAlive()) {
+            matchResult = "Team A Wins!";
+            return true;
+        }
         return false;
     }
 
     @Override
     public boolean isGameOver() {
-        return checkWinCondition() || (getHero() != null && !getHero().isAlive());
+        return checkWinCondition();
     }
 
     public Team getTeamForCharacter(Character c) {

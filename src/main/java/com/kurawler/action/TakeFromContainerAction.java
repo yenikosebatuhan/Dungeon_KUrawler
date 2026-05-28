@@ -42,7 +42,7 @@ public class TakeFromContainerAction implements Action {
 
                 // Add to hero inventory
                 s.getHero().getInventory().addItem(item);
-                System.out.println("[Effect] " + item.getName() + " looted from container.");
+                s.getHero().notifyItemCollected();
             }
 
             @Override

@@ -10,6 +10,6 @@ public abstract class Enemy extends Character {
         super(name, maxHealth, attackPower, defensePower, strength, maxMana, maxEnergy);
     }
 
-    /** Subclasses implement their own AI. */
-    public abstract void decideAction(Hero hero, Map map, GameSession session);
+    /** Subclasses implement their own AI. Target can be any Character (Hero in classic mode, nearest opponent in team match). */
+    public abstract void decideAction(Character target, Map map, GameSession session);
 }

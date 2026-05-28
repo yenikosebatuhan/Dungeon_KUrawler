@@ -19,9 +19,11 @@ public class GameSession {
     private final List<Enemy> enemies;
     private final List<Projectile> projectiles; 
     
-    // Caner's Core Logic
     private int playDurationTimer;
     private int activeEnemyCount;
+    private int enemiesDefeatedCount;
+    private int itemsCollectedCount;
+    private int floorsClearedCount;
     private String currentMode; 
     private Item targetObjective;
 
@@ -32,6 +34,9 @@ public class GameSession {
         this.playDurationTimer = 0;
         this.activeEnemyCount = 0;
         this.currentMode = "Design";
+        this.enemiesDefeatedCount = 0;
+        this.itemsCollectedCount = 0;
+        this.floorsClearedCount = 1;
     }
 
     public GameSession(Map map) {
@@ -142,4 +147,12 @@ public class GameSession {
         return null;
     }
     public boolean isGameOver() { return hero != null && !hero.isAlive(); }
+    public int getEnemiesDefeatedCount() { return enemiesDefeatedCount; }
+    public void incrementEnemiesDefeated() { this.enemiesDefeatedCount++; }
+
+    public int getItemsCollectedCount() { return itemsCollectedCount; }
+    public void incrementItemsCollected() { this.itemsCollectedCount++; }
+
+    public int getFloorsClearedCount() { return floorsClearedCount; }
+    public void incrementFloorsCleared() { this.floorsClearedCount++; }
 }
