@@ -1,6 +1,7 @@
 package com.kurawler.ui;
 
 import com.kurawler.controller.GameController;
+import javafx.scene.control.ScrollPane;
 import com.kurawler.engine.AudioManager;
 import com.kurawler.engine.GameLoop;
 import com.kurawler.engine.TeamMatchGameLoop;
@@ -148,18 +149,36 @@ public class GameView {
         StackPane.setAlignment(achievementPopupLabel, Pos.CENTER_RIGHT);
         StackPane.setMargin(achievementPopupLabel, new Insets(0, 100, 0, 0));
         StackPane.setAlignment(messageLabel, Pos.CENTER);
+        
+        // --- AUTO-SCALING LOGIC (Replaces ScrollPane) ---
+        // Calculate the maximum safe dimensions for the rendering area
+        double maxCanvasW = 1280.0;
+        double maxCanvasH = 720.0 - HUD_HEIGHT;
 
-        AchievementManager achievementManager = session.getAchievementManager();
-        if (achievementManager != null) {
-            achievementManager.setOnUnlock(this::showAchievementPopup);
-        }
+        // Determine the scale factor required to fit the entire map into the safe area
+        double scaleX = maxCanvasW / canvasW;
+        double scaleY = maxCanvasH / canvasH;
+        
+        // Use the smallest scale to maintain aspect ratio. 
+        // Min(1.0, ...) ensures we only zoom out (shrink) large maps, never stretch small ones.
+        double scale = Math.min(1.0, Math.min(scaleX, scaleY));
+
+        canvas.getTransforms().clear();
+        canvas.getTransforms().add(new javafx.scene.transform.Scale(scale, scale));
+
+        // Group is strictly required in JavaFX so the parent layout respects the scaled down size
+        javafx.scene.Group canvasGroup = new javafx.scene.Group(canvas);
+        StackPane mapContainer = new StackPane(canvasGroup);
+        mapContainer.setStyle("-fx-background-color: #0a0a10;");
+        // ------------------------------------------------
 
         BorderPane root = new BorderPane();
         root.setTop(hudStack);
-        root.setCenter(canvas);
+        root.setCenter(mapContainer); 
         root.setStyle("-fx-background-color: #0a0a10;");
 
-        Scene scene = new Scene(root, canvasW, canvasH + HUD_HEIGHT);
+        // Let Scene size itself automatically based on the scaled group
+        Scene scene = new Scene(root);
         scene.getRoot().setStyle(
                 "-fx-font-family: 'Serif'; "
                 + "-fx-base: #1e1b16; "
@@ -168,30 +187,37 @@ public class GameView {
                 + "-fx-faint-focus-color: transparent;");
         scene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPress);
 
+        AchievementManager achievementManager = session.getAchievementManager();
+        if (achievementManager != null) {
+            achievementManager.setOnUnlock(this::showAchievementPopup);
+        }
+
         stage.setTitle("Dungeon KUrawler");
         stage.setScene(scene);
         stage.setResizable(false);
+        
+        // Snap the window exactly to the scaled content and center it on the physical monitor
+        stage.sizeToScene();
         stage.show();
-
+        stage.centerOnScreen();
+        
         if (!(session instanceof TeamMatchSession)) {
             session.setCurrentMode("Play");
         }
 
-        // PDF §4.1.2: Show target item popup at the start of a new play session.
-        // Team Match has no target item, so skip in that mode.
-        // IMPORTANT: defer startGameLoop() until the popup is dismissed so that
-        // enemies do not move/attack while the player is still reading the quest.
+        // Show target item popup at the start of a new play session
         if (!(session instanceof TeamMatchSession) && session.getTargetObjective() != null) {
             javafx.application.Platform.runLater(() -> {
                 new TargetItemPopup(stage, session.getTargetObjective()).show();
-                startGameLoop(session);   // blocks above: showAndWait() returns only after dismiss
+                startGameLoop(session);   
             });
         } else {
             startGameLoop(session);
         }
         render();
     }
-
+    
+    
     private void handleHudClick(MouseEvent event) {
         double x = event.getX();
         double y = event.getY();
