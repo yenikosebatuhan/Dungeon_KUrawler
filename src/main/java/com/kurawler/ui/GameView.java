@@ -171,7 +171,10 @@ public class GameView {
         stage.setTitle("Dungeon KUrawler");
         stage.setScene(scene);
         stage.setResizable(false);
+        stage.sizeToScene(); 
         stage.show();
+        stage.centerOnScreen();
+        
 
         if (!(session instanceof TeamMatchSession)) {
             session.setCurrentMode("Play");
