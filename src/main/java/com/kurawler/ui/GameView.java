@@ -1445,11 +1445,12 @@ public class GameView {
             root.getChildren().add(bg);
         }
 
-        // Title
+        // Title counter — overlaid on grid (TOP_RIGHT)
         Label titleLabel = new Label();
-        titleLabel.setFont(Font.font("Serif", FontWeight.BOLD, 18));
-        titleLabel.setTextFill(Color.web("#3a2a10"));
-        titleLabel.setEffect(new javafx.scene.effect.DropShadow(2, 0, 1, Color.web("#00000044")));
+        titleLabel.setFont(Font.font("Serif", FontWeight.BOLD, 15));
+        titleLabel.setTextFill(Color.web("#f0e8c8"));
+        titleLabel.setEffect(new javafx.scene.effect.DropShadow(3, 1, 1, Color.web("#00000099")));
+        titleLabel.setPadding(new Insets(3, 6, 0, 0));
 
         // Item grid
         GridPane grid = new GridPane();
@@ -1457,10 +1458,15 @@ public class GameView {
         grid.setVgap(8);
         grid.setAlignment(Pos.CENTER);
 
+        // Overlay (0/8) counter in upper-right corner of the slot grid
+        StackPane gridStack = new StackPane(grid);
+        StackPane.setAlignment(titleLabel, Pos.TOP_RIGHT);
+        gridStack.getChildren().add(titleLabel);
+
         // Detail panel shown when a slot is selected
         VBox detailPane = new VBox(8);
         detailPane.setAlignment(Pos.CENTER);
-        detailPane.setPrefWidth(330);
+        detailPane.setMaxWidth(Double.MAX_VALUE);
         detailPane.setMinHeight(70);
         detailPane.setStyle("-fx-background-color: rgba(20,14,6,0.82); "
                 + "-fx-border-color: #8b7530; -fx-border-width: 1.5; -fx-border-radius: 5; "
@@ -1484,9 +1490,11 @@ public class GameView {
 
         VBox.setVgrow(detailPane, Priority.ALWAYS);
 
-        VBox content = new VBox(8, titleLabel, grid, detailPane, closeBtn);
+        // titleLabel removed from VBox flow — it lives inside gridStack now.
+        // Top padding increased by ~28px to keep the grid at the same visual position.
+        VBox content = new VBox(8, gridStack, detailPane, closeBtn);
         content.setAlignment(Pos.CENTER);
-        content.setPadding(new Insets(170, 30, 22, 30));
+        content.setPadding(new Insets(198, 30, 22, 30));
         root.getChildren().add(content);
 
         // Shared mutable state: which item is selected
