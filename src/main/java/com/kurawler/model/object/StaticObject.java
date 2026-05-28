@@ -3,6 +3,7 @@ package com.kurawler.model.object;
 public class StaticObject extends GameObject {
     private boolean isPassable;
     private boolean isSearchable;
+    private boolean searched;
     private Item hiddenItem;
 
     public StaticObject(String name, String description, boolean passable, boolean searchable) {
@@ -12,8 +13,10 @@ public class StaticObject extends GameObject {
     }
 
     public boolean isPassable() { return isPassable; }
-    public boolean isSearchable() { return isSearchable; }
-    public void setSearchable(boolean searchable) { this.isSearchable = searchable; }
+    protected void setPassable(boolean passable) { this.isPassable = passable; }
+    public boolean isSearchable() { return isSearchable && !searched; }
+    public boolean wasSearched() { return searched; }
+    public void markSearched() { this.searched = true; }
 
     public Item getHiddenItem() { return hiddenItem; }
     public void setHiddenItem(Item item) { this.hiddenItem = item; }

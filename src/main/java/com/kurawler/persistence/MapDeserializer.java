@@ -264,25 +264,26 @@ public class MapDeserializer {
         return values.containsKey(key) ? (int) values.get(key) : 0;
     }
 
+    public Map loadMapFromJson(String json) {
+        if (json == null || json.isEmpty()) {
+            return null;
+        }
+        try {
+            src = json;
+            pos = 0;
+            return parseMapRoot(parseObject());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public Map loadMapFromFile(String filename) {
         try {
             String content = new String(Files.readAllBytes(Paths.get(filename)));
             src = content;
             pos = 0;
-            LinkedHashMap<String, Object> root = parseObject();
-
-            int width  = (int) root.get("width");
-            int height = (int) root.get("height");
-            Map map = new Map(width, height);
-
-            @SuppressWarnings("unchecked")
-            List<Object> cells = (List<Object>) root.get("cells");
-            for (Object cellObj : cells) {
-                @SuppressWarnings("unchecked")
-                LinkedHashMap<String, Object> cell = (LinkedHashMap<String, Object>) cellObj;
-                deserializeCell(cell, map);
-            }
-
+            Map map = parseMapRoot(parseObject());
             System.out.println("[Persistence] Loaded map from " + filename);
             return map;
         } catch (NoSuchFileException e) {
@@ -292,6 +293,21 @@ public class MapDeserializer {
             e.printStackTrace();
             return null;
         }
+    }
+
+    private Map parseMapRoot(LinkedHashMap<String, Object> root) {
+        int width = (int) root.get("width");
+        int height = (int) root.get("height");
+        Map map = new Map(width, height);
+
+        @SuppressWarnings("unchecked")
+        List<Object> cells = (List<Object>) root.get("cells");
+        for (Object cellObj : cells) {
+            @SuppressWarnings("unchecked")
+            LinkedHashMap<String, Object> cell = (LinkedHashMap<String, Object>) cellObj;
+            deserializeCell(cell, map);
+        }
+        return map;
     }
 
     /**

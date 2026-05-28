@@ -34,9 +34,18 @@ public class StaticContainer extends GameObject {
         if (index < 0 || index >= contents.size()) return null;
         return contents.remove(index);
     }
-    
+
     public boolean removeItem(Item item) { return contents.remove(item); }
 
     public List<Item> getContents() { return new ArrayList<>(contents); }
+
+    /** Live list for in-game take-from-container mutations. */
+    public List<Item> getContentsMutable() { return contents; }
+
     public boolean isEmpty() { return contents.isEmpty(); }
+
+    /** Sprite hint for renderer: empty chest uses open sprite. */
+    public String getSpriteName() {
+        return isEmpty() ? getName() + " open" : getName();
+    }
 }
