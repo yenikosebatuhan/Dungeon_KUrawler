@@ -72,6 +72,10 @@ public class ScreenManager {
         GameView view = new GameView(controller, this);
         view.show(stage);
     }
+    
+    public boolean hasActiveSession() {
+        return currentSession != null;
+    }
 
     public boolean saveCurrentMap(String filename) {
         if (currentSession == null) {
