@@ -33,6 +33,8 @@ import java.util.stream.Stream;
  */
 public class ScreenManager {
     private static final Path SAVES_DIR = Paths.get("saves");
+    private static final Path MAPS_DIR = Paths.get("maps");
+    private static final Path LEGACY_MAP_SAVE = Paths.get("map_save.json");
     private static final DateTimeFormatter SAVE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
@@ -40,12 +42,28 @@ public class ScreenManager {
     private final MapSerializer serializer = new MapSerializer();
     private final MapDeserializer deserializer = new MapDeserializer();
     private GameSession currentSession;
+    private GameView activeGameView;
+    private String pendingEditorStatus;
 
     public ScreenManager(Stage stage) {
         this.stage = stage;
     }
 
+    public void shutdownActiveGameView() {
+        if (activeGameView != null) {
+            activeGameView.shutdown();
+            activeGameView = null;
+        }
+    }
+
+    public String consumeEditorStatusMessage() {
+        String msg = pendingEditorStatus;
+        pendingEditorStatus = null;
+        return msg;
+    }
+
     public void showMainMenu() {
+        shutdownActiveGameView();
         MainMenuScreen menu = new MainMenuScreen(this);
         stage.setScene(menu.createScene());
         stage.setTitle("Dungeon KUrawler");
@@ -60,6 +78,20 @@ public class ScreenManager {
         showPlayMode();
     }
 
+    /** PBI-16: play a map JSON from maps/ with a win objective. */
+    public void startNewGameFromCustomMap() {
+        com.kurawler.model.Map map = showLoadMapDialog();
+        if (map == null) {
+            return;
+        }
+        GameSession session = new GameSession(map);
+        prepareSessionForPlay(session);
+        MapFactory.configureObjectiveForMap(map, session);
+        session.setAchievementManager(new AchievementManager());
+        session.wireObservers();
+        showPlayMode(session);
+    }
+
     public void showPlayMode() {
         if (currentSession == null) {
             currentSession = MapFactory.createDefaultMap();
@@ -68,10 +100,12 @@ public class ScreenManager {
     }
 
     public void showPlayMode(GameSession session) {
+        shutdownActiveGameView();
         currentSession = session;
         session.wireObservers();
         GameController controller = new GameController(session);
         GameView view = new GameView(controller, this);
+        activeGameView = view;
         view.show(stage);
     }
     
@@ -185,10 +219,12 @@ public class ScreenManager {
 
         GameController controller = new GameController(tmSession);
         GameView view = new GameView(controller, this);
+        activeGameView = view;
         view.show(stage);
     }
 
     public void showBuildMode() {
+        shutdownActiveGameView();
         if (currentSession == null) {
             currentSession = MapFactory.createDefaultMap();
         }
@@ -196,8 +232,90 @@ public class ScreenManager {
         editorView.show(stage);
     }
 
+    /** After Play This Map — return to editor without game-over overlay on editor UI. */
+    public void returnToEditorAfterTest(com.kurawler.model.Map map, String statusMessage) {
+        shutdownActiveGameView();
+        restoreHeroForEditor(map);
+        currentSession = new GameSession(map);
+        pendingEditorStatus = statusMessage;
+        new EditorView(this, currentSession).show(stage);
+    }
+
     public boolean saveEditedMap(com.kurawler.model.Map map, String filename) {
         return map != null && serializer.saveMapToFile(map, filename);
+    }
+
+    /** Save editor map to {@code maps/<name>.json} (PDF §4.2). */
+    public boolean showSaveMapDialog(com.kurawler.model.Map map) {
+        if (map == null) {
+            return false;
+        }
+        Optional<String> result = EditorStyledDialog.promptText(
+                stage,
+                "Save Map",
+                "Store your dungeon as JSON in the maps/ folder.",
+                "my_dungeon");
+        if (!result.isPresent()) {
+            return false;
+        }
+        String name = result.get().replaceAll("[^a-zA-Z0-9._-]", "_");
+        if (!name.endsWith(".json")) {
+            name += ".json";
+        }
+        try {
+            Files.createDirectories(MAPS_DIR);
+        } catch (IOException e) {
+            showInfo("Save Map", "Could not create maps folder.");
+            return false;
+        }
+        return serializer.saveMapToFile(map, MAPS_DIR.resolve(name).toString());
+    }
+
+    /** Load a map JSON into the level editor (PDF §4.2). */
+    public com.kurawler.model.Map showLoadMapDialog() {
+        List<MapFileEntry> maps = listMapFiles();
+        if (maps.isEmpty()) {
+            EditorStyledDialog.showMessage(stage, "Load Map",
+                    "No map files found.\nSave a map first — it goes in the maps/ folder.");
+            return null;
+        }
+
+        List<String> labels = new ArrayList<>();
+        for (MapFileEntry entry : maps) {
+            labels.add(entry.label);
+        }
+        Optional<Integer> picked = EditorStyledDialog.chooseIndex(
+                stage,
+                "Load Map",
+                "Pick a saved dungeon to open in the editor.",
+                labels);
+        if (!picked.isPresent()) {
+            return null;
+        }
+        MapFileEntry chosen = maps.get(picked.get());
+        com.kurawler.model.Map loaded = deserializer.loadMapFromFile(chosen.path.toString());
+        if (loaded == null) {
+            EditorStyledDialog.showMessage(stage, "Load Map", "Could not load the selected map.");
+        }
+        return loaded;
+    }
+
+    private List<MapFileEntry> listMapFiles() {
+        List<MapFileEntry> entries = new ArrayList<>();
+        if (Files.isRegularFile(LEGACY_MAP_SAVE)) {
+            entries.add(new MapFileEntry(LEGACY_MAP_SAVE, "map_save.json (project root)"));
+        }
+        if (Files.isDirectory(MAPS_DIR)) {
+            try (Stream<Path> paths = Files.list(MAPS_DIR)) {
+                paths
+                        .filter(p -> p.getFileName().toString().endsWith(".json"))
+                        .sorted(Comparator.comparing(this::lastModifiedSafe).reversed())
+                        .forEach(p -> entries.add(new MapFileEntry(p, p.getFileName().toString())));
+            } catch (IOException ignored) {
+                // empty list
+            }
+        }
+        return entries;
     }
 
     public void playEditedMap(com.kurawler.model.Map map) {
@@ -205,8 +323,23 @@ public class ScreenManager {
             return;
         }
         GameSession session = new GameSession(map);
+        session.setEditorTestPlay(true);
         prepareSessionForPlay(session);
         showPlayMode(session);
+    }
+
+    private void restoreHeroForEditor(com.kurawler.model.Map map) {
+        for (int row = 0; row < map.getHeight(); row++) {
+            for (int col = 0; col < map.getWidth(); col++) {
+                GridCell cell = map.getCell(row, col);
+                if (cell != null && cell.getOccupyingCharacter() instanceof Hero) {
+                    Hero hero = (Hero) cell.getOccupyingCharacter();
+                    hero.heal(hero.getMaxHealth());
+                    hero.restoreMana(hero.getMaxMana());
+                    hero.restoreEnergy(hero.getMaxEnergy());
+                }
+            }
+        }
     }
 
     private void prepareSessionForPlay(GameSession session) {
@@ -320,6 +453,21 @@ public class ScreenManager {
         alert.setHeaderText(null);
         alert.initOwner(stage);
         alert.showAndWait();
+    }
+
+    private static class MapFileEntry {
+        private final Path path;
+        private final String label;
+
+        private MapFileEntry(Path path, String label) {
+            this.path = path;
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
     }
 
     private static class SaveEntry {

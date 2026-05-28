@@ -73,6 +73,13 @@ public class GameLoop {
         isRunning = false;
     }
 
+    /** Call after the active map changes (door / stairs). */
+    public void refreshMap() {
+        if (session != null && session.getMap() != null) {
+            collisionDetector.setMap(session.getMap());
+        }
+    }
+
     /**
      * Internal loop that calls {@link #update(long)} each frame
      * and sleeps to approximate 60 FPS.
@@ -128,13 +135,31 @@ public class GameLoop {
         }
     }
 
+    /** One energy point per second (100 EN max ≈ 100 s from empty). */
+    private static final long MS_PER_ENERGY_REGEN = 1000;
+    private long energyRegenAccumulatorMs;
+
     private void updatePlayTimer(long deltaTime) {
         if (deltaTime <= 0) return;
         playTimeAccumulatorMs += deltaTime;
         if (playTimeAccumulatorMs >= 1000) {
-            session.setPlayDurationTimer(session.getPlayDurationTimer()
-                    + (int) (playTimeAccumulatorMs / 1000));
+            int elapsedSeconds = (int) (playTimeAccumulatorMs / 1000);
+            session.setPlayDurationTimer(session.getPlayDurationTimer() + elapsedSeconds);
             playTimeAccumulatorMs %= 1000;
+        }
+        updateEnergyRegen(deltaTime);
+    }
+
+    private void updateEnergyRegen(long deltaTime) {
+        Hero hero = session.getHero();
+        if (hero == null || !hero.isAlive() || hero.getEnergy() >= hero.getMaxEnergy()) {
+            return;
+        }
+        energyRegenAccumulatorMs += deltaTime;
+        while (energyRegenAccumulatorMs >= MS_PER_ENERGY_REGEN
+                && hero.getEnergy() < hero.getMaxEnergy()) {
+            energyRegenAccumulatorMs -= MS_PER_ENERGY_REGEN;
+            hero.restoreEnergy(1);
         }
     }
 
