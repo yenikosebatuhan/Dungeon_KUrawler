@@ -18,6 +18,8 @@ public class SearchObjectEffect implements Effect {
         }
 
         Item found = object.revealHiddenItem();
+        object.setSearchable(false);
+
         if (found == null) {
             return;
         }
