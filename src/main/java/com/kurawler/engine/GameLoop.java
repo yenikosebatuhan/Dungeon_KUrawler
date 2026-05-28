@@ -6,6 +6,7 @@ import com.kurawler.model.Map;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Projectile;
 import java.util.ArrayList;
 import java.util.List;
@@ -113,6 +114,18 @@ public class GameLoop {
             return;
         }
 
+        // --- BUG 1 FIX: Shadow Clone Expiration Timer ---
+        // PBI-07: Tell the clone how much time has passed, and destroy it if time is up
+        ShadowClone clone = session.getShadowClone();
+        if (clone != null) {
+            clone.tick(deltaTime);
+            if (clone.isExpired()) {
+                session.getHero().removeObserver(clone);
+                session.setShadowClone(null);
+            }
+        }
+        // ------------------------------------------------
+
         updateEnemies();
         if (++projectileTickCounter >= PROJECTILE_TICK_INTERVAL) {
             projectileTickCounter = 0;
@@ -177,12 +190,19 @@ public class GameLoop {
             return;
         }
 
+        // --- BUG 2 FIX: Enemies Deceived by Clone ---
+        // PBI-07: If a ShadowClone is active on the map, all enemies must target it instead of the Hero.
+        ShadowClone clone = session.getShadowClone();
+        Character target = (clone != null && clone.isAlive()) ? clone : hero;
+        // ---------------------------------------------
+
         List<Enemy> enemies = findAllEnemies(map);
         for (Enemy enemy : enemies) {
             if (!enemy.isAlive()) {
                 continue;
             }
-            enemy.decideAction((Character) hero, map, session);
+            // Pass the target (either the clone or the real hero)
+            enemy.decideAction(target, map, session);
         }
     }
 
