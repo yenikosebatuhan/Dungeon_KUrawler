@@ -203,6 +203,7 @@ public class GameController {
         if (session.getHero().getInventory().isFull()) return;
         new RemoveFromCellEffect(row, col, item).apply(session);
         new AddToInventoryEffect(item).apply(session);
+        session.getHero().notifyItemCollected();
         session.advanceTurn();
     }
 

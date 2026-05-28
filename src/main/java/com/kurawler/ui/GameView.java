@@ -127,8 +127,15 @@ public class GameView {
         achievementPopupLabel = new Label();
         achievementPopupLabel.setFont(Font.font("Serif", FontWeight.BOLD, 13));
         achievementPopupLabel.setTextFill(Color.web("#ffd54f"));
+        achievementPopupLabel.setStyle(
+                "-fx-background-color: rgba(14,12,10,0.92);"
+                + "-fx-border-color: #c8a840;"
+                + "-fx-border-width: 1.5;"
+                + "-fx-border-radius: 4;"
+                + "-fx-background-radius: 4;"
+                + "-fx-padding: 5 14 5 14;");
         achievementPopupLabel.setVisible(false);
-        achievementPopupLabel.setEffect(new javafx.scene.effect.DropShadow(6, 0, 0, Color.web("#ffd54f", 0.5)));
+        achievementPopupLabel.setEffect(new javafx.scene.effect.DropShadow(8, 0, 0, Color.web("#c8a840", 0.6)));
         achievementPopupLabel.setMouseTransparent(true);
 
         messageLabel = new Label("");
