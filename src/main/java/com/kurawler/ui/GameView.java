@@ -1442,11 +1442,7 @@ public class GameView {
             boolean equipped = weapon == hero.getEquippedWeapon();
             Button btn = popupButton(equipped ? "Unequip" : "Equip " + weapon.getName(), "#e8c84a");
             btn.setOnAction(e -> {
-                // Use EquipAction pipeline
-                com.kurawler.action.Action action = new com.kurawler.action.EquipAction(weapon);
-                for (com.kurawler.effect.Effect eff : action.resolve(session)) {
-                    eff.apply(session);
-                }
+                controller.equipWeapon(weapon);
                 AudioManager.getInstance().play("interact");
                 popup.close(); render();
             });
@@ -1457,7 +1453,7 @@ public class GameView {
             boolean worn = wearable == hero.getEquippedWearable();
             Button btn = popupButton(worn ? "Remove" : "Wear " + wearable.getName(), "#5dade2");
             btn.setOnAction(e -> {
-                if (worn) hero.unequipWearable();
+                if (worn) controller.unequipWearable();
                 else controller.wearItem(wearable);
                 AudioManager.getInstance().play("interact");
                 popup.close(); render();
