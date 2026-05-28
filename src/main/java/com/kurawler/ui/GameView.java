@@ -1461,7 +1461,7 @@ public class GameView {
         VBox detailPane = new VBox(8);
         detailPane.setAlignment(Pos.CENTER);
         detailPane.setPrefWidth(330);
-        detailPane.setMinHeight(150);
+        detailPane.setMinHeight(70);
         detailPane.setStyle("-fx-background-color: rgba(20,14,6,0.82); "
                 + "-fx-border-color: #8b7530; -fx-border-width: 1.5; -fx-border-radius: 5; "
                 + "-fx-background-radius: 5; -fx-padding: 10 16 10 16;");
@@ -1469,7 +1469,7 @@ public class GameView {
         // Close button
         Button closeBtn = new Button("Close Bag");
         closeBtn.setFont(Font.font("Serif", FontWeight.BOLD, 13));
-        closeBtn.setPrefWidth(160);
+        closeBtn.setPrefWidth(220);
         closeBtn.setPrefHeight(32);
         String cBase = "-fx-background-color: linear-gradient(to bottom, #8b7530, #6a5520); "
                 + "-fx-text-fill: #f0e0b0; -fx-background-radius: 4; -fx-border-radius: 4; "
@@ -1482,9 +1482,11 @@ public class GameView {
         closeBtn.setOnMouseExited(e -> closeBtn.setStyle(cBase));
         closeBtn.setOnAction(e -> popup.close());
 
-        VBox content = new VBox(12, titleLabel, grid, detailPane, closeBtn);
+        VBox.setVgrow(detailPane, Priority.ALWAYS);
+
+        VBox content = new VBox(8, titleLabel, grid, detailPane, closeBtn);
         content.setAlignment(Pos.CENTER);
-        content.setPadding(new Insets(55, 35, 35, 35));
+        content.setPadding(new Insets(170, 30, 22, 30));
         root.getChildren().add(content);
 
         // Shared mutable state: which item is selected
@@ -1494,7 +1496,7 @@ public class GameView {
         Runnable[] refresh = new Runnable[1];
         refresh[0] = () -> {
             Inventory inv = hero.getInventory();
-            titleLabel.setText("INVENTORY (" + inv.getItemCount() + "/8)");
+            titleLabel.setText("(" + inv.getItemCount() + "/8)");
 
             grid.getChildren().clear();
             for (int r = 0; r < 2; r++) {
@@ -1541,8 +1543,7 @@ public class GameView {
         slot.setMaxSize(SIZE, SIZE);
 
         if (item == null) {
-            slot.setStyle("-fx-background-color: #c0a86044; -fx-border-color: #8b753044; "
-                    + "-fx-border-width: 1; -fx-background-radius: 5; -fx-border-radius: 5;");
+            slot.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
             return slot;
         }
 
