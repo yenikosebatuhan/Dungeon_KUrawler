@@ -1065,7 +1065,7 @@ public class GameView {
 
         gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
         gc.setFill(Color.web("#e8c84a"));
-        gc.fillText("\u2694 STR " + hero.getStrength(), statsX, barsTopY + 14);
+        gc.fillText("\u2694 ATK " + hero.calculateDamage(), statsX, barsTopY + 14);
         gc.fillText("\u26E8 DEF " + hero.getDefensePower(), statsX, barsTopY + 14 + 20);
 
         String wpn = hero.getEquippedWeapon() != null ? hero.getEquippedWeapon().getName() : "None";
