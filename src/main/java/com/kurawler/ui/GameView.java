@@ -922,8 +922,12 @@ public class GameView {
                     renderer.drawFloor(gc, sx, sy);
                 }
 
+                if (so != null && !"Wall".equals(so.getName()) && !"Floor".equals(so.getName())) {
+                    renderer.drawStaticObject(gc, sx, sy, so.getName());
+                }
+
                 if (so != null && so.isSearchable()) {
-                    renderer.drawSearchable(gc, sx, sy, so.getName());
+                    renderer.drawSearchableMarker(gc, sx, sy);
                 }
 
                 for (GameObject obj : cell.getObjects()) {

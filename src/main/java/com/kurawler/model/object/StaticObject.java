@@ -13,6 +13,7 @@ public class StaticObject extends GameObject {
 
     public boolean isPassable() { return isPassable; }
     public boolean isSearchable() { return isSearchable; }
+    public void setSearchable(boolean searchable) { this.isSearchable = searchable; }
 
     public Item getHiddenItem() { return hiddenItem; }
     public void setHiddenItem(Item item) { this.hiddenItem = item; }
