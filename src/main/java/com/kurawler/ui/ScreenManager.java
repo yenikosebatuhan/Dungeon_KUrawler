@@ -75,11 +75,32 @@ public class ScreenManager {
 
     public void startNewGame() {
         currentSession = null;
-        showDifficultyScreen(false); 
+        showDifficultyScreen("Default"); 
     }
 
     public void startRandomDungeon() {
-        showDifficultyScreen(true); 
+        showDifficultyScreen("Random"); 
+    }
+
+    public void startTeamMatch() {
+        com.kurawler.model.Map map;
+        if (currentSession != null && currentSession.getMap() != null) {
+            map = currentSession.getMap();
+        } else {
+            map = MapFactory.createDefaultMap().getMap();
+        }
+
+        TeamMatchSession tmSession = new TeamMatchSession(map);
+        if (!tmSession.validateMap()) {
+            Alert alert = new Alert(Alert.AlertType.ERROR,
+                    "Map does not have enough open space for Team Match.");
+            alert.setTitle("Team Match Error");
+            alert.initOwner(stage);
+            alert.showAndWait();
+            return;
+        }
+
+        showDifficultyScreen("TeamMatch");
     }
 
     /** PBI-16: play a map JSON from maps/ with a win objective. */
@@ -193,33 +214,6 @@ public class ScreenManager {
         stage.show();
     }
 
-
-    public void startTeamMatch() {
-        com.kurawler.model.Map map;
-        if (currentSession != null && currentSession.getMap() != null) {
-            map = currentSession.getMap();
-        } else {
-            map = MapFactory.createDefaultMap().getMap();
-        }
-
-        TeamMatchSession tmSession = new TeamMatchSession(map);
-        if (!tmSession.validateMap()) {
-            Alert alert = new Alert(Alert.AlertType.ERROR,
-                    "Map does not have enough open space for Team Match.");
-            alert.setTitle("Team Match Error");
-            alert.initOwner(stage);
-            alert.showAndWait();
-            return;
-        }
-
-        tmSession.initializeMatch();
-        currentSession = tmSession;
-
-        GameController controller = new GameController(tmSession);
-        GameView view = new GameView(controller, this);
-        activeGameView = view;
-        view.show(stage);
-    }
 
     public void showBuildMode() {
         shutdownActiveGameView();
@@ -383,23 +377,37 @@ public class ScreenManager {
         return null;
     }
     
-    public void showDifficultyScreen(boolean isRandom) {
+    public void showDifficultyScreen(String gameType) {
         shutdownActiveGameView();
-        DifficultySelectionScreen diffScreen = new DifficultySelectionScreen(this, isRandom);
+        DifficultySelectionScreen diffScreen = new DifficultySelectionScreen(this, gameType);
         stage.setScene(diffScreen.createScene());
         stage.setTitle("Select Difficulty");
         stage.show();
         stage.centerOnScreen();
     }
 
-    public void launchGameWithDifficulty(boolean isRandom, String difficulty) {
-        if (isRandom) {
+    public void launchGameWithDifficulty(String gameType, String difficulty) {
+        if ("Random".equals(gameType)) {
             com.kurawler.model.ProceduralMapGenerator generator = new com.kurawler.model.ProceduralMapGenerator();
             currentSession = generator.generate();
-        } else {
+            
+        } else if ("TeamMatch".equals(gameType)) {
+            com.kurawler.model.Map map;
+            if (currentSession != null && currentSession.getMap() != null) {
+                map = currentSession.getMap();
+            } else {
+                map = MapFactory.createDefaultMap().getMap();
+            }
+            TeamMatchSession tmSession = new TeamMatchSession(map);
+            tmSession.initializeMatch();
+            currentSession = tmSession;
+            
+        } else { // "Default"
             currentSession = MapFactory.createDefaultMap();
         }
+        
         applyDifficultyToSession(currentSession, difficulty);
+        
         showPlayMode(currentSession);
     }
 
