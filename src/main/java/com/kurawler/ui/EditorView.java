@@ -1,11 +1,10 @@
 package com.kurawler.ui;
 
 import com.kurawler.editor.LevelEditor;
-import javafx.scene.layout.StackPane;
-import javafx.scene.control.ScrollPane;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Map;
+import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.Sorcerer;
@@ -18,48 +17,65 @@ import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Wearable;
 import com.kurawler.model.object.Weapon;
+import com.kurawler.ui.TileRenderer.AssetKind;
+import com.kurawler.ui.TileRenderer.EditorAsset;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.Scene;
-import javafx.scene.transform.Scale;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
-import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.layout.FlowPane;
+import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.scene.text.TextAlignment;
+import javafx.scene.transform.Scale;
 import javafx.stage.Stage;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 /**
- * Level editor — PDF §4.2: drag palette → map, save/load JSON maps.
+ * Dungeon-themed level editor. Every sprite in the project's sheets is sliced
+ * into a placeable asset (via {@link TileRenderer}'s atlas) and grouped into
+ * stone-tab categories. The map starts completely empty so the designer places
+ * everything themselves.
  */
 public class EditorView {
 
     private static final int TILE_SIZE = 48;
-    private static final int PALETTE_VIEWPORT_HEIGHT = 78;
-    private static final int PALETTE_SCROLL_BTN_W = 26;
-    private static final int PALETTE_SCROLL_STEP = 28;
-    private static final int PALETTE_TOTAL_HEIGHT = 108;
-    /** Sidebar sits flush against the map; extra scene width avoids macOS clipping. */
-    private static final int SIDEBAR_WIDTH = 188;
-    private static final int SIDEBAR_PAD = 4;
-    private static final int SIDEBAR_BTN_WIDTH = SIDEBAR_WIDTH - SIDEBAR_PAD * 2;
+
+    private static final int TOOLBAR_HEIGHT = 52;
+    private static final int PANEL_WIDTH = 248;
+    private static final int PANEL_PAD = 10;
+    private static final int CARD_SIZE = 96;
+    private static final int CARD_ICON = 48;
     private static final int WINDOW_FRAME_PAD = 16;
+    private static final double MAX_WINDOW_W = 1280.0;
+    private static final double MAX_WINDOW_H = 760.0;
+    private static final int BG_TILE = 48;
+
+    // Dungeon-stone palette
+    private static final String STONE_DARK = "#13110d";
+    private static final String GOLD = "#c8b880";
+    private static final String GOLD_BRIGHT = "#f0e0a0";
 
     private static final String DRAG_OBJECT = "EDITOR_OBJ:";
     private static final String DRAG_CHARACTER = "EDITOR_CHAR:";
@@ -69,23 +85,36 @@ public class EditorView {
     private final LevelEditor editor;
     private final TileRenderer renderer;
 
+    private final java.util.Map<String, AssetKind> assetKinds = new HashMap<>();
+    private final LinkedHashMap<String, List<EditorAsset>> assetsByCategory = new LinkedHashMap<>();
+
     private Stage stage;
-    private HBox root;
-    private VBox paletteBar;
-    private ScrollPane paletteScroll;
-    private ScrollPane sidebarScroll;
-    private VBox mapColumn;
+    private StackPane sceneRoot;
+    private Canvas bgCanvas;
     private Canvas canvas;
     private Group canvasGroup;
     private Label statusLabel;
+
+    private FlowPane paletteGrid;
+    private ScrollPane paletteScroll;
+    private TextField searchField;
+    private String activeCategory;
+    private String searchQuery = "";
+
     private String selectedObjectName;
     private String selectedCharacterName;
     private EditMode mode = EditMode.PLACE_OBJECT;
+    private String selectedToolId;
     private int hoverRow = -1;
     private int hoverCol = -1;
-    private String highlightedToolId;
-    /** Highlight only top palette chips — not the sidebar text list. */
-    private final java.util.Map<String, Button> paletteToolButtons = new HashMap<>();
+    private int lastPaintRow = -1;
+    private int lastPaintCol = -1;
+    private int currentRotation = 0; // applied to newly placed assets
+
+    private final java.util.Map<String, Button> assetCards = new HashMap<>();
+    private final java.util.Map<String, Button> categoryChips = new HashMap<>();
+    private Button eraseButton;
+    private Button rotateButton;
 
     private enum EditMode {
         PLACE_OBJECT,
@@ -95,11 +124,36 @@ public class EditorView {
 
     public EditorView(ScreenManager screenManager, GameSession session) {
         this.screenManager = screenManager;
-        this.editor = new LevelEditor(session.getMap());
         this.renderer = new TileRenderer(TILE_SIZE);
+
+        // Start from a map paved with the plain stone floor — the designer places
+        // walls/props/items on top of it.
+        Map src = session != null ? session.getMap() : null;
+        int w = src != null ? src.getWidth() : 22;
+        int h = src != null ? src.getHeight() : 16;
+        Map blank = new Map(w, h);
+        pavePlainFloor(blank);
+        this.editor = new LevelEditor(blank);
+
+        indexCatalog();
     }
 
+    /** Fills every cell with the plain, unbroken stone floor as the initial map. */
+    private void pavePlainFloor(Map map) {
+        for (int row = 0; row < map.getHeight(); row++) {
+            for (int col = 0; col < map.getWidth(); col++) {
+                map.getCell(row, col).setStaticObject(
+                        new StaticObject("Stone Floor", "Stone floor tile", true, false));
+            }
+        }
+    }
 
+    private void indexCatalog() {
+        for (EditorAsset asset : renderer.getEditorAssets()) {
+            assetKinds.put(asset.name, asset.kind);
+            assetsByCategory.computeIfAbsent(asset.category, k -> new ArrayList<>()).add(asset);
+        }
+    }
 
     public void show(Stage stage) {
         this.stage = stage;
@@ -110,41 +164,53 @@ public class EditorView {
         canvas = new Canvas(canvasW, canvasH);
         wireCanvasInput();
 
-        statusLabel = new Label("Drag from the palette above, or select a tool and click the map.");
+        statusLabel = new Label("Empty map. Pick an asset, then drag or click to place it.");
         statusLabel.setFont(Font.font("Monospaced", 10));
-        statusLabel.setTextFill(Color.LIGHTGRAY);
+        statusLabel.setTextFill(Color.web("#b8a988"));
         statusLabel.setWrapText(true);
-        statusLabel.setMaxWidth(SIDEBAR_BTN_WIDTH);
-        statusLabel.setAlignment(Pos.TOP_LEFT);
+        statusLabel.setMaxWidth(PANEL_WIDTH - PANEL_PAD * 2);
 
         double scale = computeEditorScale(canvasW, canvasH);
         canvas.getTransforms().setAll(new Scale(scale, scale));
         canvasGroup = new Group(canvas);
 
-        double scaledMapW = canvasW * scale;
-        double scaledMapH = canvasH * scale;
+        StackPane canvasArea = new StackPane(canvasGroup);
+        canvasArea.setAlignment(Pos.CENTER);
+        canvasArea.setStyle("-fx-background-color: " + STONE_DARK + ";");
+        HBox.setHgrow(canvasArea, Priority.ALWAYS);
 
-        paletteBar = buildPaletteBar(scaledMapW);
+        VBox panel = buildLeftPanel();
 
-        mapColumn = new VBox(0, paletteBar, canvasGroup);
-        mapColumn.setAlignment(Pos.TOP_LEFT);
-        mapColumn.setFillWidth(false);
-        applyMapColumnWidth(scaledMapW);
+        HBox body = new HBox(panel, canvasArea);
+        body.setAlignment(Pos.TOP_LEFT);
+        VBox.setVgrow(body, Priority.ALWAYS);
 
-        VBox sidebar = buildSidebar();
-        constrainSidebar(sidebar);
+        VBox content = new VBox(buildToolbar(), body);
 
-        root = new HBox(0, mapColumn, sidebar);
-        root.setAlignment(Pos.TOP_LEFT);
-        root.setStyle("-fx-background-color: #0f0f23;");
-        HBox.setHgrow(mapColumn, Priority.NEVER);
-        HBox.setHgrow(sidebar, Priority.NEVER);
+        double sceneW = sceneWidth(canvasW, scale);
+        double sceneH = sceneHeight(canvasH, scale);
+
+        bgCanvas = new Canvas(sceneW, sceneH);
+        drawDungeonBackground(bgCanvas, sceneW, sceneH);
+
+        sceneRoot = new StackPane(bgCanvas, content);
 
         stage.setTitle("Dungeon KUrawler - Level Editor");
-        stage.setScene(new Scene(root, sceneWidth(scaledMapW), sceneHeight(scaledMapH)));
+        Scene scene = new Scene(sceneRoot, sceneW, sceneH);
+        // 'R' rotates the asset that gets placed next (also available as a toolbar button).
+        scene.setOnKeyPressed(e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.R) {
+                cycleRotation();
+            }
+        });
+        stage.setScene(scene);
         stage.setResizable(false);
         stage.show();
         stage.centerOnScreen();
+
+        if (!assetsByCategory.isEmpty()) {
+            selectCategory(assetsByCategory.keySet().iterator().next());
+        }
 
         String pending = screenManager.consumeEditorStatusMessage();
         if (pending != null) {
@@ -153,284 +219,281 @@ public class EditorView {
         render();
     }
 
-    private double computeEditorScale(int canvasW, int canvasH) {
-        double maxCanvasW = 1280.0 - SIDEBAR_WIDTH - WINDOW_FRAME_PAD;
-        double maxCanvasH = 720.0 - PALETTE_TOTAL_HEIGHT - WINDOW_FRAME_PAD;
-        double scaleX = maxCanvasW / canvasW;
-        double scaleY = maxCanvasH / canvasH;
-        return Math.min(1.0, Math.min(scaleX, scaleY));
-    }
+    // ---------- LAYOUT ----------
 
-    private void applyMapColumnWidth(double width) {
-        mapColumn.setMinWidth(width);
-        mapColumn.setPrefWidth(width);
-        mapColumn.setMaxWidth(width);
-    }
+    private HBox buildToolbar() {
+        Label title = new Label("\u2692  LEVEL EDITOR");
+        title.setFont(Font.font("Serif", FontWeight.BOLD, 20));
+        title.setTextFill(Color.web(GOLD));
+        title.setPadding(new Insets(0, 8, 0, 6));
 
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
 
-    /** PDF §4.2: palette top-left; wrapped rows scroll via themed controls on the right. */
-    private VBox buildPaletteBar(double mapPixelW) {
-        Label hint = new Label("PALETTE  (drag onto map)");
-        hint.setFont(Font.font("Monospaced", FontWeight.BOLD, 11));
-        hint.setTextFill(Color.web("#ffd54f"));
-        hint.setMaxWidth(mapPixelW - 16);
-        hint.setAlignment(Pos.CENTER_LEFT);
+        Button save = stoneButton("Save", 70);
+        save.setOnAction(e -> {
+            boolean saved = screenManager.showSaveMapDialog(editor.getMap());
+            setStatus(saved ? "Map saved under maps/." : "Save cancelled or failed.");
+        });
 
-        double chipsWidth = mapPixelW - PALETTE_SCROLL_BTN_W - 20;
-        FlowPane chips = buildPaletteChips(chipsWidth);
+        Button load = stoneButton("Load", 70);
+        load.setOnAction(e -> {
+            Map loaded = screenManager.showLoadMapDialog();
+            if (loaded != null) {
+                applyLoadedMap(loaded);
+                setStatus("Loaded map " + loaded.getWidth() + "x" + loaded.getHeight() + ".");
+            }
+        });
 
-        paletteScroll = new ScrollPane(chips);
-        paletteScroll.setFitToWidth(true);
-        paletteScroll.setPrefViewportWidth(chipsWidth);
-        paletteScroll.setMinViewportWidth(chipsWidth);
-        paletteScroll.setPrefViewportHeight(PALETTE_VIEWPORT_HEIGHT);
-        paletteScroll.setMaxHeight(PALETTE_VIEWPORT_HEIGHT);
-        paletteScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        paletteScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        paletteScroll.setPannable(true);
-        paletteScroll.setVvalue(0);
-        paletteScroll.setStyle(paletteScrollStyle());
-        HBox.setHgrow(paletteScroll, Priority.ALWAYS);
+        Button play = stoneButton("Play", 70);
+        play.setOnAction(e -> screenManager.playEditedMap(editor.getMap()));
 
-        Button scrollUp = paletteScrollButton("\u25B2");
-        Button scrollDown = paletteScrollButton("\u25BC");
-        scrollUp.setOnAction(e -> nudgePaletteScroll(-1));
-        scrollDown.setOnAction(e -> nudgePaletteScroll(1));
-
-        Label scrollHint = new Label("Scroll");
-        scrollHint.setFont(Font.font("Monospaced", 8));
-        scrollHint.setTextFill(Color.web("#8877aa"));
-
-        VBox scrollTools = new VBox(3, scrollUp, scrollHint, scrollDown);
-        scrollTools.setAlignment(Pos.CENTER);
-        scrollTools.setMinWidth(PALETTE_SCROLL_BTN_W);
-        scrollTools.setPrefWidth(PALETTE_SCROLL_BTN_W);
-        scrollTools.setPadding(new Insets(2, 2, 2, 0));
-        scrollTools.setStyle("-fx-background-color: #221a32; -fx-border-color: #664466; "
-                + "-fx-border-width: 0 0 0 1;");
-
-        HBox chipsRow = new HBox(4, paletteScroll, scrollTools);
-        chipsRow.setAlignment(Pos.TOP_LEFT);
-        chipsRow.setMinWidth(mapPixelW - 16);
-        chipsRow.setPrefWidth(mapPixelW - 16);
-        chipsRow.setMaxWidth(mapPixelW - 16);
-
-        VBox bar = new VBox(4, hint, chipsRow);
-        bar.setAlignment(Pos.TOP_LEFT);
-        bar.setMinWidth(mapPixelW);
-        bar.setPrefWidth(mapPixelW);
-        bar.setMaxWidth(mapPixelW);
-        bar.setMinHeight(PALETTE_TOTAL_HEIGHT);
-        bar.setPadding(new Insets(6, 8, 6, 8));
-        bar.setStyle("-fx-background-color: #1a1a2e; -fx-border-color: #664466; "
-                + "-fx-border-width: 0 0 1 0;");
-        return bar;
-    }
-
-    private FlowPane buildPaletteChips(double wrapWidth) {
-        FlowPane chips = new FlowPane(6, 6);
-        chips.setPrefWrapLength(wrapWidth);
-        chips.setAlignment(Pos.TOP_LEFT);
-        chips.setColumnHalignment(javafx.geometry.HPos.LEFT);
-
-        for (GameObject obj : editor.getPalette().getAvailableObjects()) {
-            chips.getChildren().add(createToolButton(obj.getName(), DRAG_OBJECT + obj.getName(), true));
-        }
-        chips.getChildren().add(sectionChip("|"));
-        for (com.kurawler.model.character.Character character
-                : editor.getPalette().getAvailableCharacters()) {
-            chips.getChildren().add(createToolButton(
-                    character.getName(), DRAG_CHARACTER + character.getName(), true));
-        }
-        chips.getChildren().add(createToolButton("Erase", DRAG_ERASE, true));
-        return chips;
-    }
-
-    private void nudgePaletteScroll(int direction) {
-        if (paletteScroll == null) {
-            return;
-        }
-        double contentH = paletteScroll.getContent().getBoundsInLocal().getHeight();
-        double viewH = paletteScroll.getViewportBounds().getHeight();
-        if (contentH <= viewH + 1) {
-            return;
-        }
-        double range = contentH - viewH;
-        double delta = (PALETTE_SCROLL_STEP / range) * direction;
-        double next = Math.max(0, Math.min(1, paletteScroll.getVvalue() + delta));
-        paletteScroll.setVvalue(next);
-    }
-
-    private void nudgeSidebarScroll(int direction) {
-        if (sidebarScroll == null) {
-            return;
-        }
-        double contentH = sidebarScroll.getContent().getBoundsInLocal().getHeight();
-        double viewH = sidebarScroll.getViewportBounds().getHeight();
-        if (contentH <= viewH + 1) {
-            return;
-        }
-        double range = contentH - viewH;
-        double delta = (PALETTE_SCROLL_STEP / range) * direction;
-        double next = Math.max(0, Math.min(1, sidebarScroll.getVvalue() + delta));
-        sidebarScroll.setVvalue(next);
-    }
-
-    private Button paletteScrollButton(String glyph) {
-        Button button = new Button(glyph);
-        button.setFont(Font.font("Monospaced", FontWeight.BOLD, 10));
-        button.setPrefSize(PALETTE_SCROLL_BTN_W, 28);
-        button.setMinSize(PALETTE_SCROLL_BTN_W, 28);
-        button.setStyle(compactChipStyle("#2a1a3e"));
-        button.setOnMouseEntered(e -> button.setStyle(compactChipStyle("#3d2a5c")));
-        button.setOnMouseExited(e -> button.setStyle(compactChipStyle("#2a1a3e")));
-        return button;
-    }
-
-
-    private String paletteScrollStyle() {
-        return "-fx-background-color: #1a1a2e; -fx-background: #1a1a2e; "
-                + "-fx-border-color: #443355; -fx-border-width: 1; -fx-padding: 2;";
-    }
-
-    private VBox buildSidebar() {
-        Label title = new Label("LEVEL EDITOR");
-        title.setFont(Font.font("Monospaced", FontWeight.BOLD, 13));
-        title.setTextFill(Color.web("#e0e0e0"));
-
-        Button randomItems = editorButton("Add Random Items");
-        randomItems.setOnAction(e -> {
+        Button random = stoneButton("Random", 84);
+        random.setOnAction(e -> {
             com.kurawler.editor.RandomItemGenerator.PopulateResult result =
                     editor.addRandomItemsPerSpec();
-            statusLabel.setText(String.format(
-                    "Added %d floor items, %d container loot, hidden: %s (PDF §4.2).",
+            setStatus(String.format(
+                    "Added %d floor items, %d container loot, hidden: %s.",
                     result.floorItemsPlaced,
                     result.containerLootAdded,
                     result.hiddenItemPlaced ? "yes" : "no"));
             render();
         });
 
-        Button clearMap = editorButton("Clear");
-        clearMap.setOnAction(e -> {
+        Button clear = stoneButton("Clear", 70);
+        clear.setOnAction(e -> {
             editor.clearMap();
-            statusLabel.setText("Map cleared.");
+            pavePlainFloor(editor.getMap());
+            setStatus("Map cleared.");
             render();
         });
 
-        Button undo = editorButton("Undo");
+        Button undo = stoneButton("Undo", 70);
         undo.setOnAction(e -> {
             if (editor.undo()) {
-                statusLabel.setText("Undo applied.");
+                setStatus("Undo applied.");
                 render();
             } else {
-                statusLabel.setText("Nothing to undo.");
+                setStatus("Nothing to undo.");
             }
         });
 
-        Button load = editorButton("Load");
-        load.setOnAction(e -> {
-            Map loaded = screenManager.showLoadMapDialog();
-            if (loaded != null) {
-                applyLoadedMap(loaded);
-                statusLabel.setText("Loaded map " + loaded.getWidth() + "×" + loaded.getHeight() + ".");
-            }
-        });
+        rotateButton = stoneButton("Rotate \u21BB 0\u00B0", 112);
+        rotateButton.setOnAction(e -> cycleRotation());
 
-        Button save = editorButton("Save");
-        save.setOnAction(e -> {
-            boolean saved = screenManager.showSaveMapDialog(editor.getMap());
-            statusLabel.setText(saved ? "Map saved under maps/" : "Save cancelled or failed.");
-        });
-
-        Button play = editorButton("Play Map");
-        play.setOnAction(e -> screenManager.playEditedMap(editor.getMap()));
-
-        Button back = editorButton("Back");
+        Button back = stoneButton("Main Menu", 104);
         back.setOnAction(e -> screenManager.showMainMenu());
 
-        VBox actions = new VBox(4,
-                sectionLabel("Actions"),
-                randomItems, clearMap, undo, load, save, play, back);
-        actions.setAlignment(Pos.TOP_LEFT);
-        actions.setFillWidth(false);
+        HBox bar = new HBox(7, title, spacer, save, load, play, random, rotateButton, clear, undo, back);
+        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.setPadding(new Insets(8, 12, 8, 12));
+        bar.setMinHeight(TOOLBAR_HEIGHT);
+        bar.setPrefHeight(TOOLBAR_HEIGHT);
+        bar.setStyle("-fx-background-color: linear-gradient(to bottom, "
+                + "rgba(42,38,30,0.94), rgba(24,21,16,0.96)); "
+                + "-fx-border-color: #8b7940 transparent #3a3220 transparent; -fx-border-width: 2 0 2 0;");
+        return bar;
+    }
 
-        VBox paletteList = new VBox(4);
-        paletteList.setAlignment(Pos.TOP_LEFT);
-        paletteList.getChildren().add(sectionLabel("Objects"));
-        for (GameObject obj : editor.getPalette().getAvailableObjects()) {
-            paletteList.getChildren().add(sidebarListButton(
-                    obj.getName(), DRAG_OBJECT + obj.getName()));
+    private VBox buildLeftPanel() {
+        Label header = new Label("ASSET  FORGE");
+        header.setFont(Font.font("Serif", FontWeight.BOLD, 15));
+        header.setTextFill(Color.web(GOLD_BRIGHT));
+
+        searchField = new TextField();
+        searchField.setPromptText("\uD83D\uDD0D  Search assets...");
+        searchField.setFont(Font.font("Monospaced", 11));
+        searchField.setStyle(searchFieldStyle());
+        searchField.textProperty().addListener((obs, old, val) -> {
+            searchQuery = val == null ? "" : val.trim().toLowerCase();
+            rebuildPaletteCards();
+        });
+
+        FlowPane categoryStrip = new FlowPane(5, 5);
+        categoryStrip.setAlignment(Pos.TOP_LEFT);
+        for (String cat : assetsByCategory.keySet()) {
+            Button chip = categoryChip(cat);
+            categoryChips.put(cat, chip);
+            categoryStrip.getChildren().add(chip);
         }
-        paletteList.getChildren().add(sectionLabel("Characters"));
-        for (com.kurawler.model.character.Character character
-                : editor.getPalette().getAvailableCharacters()) {
-            paletteList.getChildren().add(sidebarListButton(
-                    character.getName(), DRAG_CHARACTER + character.getName()));
+
+        eraseButton = new Button("\u2716  Erase Tool");
+        eraseButton.setFont(Font.font("Serif", FontWeight.BOLD, 12));
+        eraseButton.setMaxWidth(Double.MAX_VALUE);
+        eraseButton.setMinHeight(28);
+        eraseButton.setStyle(eraseStyle(false));
+        eraseButton.setOnAction(e -> selectEraseTool());
+        wireDragSource(eraseButton, DRAG_ERASE);
+
+        paletteGrid = new FlowPane(8, 8);
+        paletteGrid.setAlignment(Pos.TOP_LEFT);
+        paletteGrid.setPadding(new Insets(2));
+
+        paletteScroll = new ScrollPane(paletteGrid);
+        paletteScroll.setFitToWidth(true);
+        paletteScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        paletteScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        paletteScroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        paletteScroll.getStylesheets().add(dungeonScrollStylesheet());
+        VBox.setVgrow(paletteScroll, Priority.ALWAYS);
+
+        VBox panel = new VBox(8, header, searchField, categoryStrip, eraseButton, paletteScroll, statusLabel);
+        panel.setPadding(new Insets(PANEL_PAD));
+        panel.setMinWidth(PANEL_WIDTH);
+        panel.setPrefWidth(PANEL_WIDTH);
+        panel.setMaxWidth(PANEL_WIDTH);
+        panel.setStyle("-fx-background-color: linear-gradient(to right, "
+                + "rgba(28,24,18,0.95), rgba(20,17,12,0.92)); "
+                + "-fx-border-color: transparent #8b7940 transparent transparent; -fx-border-width: 0 2 0 0;");
+        return panel;
+    }
+
+    private void selectCategory(String category) {
+        activeCategory = category;
+        // Picking a category exits search mode.
+        if (searchField != null && !searchField.getText().isEmpty()) {
+            searchField.clear(); // triggers listener -> rebuildPaletteCards()
+        } else {
+            rebuildPaletteCards();
         }
-        paletteList.getChildren().add(sidebarListButton("Erase", DRAG_ERASE));
-
-        sidebarScroll = new ScrollPane(paletteList);
-        sidebarScroll.setFitToWidth(true);
-        double listWidth = SIDEBAR_BTN_WIDTH - PALETTE_SCROLL_BTN_W - 4;
-        sidebarScroll.setPrefViewportWidth(listWidth);
-        sidebarScroll.setMinViewportWidth(listWidth);
-        sidebarScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        sidebarScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        sidebarScroll.setPannable(true);
-        sidebarScroll.setStyle(paletteScrollStyle());
-        HBox.setHgrow(sidebarScroll, Priority.ALWAYS);
-
-        Button listScrollUp = paletteScrollButton("\u25B2");
-        Button listScrollDown = paletteScrollButton("\u25BC");
-        listScrollUp.setOnAction(e -> nudgeSidebarScroll(-1));
-        listScrollDown.setOnAction(e -> nudgeSidebarScroll(1));
-
-        VBox listScrollTools = new VBox(4, listScrollUp, listScrollDown);
-        listScrollTools.setAlignment(Pos.CENTER);
-        listScrollTools.setMinWidth(PALETTE_SCROLL_BTN_W);
-        listScrollTools.setPrefWidth(PALETTE_SCROLL_BTN_W);
-        listScrollTools.setPadding(new Insets(2, 0, 2, 0));
-        listScrollTools.setStyle("-fx-background-color: #221a32; -fx-border-color: #664466; "
-                + "-fx-border-width: 1 0 0 0;");
-
-        HBox objectListRow = new HBox(2, sidebarScroll, listScrollTools);
-        objectListRow.setAlignment(Pos.TOP_LEFT);
-        VBox.setVgrow(objectListRow, Priority.ALWAYS);
-
-        VBox tools = new VBox(6, title, statusLabel, actions, objectListRow);
-        tools.setAlignment(Pos.TOP_LEFT);
-        constrainSidebar(tools);
-        tools.setPadding(new Insets(SIDEBAR_PAD));
-        tools.setStyle("-fx-background-color: #1a1a2e; -fx-border-color: #664466; "
-                + "-fx-border-width: 0 0 0 1;");
-        title.setMaxWidth(SIDEBAR_BTN_WIDTH);
-        return tools;
     }
 
-    private void constrainSidebar(VBox sidebar) {
-        sidebar.setMinWidth(SIDEBAR_WIDTH);
-        sidebar.setPrefWidth(SIDEBAR_WIDTH);
-        sidebar.setMaxWidth(SIDEBAR_WIDTH);
-        sidebar.setFillWidth(true);
+    private void rebuildPaletteCards() {
+        paletteGrid.getChildren().clear();
+        assetCards.clear();
+
+        List<EditorAsset> shown = new ArrayList<>();
+        if (!searchQuery.isEmpty()) {
+            // Search spans every category so the designer can find anything fast.
+            for (List<EditorAsset> group : assetsByCategory.values()) {
+                for (EditorAsset asset : group) {
+                    if (asset.name.toLowerCase().contains(searchQuery)) {
+                        shown.add(asset);
+                    }
+                }
+            }
+        } else if (activeCategory != null) {
+            shown = assetsByCategory.getOrDefault(activeCategory, new ArrayList<>());
+        }
+
+        // Category chips are only "active" when not searching.
+        for (java.util.Map.Entry<String, Button> e : categoryChips.entrySet()) {
+            boolean on = searchQuery.isEmpty() && e.getKey().equals(activeCategory);
+            e.getValue().setStyle(categoryChipStyle(on));
+        }
+
+        for (EditorAsset asset : shown) {
+            paletteGrid.getChildren().add(createAssetCard(asset));
+        }
+        if (shown.isEmpty()) {
+            Label empty = new Label("No assets match \"" + searchQuery + "\"");
+            empty.setFont(Font.font("Monospaced", 10));
+            empty.setTextFill(Color.web("#8a7c5c"));
+            empty.setWrapText(true);
+            empty.setPadding(new Insets(10, 4, 4, 4));
+            paletteGrid.getChildren().add(empty);
+        }
+        refreshSelectionHighlight();
+        if (paletteScroll != null) {
+            paletteScroll.setVvalue(0);
+        }
     }
 
-    private double sceneWidth(double mapPixelW) {
-        return mapPixelW + SIDEBAR_WIDTH + WINDOW_FRAME_PAD;
+    private Button createAssetCard(EditorAsset asset) {
+        boolean isCharacter = asset.kind == AssetKind.HERO
+                || asset.kind == AssetKind.KNIGHT
+                || asset.kind == AssetKind.SORCERER;
+        String payload = (isCharacter ? DRAG_CHARACTER : DRAG_OBJECT) + asset.name;
+
+        Canvas icon = new Canvas(CARD_ICON, CARD_ICON);
+        renderer.drawEditorPaletteIcon(icon.getGraphicsContext2D(), CARD_ICON, asset.name);
+
+        Label label = new Label(asset.name);
+        label.setFont(Font.font("Monospaced", 9));
+        label.setTextFill(Color.web("#cabb95"));
+        label.setWrapText(true);
+        label.setAlignment(Pos.CENTER);
+        label.setTextAlignment(TextAlignment.CENTER);
+        label.setMaxWidth(CARD_SIZE - 10);
+
+        VBox box = new VBox(3, icon, label);
+        box.setAlignment(Pos.CENTER);
+
+        Button card = new Button();
+        card.setGraphic(box);
+        card.setPrefSize(CARD_SIZE, CARD_SIZE + 8);
+        card.setMinSize(CARD_SIZE, CARD_SIZE + 8);
+        card.setStyle(cardStyle(false));
+
+        assetCards.put(asset.name, card);
+        wireDragSource(card, payload);
+        card.setOnAction(e -> applyDragSelection(payload));
+        return card;
     }
 
-    private double sceneHeight(double mapPixelH) {
-        return mapPixelH + PALETTE_TOTAL_HEIGHT + WINDOW_FRAME_PAD;
+    // ---------- SELECTION ----------
+
+    private void applyDragSelection(String payload) {
+        if (payload.startsWith(DRAG_OBJECT)) {
+            selectObjectTool(payload.substring(DRAG_OBJECT.length()));
+        } else if (payload.startsWith(DRAG_CHARACTER)) {
+            selectCharacterTool(payload.substring(DRAG_CHARACTER.length()));
+        } else if (DRAG_ERASE.equals(payload)) {
+            selectEraseTool();
+        }
     }
 
-    private Button sidebarListButton(String label, String payload) {
-        Button button = editorButton(label);
-        wireDragSource(button, payload);
-        button.setOnAction(e -> applyToolSelection(label, payload));
-        return button;
+    private void selectObjectTool(String name) {
+        selectedObjectName = name;
+        selectedCharacterName = null;
+        mode = EditMode.PLACE_OBJECT;
+        selectedToolId = name;
+        refreshSelectionHighlight();
+        setStatus("Placing: " + name + " — drag onto the map or click a tile.");
     }
+
+    private void selectCharacterTool(String name) {
+        selectedCharacterName = name;
+        selectedObjectName = null;
+        mode = EditMode.PLACE_CHARACTER;
+        selectedToolId = name;
+        refreshSelectionHighlight();
+        setStatus("Placing: " + name + " — drag onto the map or click a tile.");
+    }
+
+    private void selectEraseTool() {
+        mode = EditMode.ERASE;
+        selectedObjectName = null;
+        selectedCharacterName = null;
+        selectedToolId = DRAG_ERASE;
+        refreshSelectionHighlight();
+        setStatus("Erase — drag onto the map or click a tile to remove.");
+    }
+
+    private void refreshSelectionHighlight() {
+        for (java.util.Map.Entry<String, Button> e : assetCards.entrySet()) {
+            e.getValue().setStyle(cardStyle(e.getKey().equals(selectedToolId)));
+        }
+        if (eraseButton != null) {
+            eraseButton.setStyle(eraseStyle(DRAG_ERASE.equals(selectedToolId)));
+        }
+    }
+
+    // ---------- CANVAS INPUT ----------
 
     private void wireCanvasInput() {
-        canvas.setOnMouseClicked(this::handleMapClick);
+        // Click-and-drag painting: press, then drag the cursor to fill every cell it
+        // passes over (gaps from fast drags are filled by interpolation).
+        canvas.setOnMousePressed(e -> {
+            lastPaintRow = -1;
+            lastPaintCol = -1;
+            paintAt(e);
+        });
+        canvas.setOnMouseDragged(this::paintAt);
+        canvas.setOnMouseReleased(e -> {
+            lastPaintRow = -1;
+            lastPaintCol = -1;
+        });
         canvas.setOnDragOver(this::handleDragOver);
         canvas.setOnDragEntered(this::handleDragOver);
         canvas.setOnDragExited(e -> {
@@ -453,16 +516,6 @@ public class EditorView {
         });
     }
 
-    private void applyDragSelection(String payload) {
-        if (payload.startsWith(DRAG_OBJECT)) {
-            selectObjectTool(payload.substring(DRAG_OBJECT.length()));
-        } else if (payload.startsWith(DRAG_CHARACTER)) {
-            selectCharacterTool(payload.substring(DRAG_CHARACTER.length()));
-        } else if (DRAG_ERASE.equals(payload)) {
-            selectEraseTool();
-        }
-    }
-
     private void handleDragOver(DragEvent e) {
         if (e.getDragboard().hasString()) {
             e.acceptTransferModes(TransferMode.COPY);
@@ -480,7 +533,7 @@ public class EditorView {
             int row = tileRow(e.getY());
             int col = tileCol(e.getX());
             success = applyPayloadAt(board.getString(), row, col);
-            statusLabel.setText(success
+            setStatus(success
                     ? "Placed at (" + row + "," + col + ")."
                     : "Cannot place at (" + row + "," + col + ").");
             render();
@@ -497,17 +550,169 @@ public class EditorView {
         }
         if (payload.startsWith(DRAG_OBJECT)) {
             String name = payload.substring(DRAG_OBJECT.length());
-            GameObject obj = editor.getPalette().getObjectByName(name);
+            GameObject obj = createObjectFor(name);
             return obj != null && editor.placeObject(row, col, obj);
         }
         if (payload.startsWith(DRAG_CHARACTER)) {
             String name = payload.substring(DRAG_CHARACTER.length());
-            com.kurawler.model.character.Character character =
-                    editor.getPalette().getCharacterByName(name);
+            Character character = createCharacterFor(name);
             return character != null && editor.placeCharacter(row, col, character);
         }
         return false;
     }
+
+    /** Paints the current selection at the cursor, interpolating across skipped cells. */
+    private void paintAt(MouseEvent e) {
+        int row = tileRow(e.getY());
+        int col = tileCol(e.getX());
+        if (row == lastPaintRow && col == lastPaintCol) {
+            return;
+        }
+        boolean changed;
+        if (lastPaintRow >= 0 && (Math.abs(row - lastPaintRow) > 1 || Math.abs(col - lastPaintCol) > 1)) {
+            changed = paintLine(lastPaintRow, lastPaintCol, row, col);
+        } else {
+            changed = applyAtCell(row, col);
+        }
+        lastPaintRow = row;
+        lastPaintCol = col;
+        setStatus(changed
+                ? "Updated cell (" + row + "," + col + ")."
+                : "Cannot edit cell (" + row + "," + col + ").");
+        render();
+    }
+
+    /** Applies the current tool to a straight line of cells (Bresenham) for smooth drags. */
+    private boolean paintLine(int r0, int c0, int r1, int c1) {
+        boolean any = false;
+        int dr = Math.abs(r1 - r0), dc = Math.abs(c1 - c0);
+        int sr = r0 < r1 ? 1 : -1, sc = c0 < c1 ? 1 : -1;
+        int err = dc - dr;
+        int r = r0, c = c0;
+        while (true) {
+            any |= applyAtCell(r, c);
+            if (r == r1 && c == c1) {
+                break;
+            }
+            int e2 = 2 * err;
+            if (e2 > -dr) { err -= dr; c += sc; }
+            if (e2 < dc) { err += dc; r += sr; }
+        }
+        return any;
+    }
+
+    /** Places/erases at a single cell according to the active mode. No render/status. */
+    private boolean applyAtCell(int row, int col) {
+        if (mode == EditMode.ERASE) {
+            return editor.removeObject(row, col, null);
+        }
+        if (mode == EditMode.PLACE_OBJECT && selectedObjectName != null) {
+            GameObject obj = createObjectFor(selectedObjectName);
+            return obj != null && editor.placeObject(row, col, obj);
+        }
+        if (mode == EditMode.PLACE_CHARACTER && selectedCharacterName != null) {
+            Character character = createCharacterFor(selectedCharacterName);
+            return character != null && editor.placeCharacter(row, col, character);
+        }
+        return false;
+    }
+
+    // ---------- ASSET FACTORIES (kind -> model object) ----------
+
+    private GameObject createObjectFor(String name) {
+        AssetKind kind = assetKinds.get(name);
+        if (kind == null) {
+            return null;
+        }
+        GameObject obj;
+        switch (kind) {
+            case WEAPON:
+                obj = new Weapon(name, "A dungeon weapon", 5);
+                break;
+            case ITEM:
+                obj = createItemFor(name);
+                break;
+            case CONTAINER:
+                obj = new StaticContainer(name, "A container");
+                break;
+            case STATIC:
+                obj = new StaticObject(name, "A dungeon prop", false, false);
+                break;
+            case NPC:
+                obj = new StaticObject(name, "A dungeon dweller", false, false);
+                break;
+            case TERRAIN_WALL:
+                obj = new StaticObject(name, "A solid wall that blocks movement", false, false);
+                break;
+            case TERRAIN_FLOOR:
+                obj = new StaticObject(name, "Stone floor tile", true, false);
+                break;
+            default:
+                return null;
+        }
+        if (obj != null) {
+            obj.setRotation(currentRotation);
+        }
+        return obj;
+    }
+
+    /** Builds the right model type for a catalog item from its real name. */
+    private Item createItemFor(String name) {
+        String n = name.toLowerCase();
+        if (n.contains("potion") || n.contains("elixir") || n.contains("tonic")) {
+            if (n.contains("mana")) {
+                return new Consumable(name, "Restores mana", 0, 20, 0);
+            }
+            if (n.contains("energy")) {
+                return new Consumable(name, "Restores energy", 0, 0, 20);
+            }
+            return new Consumable(name, "Restores health", 20, 0, 0);
+        }
+        if (n.contains("key")) {
+            return new Key(name, "Unlocks something", "key");
+        }
+        if (n.contains("ring") || n.contains("amulet")) {
+            return new Wearable(name, "A magical trinket (+1 DEF)", 1);
+        }
+        if (n.contains("scroll") || n.contains("tome") || n.contains("book")) {
+            return new Scroll(name, "Ancient writing", "Faded arcane runes.", 5);
+        }
+        // Gems, coins, skulls, orbs, charms — treasure pickups.
+        return new Key(name, "A valuable treasure", "treasure");
+    }
+
+    private Character createCharacterFor(String name) {
+        AssetKind kind = assetKinds.get(name);
+        if (kind == null) {
+            return null;
+        }
+        Character character;
+        switch (kind) {
+            case HERO:
+                character = new Hero("Adventurer");
+                break;
+            case KNIGHT:
+                character = new Knight();
+                break;
+            case SORCERER:
+                character = new Sorcerer();
+                break;
+            default:
+                return null;
+        }
+        character.setRotation(currentRotation);
+        return character;
+    }
+
+    private int tileRow(double y) {
+        return Math.max(0, Math.min(editor.getMap().getHeight() - 1, (int) (y / TILE_SIZE)));
+    }
+
+    private int tileCol(double x) {
+        return Math.max(0, Math.min(editor.getMap().getWidth() - 1, (int) (x / TILE_SIZE)));
+    }
+
+    // ---------- MAP / LOADING ----------
 
     private void applyLoadedMap(Map map) {
         editor.setMap(map);
@@ -519,173 +724,61 @@ public class EditorView {
         double scale = computeEditorScale(canvasW, canvasH);
         canvas.getTransforms().setAll(new Scale(scale, scale));
 
-        double scaledMapW = canvasW * scale;
-        double scaledMapH = canvasH * scale;
-
-        if (stage != null && mapColumn != null) {
-            VBox newPaletteBar = buildPaletteBar(scaledMapW);
-            mapColumn.getChildren().set(0, newPaletteBar);
-            paletteBar = newPaletteBar;
-            applyMapColumnWidth(scaledMapW);
-            stage.setWidth(sceneWidth(scaledMapW));
-            stage.setHeight(sceneHeight(scaledMapH));
+        if (stage != null) {
+            double sceneW = sceneWidth(canvasW, scale);
+            double sceneH = sceneHeight(canvasH, scale);
+            stage.setWidth(sceneW);
+            stage.setHeight(sceneH);
+            stage.centerOnScreen();
+            if (bgCanvas != null) {
+                bgCanvas.setWidth(sceneW);
+                bgCanvas.setHeight(sceneH);
+                drawDungeonBackground(bgCanvas, sceneW, sceneH);
+            }
         }
         hoverRow = -1;
         hoverCol = -1;
         render();
     }
 
-    private Button createToolButton(String label, String payload, boolean compact) {
-        Button button = paletteChip(label);
-        button.setContentDisplay(ContentDisplay.TOP);
-
-        Canvas icon = new Canvas(36, 36);
-        renderer.drawEditorPaletteIcon(icon.getGraphicsContext2D(), 36, label);
-
-        Label nameLbl = new Label(shortPaletteLabel(label));
-        nameLbl.setFont(Font.font("Monospaced", 9));
-        nameLbl.setTextFill(Color.web("#c8b880"));
-
-        VBox graphic = new VBox(4, icon, nameLbl);
-        graphic.setAlignment(Pos.CENTER);
-        button.setGraphic(graphic);
-
-        paletteToolButtons.put(label, button);
-        wireDragSource(button, payload);
-        button.setOnAction(e -> applyToolSelection(label, payload));
-        return button;
+    private double computeEditorScale(int canvasW, int canvasH) {
+        double maxCanvasW = MAX_WINDOW_W - PANEL_WIDTH - WINDOW_FRAME_PAD;
+        double maxCanvasH = MAX_WINDOW_H - TOOLBAR_HEIGHT - WINDOW_FRAME_PAD;
+        double scaleX = maxCanvasW / canvasW;
+        double scaleY = maxCanvasH / canvasH;
+        return Math.min(1.0, Math.min(scaleX, scaleY));
     }
 
-    private String shortPaletteLabel(String name) {
-        if (name.length() <= 10) {
-            return name;
-        }
-        return name.substring(0, 9) + "…";
+    private double sceneWidth(int canvasW, double scale) {
+        return canvasW * scale + PANEL_WIDTH + WINDOW_FRAME_PAD;
     }
 
-    private void applyToolSelection(String label, String payload) {
-        applyDragSelection(payload);
-        refreshPaletteHighlight(label);
+    private double sceneHeight(int canvasH, double scale) {
+        return canvasH * scale + TOOLBAR_HEIGHT + WINDOW_FRAME_PAD;
     }
 
-    private void refreshPaletteHighlight(String toolId) {
-        highlightedToolId = toolId;
-        for (java.util.Map.Entry<String, Button> entry : paletteToolButtons.entrySet()) {
-            boolean selected = toolId != null && toolId.equals(entry.getKey());
-            String bg = "Erase".equals(entry.getKey()) ? "#4a2020" : "#2a1a3e";
-            entry.getValue().setStyle(selected ? selectedChipStyle(bg) : chipStyle(bg));
+    private void setStatus(String text) {
+        if (statusLabel != null) {
+            statusLabel.setText(text);
         }
     }
 
-    private void selectObjectTool(String name) {
-        selectedObjectName = name;
-        selectedCharacterName = null;
-        mode = EditMode.PLACE_OBJECT;
-        refreshPaletteHighlight(name);
-        statusLabel.setText("Placing: " + name + " — drag onto map or click a tile");
-    }
-
-    private void selectCharacterTool(String name) {
-        selectedCharacterName = name;
-        selectedObjectName = null;
-        mode = EditMode.PLACE_CHARACTER;
-        refreshPaletteHighlight(name);
-        statusLabel.setText("Placing: " + name + " — drag onto map or click a tile");
-    }
-
-    private void selectEraseTool() {
-        mode = EditMode.ERASE;
-        selectedObjectName = null;
-        selectedCharacterName = null;
-        refreshPaletteHighlight("Erase");
-        statusLabel.setText("Erase — drag onto map or click a tile");
-    }
-
-    private void handleMapClick(MouseEvent e) {
-        int row = tileRow(e.getY());
-        int col = tileCol(e.getX());
-        boolean changed = false;
-        if (mode == EditMode.ERASE) {
-            changed = editor.removeObject(row, col, null);
-        } else if (mode == EditMode.PLACE_OBJECT && selectedObjectName != null) {
-            GameObject obj = editor.getPalette().getObjectByName(selectedObjectName);
-            changed = editor.placeObject(row, col, obj);
-        } else if (mode == EditMode.PLACE_CHARACTER && selectedCharacterName != null) {
-            com.kurawler.model.character.Character character =
-                    editor.getPalette().getCharacterByName(selectedCharacterName);
-            changed = editor.placeCharacter(row, col, character);
+    /** Cycles the placement rotation 0 -> 90 -> 180 -> 270 -> 0 (button or 'R' key). */
+    private void cycleRotation() {
+        currentRotation = (currentRotation + 90) % 360;
+        if (rotateButton != null) {
+            rotateButton.setText("Rotate \u21BB " + currentRotation + "\u00B0");
         }
-        statusLabel.setText(changed
-                ? "Updated cell (" + row + "," + col + ")."
-                : "Cannot edit cell (" + row + "," + col + ").");
-        render();
+        setStatus("Rotation set to " + currentRotation + "\u00B0 (applies to assets you place next).");
     }
 
-    private int tileRow(double y) {
-        return Math.max(0, Math.min(editor.getMap().getHeight() - 1, (int) (y / TILE_SIZE)));
-    }
-
-    private int tileCol(double x) {
-        return Math.max(0, Math.min(editor.getMap().getWidth() - 1, (int) (x / TILE_SIZE)));
-    }
-
-    private Label sectionLabel(String text) {
-        Label label = new Label(text);
-        label.setFont(Font.font("Monospaced", FontWeight.BOLD, 11));
-        label.setTextFill(Color.web("#ffd54f"));
-        label.setAlignment(Pos.CENTER_LEFT);
-        return label;
-    }
-
-    private Button editorButton(String text) {
-        Button button = new Button(text);
-        button.setFont(Font.font("Monospaced", 10));
-        button.setMinWidth(SIDEBAR_BTN_WIDTH);
-        button.setPrefWidth(SIDEBAR_BTN_WIDTH);
-        button.setMaxWidth(SIDEBAR_BTN_WIDTH);
-        button.setMinHeight(24);
-        button.setPrefHeight(24);
-        button.setMaxHeight(24);
-        button.setAlignment(Pos.CENTER_LEFT);
-        button.setContentDisplay(ContentDisplay.LEFT);
-        button.setStyle(compactChipStyle("#2a1a3e"));
-        return button;
-    }
-
-    private Button paletteChip(String text) {
-        Button button = new Button(text);
-        button.setFont(Font.font("Monospaced", 10));
-        button.setMinWidth(Region.USE_COMPUTED_SIZE);
-        button.setStyle(chipStyle("#2a1a3e"));
-        return button;
-    }
-
-    private Label sectionChip(String text) {
-        Label label = new Label(text);
-        label.setTextFill(Color.web("#666"));
-        return label;
-    }
-
-    private String chipStyle(String bg) {
-        return "-fx-background-color: " + bg + "; -fx-text-fill: #e0e0e0; "
-                + "-fx-border-color: #664466; -fx-border-width: 1; -fx-cursor: hand; -fx-padding: 4 8;";
-    }
-
-    private String compactChipStyle(String bg) {
-        return "-fx-background-color: " + bg + "; -fx-text-fill: #e0e0e0; "
-                + "-fx-border-color: #664466; -fx-border-width: 1; -fx-cursor: hand; "
-                + "-fx-padding: 3 6; -fx-alignment: center-left;";
-    }
-
-    private String selectedChipStyle(String bg) {
-        return "-fx-background-color: " + bg + "; -fx-text-fill: #ffd54f; "
-                + "-fx-border-color: #ffd54f; -fx-border-width: 2; -fx-cursor: hand; -fx-padding: 3 6;";
-    }
+    // ---------- RENDER ----------
 
     private void render() {
         Map map = editor.getMap();
         GraphicsContext gc = canvas.getGraphicsContext2D();
-        gc.setFill(Color.web("#0f0f23"));
+        gc.setImageSmoothing(false);
+        gc.setFill(Color.web(STONE_DARK));
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
         for (int row = 0; row < map.getHeight(); row++) {
@@ -693,34 +786,29 @@ public class EditorView {
                 int sx = col * TILE_SIZE;
                 int sy = row * TILE_SIZE;
                 GridCell cell = map.getCell(row, col);
-                StaticObject so = cell.getStaticObject();
-                if (so != null && !so.isPassable()) {
-                    renderer.drawWall(gc, sx, sy);
-                } else {
-                    renderer.drawFloor(gc, sx, sy);
-                }
-
-                if (so != null && so.isSearchable()) {
-                    renderer.drawSearchable(gc, sx, sy, so.getName());
-                }
+                drawTileBase(gc, cell.getStaticObject(), sx, sy);
 
                 for (GameObject obj : cell.getObjects()) {
                     drawObject(gc, obj, sx, sy);
                 }
 
-                com.kurawler.model.character.Character occupant = cell.getOccupyingCharacter();
-                if (occupant instanceof Hero) {
-                    renderer.drawHero(gc, sx, sy);
-                } else if (occupant instanceof Knight) {
-                    renderer.drawEnemy(gc, sx, sy, "Knight");
-                } else if (occupant instanceof Sorcerer) {
-                    renderer.drawEnemy(gc, sx, sy, "Sorcerer");
+                Character occupant = cell.getOccupyingCharacter();
+                if (occupant != null) {
+                    withRotation(gc, sx, sy, occupant.getRotation(), () -> {
+                        if (occupant instanceof Hero) {
+                            renderer.drawHero(gc, sx, sy);
+                        } else if (occupant instanceof Knight) {
+                            renderer.drawEnemy(gc, sx, sy, "Knight");
+                        } else if (occupant instanceof Sorcerer) {
+                            renderer.drawEnemy(gc, sx, sy, "Sorcerer");
+                        }
+                    });
                 }
             }
         }
 
         if (hoverRow >= 0 && hoverCol >= 0) {
-            gc.setStroke(Color.web("#ffd54f", 0.85));
+            gc.setStroke(Color.web(GOLD, 0.9));
             gc.setLineWidth(2);
             gc.setLineDashes(6, 4);
             gc.strokeRect(hoverCol * TILE_SIZE + 2, hoverRow * TILE_SIZE + 2,
@@ -728,7 +816,7 @@ public class EditorView {
             gc.setLineDashes(null);
         }
 
-        gc.setStroke(Color.web("#c8a840", 0.22));
+        gc.setStroke(Color.web("#c8a840", 0.16));
         gc.setLineWidth(1);
         for (int r = 0; r <= map.getHeight(); r++) {
             gc.strokeLine(0, r * TILE_SIZE, map.getWidth() * TILE_SIZE, r * TILE_SIZE);
@@ -738,25 +826,191 @@ public class EditorView {
         }
     }
 
-    private void drawObject(GraphicsContext gc, GameObject obj, int sx, int sy) {
-        if (obj instanceof StaticContainer) {
-            renderer.drawContainerByName(gc, sx, sy, obj.getName());
-        } else if (obj instanceof Weapon) {
-            renderer.drawWeaponByName(gc, sx, sy, obj.getName());
-        } else if (obj instanceof Scroll) {
-            renderer.drawItem(gc, sx, sy, "Scroll");
-        } else if (obj instanceof Wearable) {
-            renderer.drawItem(gc, sx, sy, "Wearable");
-        } else if (obj instanceof Consumable) {
-            Consumable c = (Consumable) obj;
-            String pt = c.getManaAmount() > 0 ? "ManaPotion"
-                    : c.getEnergyAmount() > 0 ? "EnergyPotion"
-                    : "HealthPotion";
-            renderer.drawConsumable(gc, sx, sy, pt);
-        } else if (obj instanceof Key) {
-            renderer.drawItem(gc, sx, sy, "Key");
-        } else if (obj instanceof Item) {
-            renderer.drawItem(gc, sx, sy, "Item");
+    private void drawTileBase(GraphicsContext gc, StaticObject so, int sx, int sy) {
+        if (so == null) {
+            renderer.drawFloor(gc, sx, sy);
+            return;
         }
+        withRotation(gc, sx, sy, so.getRotation(), () -> {
+            String name = so.getName();
+            if (renderer.isWallName(name) && !so.isSearchable()) {
+                renderer.drawWallByName(gc, sx, sy, name);
+            } else if (renderer.isFloorName(name)) {
+                renderer.drawFloorByName(gc, sx, sy, name);
+            } else if (so.isSearchable()) {
+                renderer.drawFloor(gc, sx, sy);
+                renderer.drawSearchable(gc, sx, sy, name);
+            } else {
+                renderer.drawFloor(gc, sx, sy);
+                renderer.drawStaticDecor(gc, sx, sy, so);
+            }
+        });
+    }
+
+    private void drawObject(GraphicsContext gc, GameObject obj, int sx, int sy) {
+        withRotation(gc, sx, sy, obj.getRotation(), () -> {
+            if (obj instanceof StaticContainer) {
+                renderer.drawContainerByName(gc, sx, sy, obj.getName());
+            } else if (obj instanceof Item) {
+                renderer.drawItemObject(gc, sx, sy, (Item) obj);
+            }
+        });
+    }
+
+    /** Runs {@code draw} with the canvas rotated clockwise around the tile's centre. */
+    private void withRotation(GraphicsContext gc, int sx, int sy, int rot, Runnable draw) {
+        if (rot % 360 == 0) {
+            draw.run();
+            return;
+        }
+        gc.save();
+        double cx = sx + TILE_SIZE / 2.0;
+        double cy = sy + TILE_SIZE / 2.0;
+        gc.translate(cx, cy);
+        gc.rotate(rot);
+        gc.translate(-cx, -cy);
+        draw.run();
+        gc.restore();
+    }
+
+    private void drawDungeonBackground(Canvas bg, double w, double h) {
+        GraphicsContext gc = bg.getGraphicsContext2D();
+        gc.setImageSmoothing(false);
+        gc.setFill(Color.web("#0a0a08"));
+        gc.fillRect(0, 0, w, h);
+
+        SpriteSheet walls = new SpriteSheet("/assets/walls_x3.png", BG_TILE);
+        if (walls.isLoaded()) {
+            Image[] wallTiles = {
+                    walls.getSprite(0, 1), walls.getSprite(1, 1),
+                    walls.getSprite(2, 1), walls.getSprite(3, 1), walls.getSprite(4, 1)
+            };
+            Image[] floorTiles = {
+                    walls.getSprite(0, 3), walls.getSprite(1, 3),
+                    walls.getSprite(2, 3), walls.getSprite(3, 3)
+            };
+            for (int y = 0; y <= h; y += BG_TILE) {
+                for (int x = 0; x <= w; x += BG_TILE) {
+                    int hash = Math.abs((x * 73856093) ^ (y * 19349663));
+                    boolean wall = (y < BG_TILE * 2) || hash % 6 == 0;
+                    Image tile = wall
+                            ? wallTiles[hash % wallTiles.length]
+                            : floorTiles[hash % floorTiles.length];
+                    if (tile != null) {
+                        gc.drawImage(tile, x, y, BG_TILE, BG_TILE);
+                    }
+                }
+            }
+        }
+        // Darken so the UI panels read clearly over the texture.
+        gc.setFill(Color.web("#0a0908", 0.62));
+        gc.fillRect(0, 0, w, h);
+    }
+
+    // ---------- STONE THEME STYLES ----------
+
+    private Button stoneButton(String text, double width) {
+        Button btn = new Button(text);
+        btn.setFont(Font.font("Serif", FontWeight.BOLD, 13));
+        btn.setPrefWidth(width);
+        btn.setPrefHeight(32);
+        btn.setMinHeight(32);
+        btn.setStyle(stoneBase());
+        btn.setOnMouseEntered(e -> btn.setStyle(stoneHover()));
+        btn.setOnMouseExited(e -> btn.setStyle(stoneBase()));
+        btn.setOnMousePressed(e -> btn.setStyle(stonePressed()));
+        btn.setOnMouseReleased(e -> btn.setStyle(btn.isHover() ? stoneHover() : stoneBase()));
+        return btn;
+    }
+
+    private String stoneBase() {
+        return "-fx-background-color: linear-gradient(to bottom, #4a4438, #2e2a22, #1e1b16, #2a2720); "
+                + "-fx-text-fill: " + GOLD + "; -fx-background-radius: 5; -fx-border-radius: 5; "
+                + "-fx-border-color: #8b7940 #5a4e30 #3a3220 #8b7940; -fx-border-width: 2; -fx-cursor: hand; "
+                + "-fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 5, 0, 0, 2);";
+    }
+
+    private String stoneHover() {
+        return "-fx-background-color: linear-gradient(to bottom, #5a5448, #3e3a30, #2a2720, #353028); "
+                + "-fx-text-fill: " + GOLD_BRIGHT + "; -fx-background-radius: 5; -fx-border-radius: 5; "
+                + "-fx-border-color: #c8a850 #8b7940 #5a4e30 #c8a850; -fx-border-width: 2; -fx-cursor: hand; "
+                + "-fx-effect: dropshadow(gaussian, rgba(200,168,80,0.3), 10, 0, 0, 0);";
+    }
+
+    private String stonePressed() {
+        return "-fx-background-color: linear-gradient(to bottom, #1e1b16, #252018, #2e2a22); "
+                + "-fx-text-fill: #a89860; -fx-background-radius: 5; -fx-border-radius: 5; "
+                + "-fx-border-color: #5a4e30 #8b7940 #8b7940 #5a4e30; -fx-border-width: 2; -fx-cursor: hand; "
+                + "-fx-effect: innershadow(gaussian, rgba(0,0,0,0.8), 7, 0, 2, 2);";
+    }
+
+    private Button categoryChip(String label) {
+        Button chip = new Button(label);
+        chip.setFont(Font.font("Serif", FontWeight.BOLD, 11));
+        chip.setOnAction(e -> selectCategory(label));
+        chip.setStyle(categoryChipStyle(false));
+        return chip;
+    }
+
+    private String categoryChipStyle(boolean selected) {
+        if (selected) {
+            return "-fx-background-color: linear-gradient(to bottom, #5a5040, #3a3328); "
+                    + "-fx-text-fill: " + GOLD_BRIGHT + "; -fx-border-color: #c8a850; -fx-border-width: 1.5; "
+                    + "-fx-cursor: hand; -fx-padding: 3 9; -fx-background-radius: 4; -fx-border-radius: 4;";
+        }
+        return "-fx-background-color: linear-gradient(to bottom, #322c22, #201c14); "
+                + "-fx-text-fill: #9a8e70; -fx-border-color: #5a4e30; -fx-border-width: 1; "
+                + "-fx-cursor: hand; -fx-padding: 3 9; -fx-background-radius: 4; -fx-border-radius: 4;";
+    }
+
+    private String searchFieldStyle() {
+        return "-fx-background-color: linear-gradient(to bottom, #1a1610, #241f16); "
+                + "-fx-text-fill: " + GOLD_BRIGHT + "; -fx-prompt-text-fill: #7a6e50; "
+                + "-fx-border-color: #5a4e30; -fx-border-width: 1.5; "
+                + "-fx-background-radius: 5; -fx-border-radius: 5; -fx-padding: 5 8; "
+                + "-fx-highlight-fill: #8b7940; -fx-highlight-text-fill: #15120c; "
+                + "-fx-effect: innershadow(gaussian, rgba(0,0,0,0.6), 5, 0, 0, 1);";
+    }
+
+    /** Scoped dungeon-styled scrollbar (dark stone track, aged-gold thumb). */
+    private String dungeonScrollStylesheet() {
+        String css = ".scroll-pane,.scroll-pane>.viewport{-fx-background-color:transparent;}"
+                + ".scroll-pane>.corner{-fx-background-color:transparent;}"
+                + ".scroll-bar:vertical{-fx-background-color:transparent;-fx-pref-width:12;-fx-padding:0;}"
+                + ".scroll-bar:vertical>.track{-fx-background-color:rgba(20,17,12,0.85);"
+                + "-fx-background-radius:6;-fx-border-color:#3a3220;-fx-border-radius:6;-fx-border-width:1;}"
+                + ".scroll-bar:vertical>.track-background{-fx-background-color:transparent;}"
+                + ".scroll-bar:vertical>.thumb{-fx-background-color:linear-gradient(to right,#8b7940,#5a4e2c);"
+                + "-fx-background-radius:6;-fx-border-color:#c8a850;-fx-border-width:1;-fx-border-radius:6;}"
+                + ".scroll-bar:vertical>.thumb:hover{-fx-background-color:linear-gradient(to right,#d4b860,#8b7940);}"
+                + ".scroll-bar:vertical>.increment-button,.scroll-bar:vertical>.decrement-button{"
+                + "-fx-background-color:transparent;-fx-padding:0;-fx-pref-height:0;}"
+                + ".scroll-bar:vertical>.increment-arrow,.scroll-bar:vertical>.decrement-arrow{"
+                + "-fx-shape:\"\";-fx-padding:0;}";
+        return "data:text/css;base64,"
+                + java.util.Base64.getEncoder().encodeToString(css.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    private String cardStyle(boolean selected) {
+        if (selected) {
+            return "-fx-background-color: linear-gradient(to bottom, #3a3322, #221d12); "
+                    + "-fx-border-color: #f0e0a0; -fx-border-width: 2; -fx-cursor: hand; -fx-padding: 4; "
+                    + "-fx-background-radius: 5; -fx-border-radius: 5; "
+                    + "-fx-effect: dropshadow(gaussian, rgba(200,168,80,0.45), 9, 0, 0, 0);";
+        }
+        return "-fx-background-color: linear-gradient(to bottom, #2a2519, #15120c); "
+                + "-fx-border-color: #594d2f; -fx-border-width: 1.5; -fx-cursor: hand; -fx-padding: 4; "
+                + "-fx-background-radius: 5; -fx-border-radius: 5; "
+                + "-fx-effect: innershadow(gaussian, rgba(0,0,0,0.55), 5, 0, 0, 2);";
+    }
+
+    private String eraseStyle(boolean selected) {
+        String border = selected ? "#ff8866" : "#6a3a28";
+        String bg = selected
+                ? "linear-gradient(to bottom, #5a2a1c, #3a1a12)"
+                : "linear-gradient(to bottom, #34221a, #1f1410)";
+        return "-fx-background-color: " + bg + "; -fx-text-fill: #ecc0a0; "
+                + "-fx-border-color: " + border + "; -fx-border-width: " + (selected ? 2 : 1.5) + "; "
+                + "-fx-cursor: hand; -fx-padding: 3 6; -fx-background-radius: 4; -fx-border-radius: 4;";
     }
 }
