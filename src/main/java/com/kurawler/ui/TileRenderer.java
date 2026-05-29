@@ -132,11 +132,13 @@ public class TileRenderer {
         if ((img = loadImg("/assets/dc_chest_open.png")) != null) chestOpenSprite  = img;
         if ((img = loadImg("/assets/dc_crate.png"))      != null) crateSprite      = img;
         // Statics / dungeon
-        if ((img = loadImg("/assets/dc_pool.png"))       != null) poolSprite       = img;
-        if ((img = loadImg("/assets/dc_column.png"))     != null) columnSprite     = img;
-        if ((img = loadImg("/assets/dc_bookshelf.png"))  != null) bookshelfSprite  = img;
-        if ((img = loadImg("/assets/dc_door_closed.png"))!= null) doorSprite       = img;
-        if ((img = loadImg("/assets/dc_door_open.png"))  != null) doorOpenSprite   = img;
+        if ((img = loadImg("/assets/dc_pool.png"))        != null) poolSprite       = img;
+        if ((img = loadImg("/assets/dc_column.png"))      != null) columnSprite     = img;
+        if ((img = loadImg("/assets/dc_bookshelf.png"))   != null) bookshelfSprite  = img;
+        if ((img = loadImg("/assets/dc_pedestal.png"))    != null) pedestalSprite   = img;
+        if ((img = loadImg("/assets/dc_pedestal.png"))    != null) altarSprite      = img;
+        if ((img = loadImg("/assets/dc_door_closed.png")) != null) doorSprite       = img;
+        if ((img = loadImg("/assets/dc_door_open.png"))   != null) doorOpenSprite   = img;
     }
 
     private void loadWallsAndFloors() {
@@ -420,8 +422,11 @@ public class TileRenderer {
         drawSearchableLabel(gc, screenX, screenY, name);
     }
 
-    /** Tall bookshelf — not a floor hatch / chest (vault key is hidden here in Entry Hall). */
     private void drawColumnProp(GraphicsContext gc, int screenX, int screenY) {
+        if (columnSprite != null) {
+            gc.drawImage(columnSprite, screenX, screenY, tileSize, tileSize);
+            return;
+        }
         double cx = screenX + tileSize / 2.0 - 6;
         double baseY = screenY + tileSize - 10;
         gc.setFill(Color.web("#6a6a7a"));
@@ -434,6 +439,10 @@ public class TileRenderer {
     }
 
     private void drawPoolProp(GraphicsContext gc, int screenX, int screenY) {
+        if (poolSprite != null) {
+            gc.drawImage(poolSprite, screenX, screenY, tileSize, tileSize);
+            return;
+        }
         double cx = screenX + tileSize / 2.0;
         double cy = screenY + tileSize / 2.0 + 4;
         gc.setFill(Color.web("#1a4a6a", 0.9));
@@ -443,6 +452,10 @@ public class TileRenderer {
     }
 
     private void drawBookshelfProp(GraphicsContext gc, int screenX, int screenY) {
+        if (bookshelfSprite != null) {
+            gc.drawImage(bookshelfSprite, screenX, screenY, tileSize, tileSize);
+            return;
+        }
         double x = screenX + 8;
         double y = screenY + 4;
         double w = tileSize - 16;
