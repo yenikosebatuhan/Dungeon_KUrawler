@@ -65,6 +65,7 @@ public class MapSerializer {
         sb.append("  \"height\": ").append(map.getHeight()).append(",\n");
         sb.append("  \"playDurationTimer\": ").append(session.getPlayDurationTimer()).append(",\n");
         sb.append("  \"currentMode\": \"").append(escape(session.getCurrentMode())).append("\",\n");
+        sb.append("  \"difficulty\": \"").append(escape(session.getDifficulty())).append("\",\n");
         sb.append("  \"targetObjective\": ").append(session.getTargetObjective() != null
                 ? buildObjectJson(session.getTargetObjective()) : "null").append(",\n");
         sb.append("  \"hero\": ").append(buildHeroJson(session.getHero())).append(",\n");
