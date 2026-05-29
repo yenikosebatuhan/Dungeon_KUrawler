@@ -18,6 +18,10 @@ public abstract class Character {
     
     // Link to Map system
     private GridCell currentCell;
+    private int rotation; // clockwise degrees, normalised to 0/90/180/270
+
+    public int getRotation() { return rotation; }
+    public void setRotation(int degrees) { this.rotation = ((degrees % 360) + 360) % 360; }
 
     protected Character(String name, int maxHealth, int attackPower, int defensePower,
                         int strength, int maxMana, int maxEnergy) {

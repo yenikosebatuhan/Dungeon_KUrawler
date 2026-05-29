@@ -8,13 +8,44 @@ import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.Wearable;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
+import javafx.scene.image.PixelReader;
+import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 public class TileRenderer {
 
     private static final int SPRITE_SIZE = 48;
 
     private final int tileSize;
+
+    /** What kind of model object an editor catalog asset becomes when placed. */
+    public enum AssetKind {
+        WEAPON, ITEM, CONTAINER, STATIC, HERO, KNIGHT, SORCERER, NPC, TERRAIN_WALL, TERRAIN_FLOOR
+    }
+
+    /** A placeable asset entry surfaced in the level editor palette. */
+    public static final class EditorAsset {
+        public final String name;
+        public final String category;
+        public final AssetKind kind;
+
+        public EditorAsset(String name, String category, AssetKind kind) {
+            this.name = name;
+            this.category = category;
+            this.kind = kind;
+        }
+    }
+
+    // Sliced sprite sheets — every usable tile is exposed in the editor
+    private SpriteAtlas weaponsAtlas;
+    private SpriteAtlas itemsAtlas;
+    private SpriteAtlas containersAtlas;
+    private SpriteAtlas charactersAtlas;
+    private final LinkedHashMap<String, Image> atlasRegistry = new LinkedHashMap<>();
+    private final List<EditorAsset> editorAssets = new ArrayList<>();
 
     private final SpriteSheet characters;
     private final SpriteSheet walls;
@@ -74,6 +105,20 @@ public class TileRenderer {
     private Image energyPotionSprite;
     private Image[] sparkleFrames;
 
+    // Extra DCSS assets exposed in the level editor
+    private Image goldChestSprite;
+    private Image stairsDownSprite;
+    private Image stairsUpSprite;
+    private Image statueSprite;
+    private Image fountainSprite;
+    private Image sarcophagusSprite;
+    private Image lanternSprite;
+    private Image goldPileSprite;
+    private Image wallStoneSprite;
+    private Image wallDarkSprite;
+    private Image wallBrownSprite;
+    private Image[] floorStoneSprites;
+
     public TileRenderer(int tileSize) {
         this.tileSize = tileSize;
 
@@ -85,6 +130,268 @@ public class TileRenderer {
         containers = new SpriteSheet("/assets/containers_x3.png", SPRITE_SIZE);
 
         loadSprites();
+        buildEditorCatalog();
+    }
+
+    /**
+     * Builds the full level-editor asset catalog by slicing every sprite sheet
+     * into its individual tiles. Each non-empty tile becomes a placeable asset
+     * registered by a stable, friendly name so it renders identically in the
+     * palette, on the map, and after save/load.
+     */
+    private void buildEditorCatalog() {
+        weaponsAtlas = new SpriteAtlas("/assets/weapons_x3.png", SPRITE_SIZE);
+        itemsAtlas = new SpriteAtlas("/assets/items_x3.png", SPRITE_SIZE);
+        containersAtlas = new SpriteAtlas("/assets/containers_x3.png", SPRITE_SIZE);
+        charactersAtlas = new SpriteAtlas("/assets/characters_x3.png", SPRITE_SIZE);
+
+        Image wsSheet = loadImg("/assets/walls and statics x3.png");
+
+        // --- Walls / Floors: each is a distinct, theme-matching sprite (no random
+        //     per-tile variants). Brick = main tileset, Dark = rock, Brown = orange brick.
+        editorAssets.add(new EditorAsset("Wall", "Walls/Floors", AssetKind.TERRAIN_WALL));
+        editorAssets.add(new EditorAsset("Dark Wall", "Walls/Floors", AssetKind.TERRAIN_WALL));
+        editorAssets.add(new EditorAsset("Brown Wall", "Walls/Floors", AssetKind.TERRAIN_WALL));
+
+        // Decorated solid wall variants pulled straight from the tileset's wall row
+        // (vine, water grate, barred window, mooring ring, coloured torch sconces).
+        if (wsSheet != null) {
+            addWallVariant(wsSheet, "Vine Wall", 3, 1);
+            addWallVariant(wsSheet, "Water Grate", 4, 1);
+            addWallVariant(wsSheet, "Caged Wall", 5, 1);
+            addWallVariant(wsSheet, "Ring Wall", 6, 1);
+            addWallVariant(wsSheet, "Red Torch Wall", 11, 1);
+            addWallVariant(wsSheet, "Green Torch Wall", 12, 1);
+            addWallVariant(wsSheet, "Blue Torch Wall", 13, 1);
+        }
+
+        // Every floor tile from the tileset's floor block — plain first (default),
+        // then all the cobble/rubble/gravel variants. Each is its own placeable floor.
+        if (wsSheet != null) {
+            addFloorTile(wsSheet, "Stone Floor", 4, 3);
+            addFloorTile(wsSheet, "Smooth Floor", 1, 2);
+            addFloorTile(wsSheet, "Speckled Floor", 0, 2);
+            addFloorTile(wsSheet, "Dusty Floor", 2, 2);
+            addFloorTile(wsSheet, "Cobbled Floor", 1, 3);
+            addFloorTile(wsSheet, "Gravel Floor", 2, 3);
+            addFloorTile(wsSheet, "Stone Rubble", 0, 3);
+            addFloorTile(wsSheet, "Cobble Border", 0, 4);
+            addFloorTile(wsSheet, "Rubble Floor", 2, 4);
+            addFloorTile(wsSheet, "Rocky Floor", 3, 4);
+            addFloorTile(wsSheet, "Pebble Floor", 0, 5);
+            addFloorTile(wsSheet, "Worn Floor", 2, 5);
+        }
+
+        // --- Statics: use the clean, individually-cropped dc_* prop tiles (the big
+        //     "walls and statics" sheet is made of multi-tile structures, so slicing it
+        //     produces meaningless half-wall fragments). Each file maps to its real name.
+        addNamedSprites("Statics", AssetKind.STATIC, new String[][] {
+                { "/assets/dc_column.png", "Stone Column" },
+                { "/assets/dc_column2.png", "Carved Column" },
+                { "/assets/dc_column3.png", "Ruined Column" },
+                { "/assets/dc_pool.png", "Gargoyle Pool" },
+                { "/assets/dc_fountain_blue.png", "Stone Fountain" },
+                { "/assets/dc_fountain_sparkling.png", "Magic Fountain" },
+                { "/assets/dc_bookshelf_book.png", "Bookshelf" },
+                { "/assets/dc_book.png", "Reading Lectern" },
+                { "/assets/dc_pedestal.png", "Stone Pedestal" },
+                { "/assets/dc_statue.png", "Stone Statue" },
+                { "/assets/dc_statue_sword.png", "Knight Statue" },
+                { "/assets/dc_sarcophagus.png", "Sarcophagus" },
+                { "/assets/dc_door_closed.png", "Wooden Door" },
+                { "/assets/dc_door_open.png", "Open Door" },
+                { "/assets/dc_door_runed.png", "Runed Door" },
+                { "/assets/dc_stairs_down.png", "Stairs Down" },
+                { "/assets/dc_stairs_up.png", "Stairs Up" },
+                { "/assets/dc_lantern.png", "Lantern" },
+                { "/assets/dc_lamp.png", "Oil Lamp" },
+                { "/assets/dc_gold.png", "Gold Pile" },
+                { "/assets/dc_orb.png", "Glowing Orb" },
+                { "/assets/dc_orb2.png", "Blue Orb" },
+                { "/assets/dc_orb3.png", "Dark Orb" },
+                { "/assets/dc_gateway_enter.png", "Gateway" },
+                { "/assets/dc_portal_blue.png", "Blue Portal" },
+                { "/assets/dc_portal_magic.png", "Magic Portal" },
+        });
+
+        // --- Complete multi-tile structures cropped whole from the tileset (the big
+        //     wooden door, arches, window, carpets, barrels) so they are never sliced
+        //     into half-wall fragments. Rendered aspect-preserved.
+        if (wsSheet != null) {
+            addStructure(wsSheet, "Great Door", 176, 38, 48, 42);
+            addStructure(wsSheet, "Stone Archway", 64, 32, 48, 64);
+            addStructure(wsSheet, "Barred Window", 112, 32, 48, 64);
+            addStructure(wsSheet, "Red Carpet", 384, 48, 31, 44);
+            addStructure(wsSheet, "Tan Carpet", 416, 48, 31, 44);
+            addStructure(wsSheet, "Barrel Stack", 176, 80, 32, 46);
+        }
+
+        // --- Weapons: clean 1-per-tile grid, named by row/column position.
+        addSlicedSheet(weaponsAtlas, "Weapons", AssetKind.WEAPON, (c, r) -> gridName(WEAPON_GRID, c, r, "Old Blade"));
+        // --- Items: clean 6x4 grid, exact names per cell.
+        addSlicedSheet(itemsAtlas, "Items", AssetKind.ITEM, (c, r) -> gridName(ITEM_GRID, c, r, "Relic"));
+        // --- Containers: clean 4x6 grid of chests/crates/pouches.
+        addSlicedSheet(containersAtlas, "Containers", AssetKind.CONTAINER, (c, r) -> gridName(CONTAINER_GRID, c, r, "Chest"));
+
+        // --- Characters: functional placeables first, then NPC standees named by class/row.
+        editorAssets.add(new EditorAsset("Hero", "Characters", AssetKind.HERO));
+        editorAssets.add(new EditorAsset("Knight", "Characters", AssetKind.KNIGHT));
+        editorAssets.add(new EditorAsset("Sorcerer", "Characters", AssetKind.SORCERER));
+        addSlicedSheet(charactersAtlas, "Characters", AssetKind.NPC, (c, r) -> characterName(r));
+    }
+
+    /** Resolves a unique catalog name and registers it once. */
+    private String registerUnique(String base) {
+        String name = base;
+        int dup = 1;
+        while (atlasRegistry.containsKey(name)) {
+            dup++;
+            name = base + " " + dup;
+        }
+        return name;
+    }
+
+    private interface TileNamer {
+        String nameFor(int col, int row);
+    }
+
+    /** Slices a clean grid sheet, naming each non-empty tile via {@code namer}. */
+    private void addSlicedSheet(SpriteAtlas atlas, String category, AssetKind kind, TileNamer namer) {
+        if (atlas == null || !atlas.isLoaded()) {
+            return;
+        }
+        for (int r = 0; r < atlas.getRows(); r++) {
+            for (int c = 0; c < atlas.getCols(); c++) {
+                if (!atlas.isNonEmpty(c, r)) {
+                    continue;
+                }
+                String name = registerUnique(namer.nameFor(c, r));
+                atlasRegistry.put(name, atlas.getTile(c, r));
+                editorAssets.add(new EditorAsset(name, category, kind));
+            }
+        }
+    }
+
+    /** Registers a single floor tile (passable) under the Walls/Floors category. */
+    private void addFloorTile(Image sheet, String name, int col, int row) {
+        Image crop = cropPx(sheet, col * 16, row * 16, 16, 16);
+        if (crop == null) {
+            return;
+        }
+        String unique = registerUnique(name);
+        atlasRegistry.put(unique, crop);
+        editorAssets.add(new EditorAsset(unique, "Walls/Floors", AssetKind.TERRAIN_FLOOR));
+    }
+
+    /** Registers a single decorated wall tile (solid) under the Walls/Floors category. */
+    private void addWallVariant(Image sheet, String name, int col, int row) {
+        Image crop = cropPx(sheet, col * 16, row * 16, 16, 16);
+        if (crop == null) {
+            return;
+        }
+        String unique = registerUnique(name);
+        atlasRegistry.put(unique, crop);
+        editorAssets.add(new EditorAsset(unique, "Walls/Floors", AssetKind.STATIC));
+    }
+
+    /** Crops a multi-tile region (base-pixel coords) out of an x3 sheet and registers it. */
+    private void addStructure(Image sheet, String name, int bx, int by, int bw, int bh) {
+        Image crop = cropPx(sheet, bx, by, bw, bh);
+        if (crop == null) {
+            return;
+        }
+        String unique = registerUnique(name);
+        atlasRegistry.put(unique, crop);
+        editorAssets.add(new EditorAsset(unique, "Statics", AssetKind.STATIC));
+    }
+
+    /** Crop helper for the x3 ("3x scaled") sheets: input coords are in base pixels. */
+    private Image cropPx(Image src, int bx, int by, int bw, int bh) {
+        if (src == null) {
+            return null;
+        }
+        PixelReader pr = src.getPixelReader();
+        if (pr == null) {
+            return null;
+        }
+        int s = 3;
+        int x = bx * s, y = by * s, w = bw * s, h = bh * s;
+        if (x < 0 || y < 0 || w <= 0 || h <= 0 || x + w > src.getWidth() || y + h > src.getHeight()) {
+            return null;
+        }
+        return new WritableImage(pr, x, y, w, h);
+    }
+
+    /** Registers individual, pre-cropped sprite files under their real display names. */
+    private void addNamedSprites(String category, AssetKind kind, String[][] fileNamePairs) {
+        for (String[] pair : fileNamePairs) {
+            Image img = loadImg(pair[0]);
+            if (img == null) {
+                continue;
+            }
+            String name = registerUnique(pair[1]);
+            atlasRegistry.put(name, img);
+            editorAssets.add(new EditorAsset(name, category, kind));
+        }
+    }
+
+    private static String gridName(String[][] grid, int col, int row, String fallback) {
+        if (row >= 0 && row < grid.length && col >= 0 && col < grid[row].length) {
+            String n = grid[row][col];
+            if (n != null && !n.isEmpty()) {
+                return n;
+            }
+        }
+        return fallback;
+    }
+
+    private static String characterName(int row) {
+        switch (row) {
+            case 0: return "Robed Acolyte";
+            case 1: return "Cyan Mage";
+            case 2: return "Adventurer";
+            case 3: return "Blue Wizard";
+            default: return "Dungeon Dweller";
+        }
+    }
+
+    // === Real per-cell names derived from inspecting the actual sprite sheets ===
+
+    // items_x3.png (6 cols x 4 rows): row0 keys, row1 potions+rings, row2 skulls/gems/coins, row3 orb/book/scrolls
+    private static final String[][] ITEM_GRID = {
+            { "Skull Key", "Silver Key", "Gold Key", "Brass Key", "Key Ring", "Ornate Key" },
+            { "Health Potion", "Mana Potion", "Energy Potion", "Ruby Ring", "Emerald Ring", "Sapphire Ring" },
+            { "Bone Skull", "Cracked Skull", "Gold Gem", "Amber Gem", "Topaz Gem", "Gold Coins" },
+            { "Crystal Orb", "Spell Book", "Glyph Scroll", "Rune Scroll", "Sigil Scroll", "Curse Scroll" },
+    };
+
+    // containers_x3.png (4 cols x 6 rows): chests/crates/pouches and their open variants
+    private static final String[][] CONTAINER_GRID = {
+            { "Dark Chest", "Gilded Chest", "Wooden Crate", "Tall Crate" },
+            { "Iron Chest", "Banded Chest", "Wooden Box", "Storage Box" },
+            { "Open Dark Chest", "Open Gilded Chest", "", "" },
+            { "Oak Chest", "Crimson Chest", "Silver Chest", "Open Crate" },
+            { "Bronze Chest", "Copper Chest", "Amber Chest", "Leather Pouch" },
+            { "Open Bronze Chest", "Open Copper Chest", "Open Amber Chest", "Coin Pouch" },
+    };
+
+    // weapons_x3.png (10 cols x 10 rows): predominantly blades with axes/maces/staves/bow mixed in
+    private static final String[][] WEAPON_GRID = {
+            { "Iron Sword", "Steel Sword", "Soldier's Sword", "Gilded Sword", "Wooden Sword",
+              "Dark Sword", "Sapphire Sword", "Royal Sword", "Knight's Sword", "Longsword" },
+            { "War Hammer", "Iron Mace", "Wooden Staff", "Spiked Club", "Morning Star",
+              "Gilded Rapier", "Brass Sabre", "Steel Rapier", "Silver Sword", "Bronze Sword" },
+            { "Shortsword", "Cutlass", "Bone Cleaver", "Hand Axe", "Battle Axe",
+              "Dagger", "Dirk", "Stiletto", "Gold Dagger", "Jeweled Blade" },
+            { "Carving Knife", "Butcher's Cleaver", "Estoc", "Needle Sword", "Obsidian Sword",
+              "Jade Sword", "Crimson Sword", "War Pick", "Heavy Mace", "Iron Maul" },
+            { "Golden Sword", "Ornate Greatsword", "Quarterstaff", "Gem Staff", "Bone Staff",
+              "Hunter's Arrow", "Short Bow", "Throwing Dart", "War Spear", "Bomb" },
+    };
+
+    /** All placeable editor assets, in display order (grouped by category). */
+    public List<EditorAsset> getEditorAssets() {
+        return new ArrayList<>(editorAssets);
     }
 
     private void loadSprites() {
@@ -140,6 +447,48 @@ public class TileRenderer {
         if ((img = loadImg("/assets/dc_pedestal.png"))    != null) altarSprite      = img;
         if ((img = loadImg("/assets/dc_door_closed.png")) != null) doorSprite       = img;
         if ((img = loadImg("/assets/dc_door_open.png"))   != null) doorOpenSprite   = img;
+        // Extra dungeon statics / terrain exposed in the level editor
+        if ((img = loadImg("/assets/dc_chest_stone.png")) != null) goldChestSprite  = img;
+        if ((img = loadImg("/assets/dc_stairs_down.png")) != null) stairsDownSprite = img;
+        if ((img = loadImg("/assets/dc_stairs_up.png"))   != null) stairsUpSprite   = img;
+        if ((img = loadImg("/assets/dc_statue.png"))      != null) statueSprite     = img;
+        if ((img = loadImg("/assets/dc_fountain_blue.png")) != null) fountainSprite = img;
+        if ((img = loadImg("/assets/dc_sarcophagus.png")) != null) sarcophagusSprite = img;
+        if ((img = loadImg("/assets/dc_lantern.png"))     != null) lanternSprite    = img;
+        if ((img = loadImg("/assets/dc_gold.png"))        != null) goldPileSprite   = img;
+        if ((img = loadImg("/assets/dc_wall_dark.png"))   != null) wallDarkSprite   = img;
+        if ((img = loadImg("/assets/dc_wall_brown.png"))  != null) wallBrownSprite  = img;
+
+        // Themed dungeon brick + dark stone floors cropped from the project's main
+        // tileset (the sandy dc_floor_stone tiles were off-theme and near-identical).
+        if (statics != null && statics.isLoaded()) {
+            Image brick = statics.getSprite(1, 1);
+            if (brick != null) wallStoneSprite = brick;
+            // Floor is one cohesive dark-purple stone material. [0] is the clean, flat
+            // tile (the dominant one); the rest are subtly cobbled/worn variants of the
+            // SAME stone so the floor looks like a real, naturally-worn dungeon rather
+            // than one flat colour. They are blended deterministically by position.
+            Image df0 = statics.getSprite(4, 3); // clean flat stone
+            Image df1 = statics.getSprite(1, 3); // cobbled
+            Image df2 = statics.getSprite(2, 3); // cobbled
+            Image df3 = statics.getSprite(0, 4); // lightly worn
+            Image df4 = statics.getSprite(3, 3); // cobbled edge
+            if (df0 != null && df1 != null && df2 != null && df3 != null && df4 != null) {
+                floorStoneSprites = new Image[]{ df0, df1, df2, df3, df4 };
+            }
+        }
+        if (floorStoneSprites == null) {
+            Image f1 = loadImg("/assets/dc_floor_stone.png");
+            Image f2 = loadImg("/assets/dc_floor_stone2.png");
+            Image f3 = loadImg("/assets/dc_floor_stone3.png");
+            if (f1 != null || f2 != null || f3 != null) {
+                floorStoneSprites = new Image[]{
+                        f1 != null ? f1 : (f2 != null ? f2 : f3),
+                        f2 != null ? f2 : (f1 != null ? f1 : f3),
+                        f3 != null ? f3 : (f1 != null ? f1 : f2),
+                };
+            }
+        }
         // Sparkle animation frames for searchable indicator
         Image s1 = loadImg("/assets/dc_fx_sparkle1.png");
         Image s2 = loadImg("/assets/dc_fx_sparkle2.png");
@@ -262,20 +611,54 @@ public class TileRenderer {
     // ---------- FLOOR + WALL ----------
 
     public void drawFloor(GraphicsContext gc, int screenX, int screenY) {
+        drawPatternedFloor(gc, screenX, screenY);
+    }
+
+    // Per-tile floor-variant distribution: mostly the clean flat stone (index 0) with
+    // cobbled/worn variants sprinkled in, so the dungeon floor looks naturally worn
+    // instead of either one flat colour or a repeating geometric pattern.
+    private static final int[] FLOOR_BLEND = {0, 0, 0, 0, 0, 1, 2, 3, 0, 4, 0, 2, 1, 0, 3, 0};
+
+    /**
+     * Draws the default floor by picking, deterministically from the cell position,
+     * one of the cohesive stone-floor variants. No random flicker, no geometric grid:
+     * the same cell always shows the same stone, giving a stable, natural dungeon look.
+     */
+    private void drawPatternedFloor(GraphicsContext gc, int screenX, int screenY) {
+        gc.setImageSmoothing(false);
         gc.setFill(Color.web("#1a1a2e"));
         gc.fillRect(screenX, screenY, tileSize, tileSize);
-        if (floorSprites != null && floorSprites.length > 0) {
-            int variant = tileHash(screenX, screenY) % floorSprites.length;
-            gc.drawImage(floorSprites[variant], screenX, screenY, tileSize, tileSize);
+
+        Image tile = floorVariantFor(screenX / tileSize, screenY / tileSize);
+        if (tile != null) {
+            gc.drawImage(tile, screenX, screenY, tileSize, tileSize);
         }
+    }
+
+    private Image floorVariantFor(int col, int row) {
+        if (floorStoneSprites == null || floorStoneSprites.length == 0) {
+            return (floorSprites != null && floorSprites.length > 0) ? floorSprites[0] : null;
+        }
+        int h = col * 341873128 + row * 132897987;
+        h ^= (h >>> 13);
+        h *= 0x5bd1e995;
+        h ^= (h >>> 11);
+        int idx = FLOOR_BLEND[Math.floorMod(h, FLOOR_BLEND.length)];
+        if (idx >= floorStoneSprites.length) {
+            idx = 0;
+        }
+        return floorStoneSprites[idx];
     }
 
     public void drawWall(GraphicsContext gc, int screenX, int screenY) {
         gc.setFill(Color.web("#1a1a2e"));
         gc.fillRect(screenX, screenY, tileSize, tileSize);
-        if (wallSprites != null && wallSprites.length > 0) {
-            int variant = tileHash(screenX, screenY) % wallSprites.length;
-            gc.drawImage(wallSprites[variant], screenX, screenY, tileSize, tileSize);
+        gc.setImageSmoothing(false);
+        // A placed wall is always the same brick — no per-tile randomness.
+        if (wallStoneSprite != null) {
+            gc.drawImage(wallStoneSprite, screenX, screenY, tileSize, tileSize);
+        } else if (wallSprites != null && wallSprites.length > 0) {
+            gc.drawImage(wallSprites[0], screenX, screenY, tileSize, tileSize);
         } else {
             gc.setFill(Color.web("#6b5b4f"));
             gc.fillRect(screenX, screenY, tileSize, tileSize);
@@ -358,23 +741,27 @@ public class TileRenderer {
 
     public void drawItemObject(GraphicsContext gc, int screenX, int screenY,
             com.kurawler.model.object.Item item) {
-        if (item instanceof com.kurawler.model.object.Weapon) {
-            drawWeaponByName(gc, screenX, screenY, item.getName());
-        } else if (item instanceof com.kurawler.model.object.Wearable) {
-            drawItem(gc, screenX, screenY, "Wearable");
-        } else if (item instanceof com.kurawler.model.object.Scroll) {
-            drawItem(gc, screenX, screenY, "Scroll");
-        } else if (item instanceof com.kurawler.model.object.Consumable) {
+        if (item == null) {
+            return;
+        }
+        // Catalog/atlas sprites: scale to fit the tile (preserve aspect) so large
+        // weapons/items are not clipped or oversized — sit centered with margin.
+        Image atlas = atlasRegistry.get(item.getName());
+        if (atlas != null) {
+            gc.setImageSmoothing(false);
+            drawScaledFit(gc, atlas, screenX, screenY, tileSize, tileSize * 0.18);
+            return;
+        }
+        if (item instanceof com.kurawler.model.object.Consumable) {
             com.kurawler.model.object.Consumable cons = (com.kurawler.model.object.Consumable) item;
             String pt = cons.getManaAmount() > 0 ? "ManaPotion"
                     : cons.getEnergyAmount() > 0 ? "EnergyPotion"
                     : "HealthPotion";
             drawConsumable(gc, screenX, screenY, pt);
-        } else if (item instanceof com.kurawler.model.object.Key) {
-            drawItem(gc, screenX, screenY, "Key");
-        } else {
-            drawItem(gc, screenX, screenY, "Item");
+            return;
         }
+        // Name-aware sprite (handles shield, ring, gem, all weapon kinds).
+        drawSprite(gc, getSpriteForItem(item), screenX, screenY, Color.web("#9c27b0"));
     }
 
     public void drawWeaponByName(GraphicsContext gc, int screenX, int screenY, String weaponName) {
@@ -397,12 +784,9 @@ public class TileRenderer {
     }
 
     public void drawContainerByName(GraphicsContext gc, int screenX, int screenY, String name) {
-        Image sprite = chestSprite;
-        if (name != null) {
-            String lower = name.toLowerCase();
-            if (lower.contains("barrel")) sprite = barrelSprite;
-            else if (lower.contains("crate")) sprite = crateSprite;
-            else if (lower.contains("open")) sprite = chestOpenSprite;
+        Image sprite = spriteForAsset(name);
+        if (sprite == null) {
+            sprite = chestSprite;
         }
         drawSprite(gc, sprite, screenX, screenY, Color.web("#795548"));
     }
@@ -590,6 +974,12 @@ public class TileRenderer {
 
     /** Returns the best sprite Image for rendering an Item in the inventory popup. */
     public Image getSpriteForItem(Item item) {
+        if (item != null) {
+            Image atlas = atlasRegistry.get(item.getName());
+            if (atlas != null) {
+                return atlas;
+            }
+        }
         if (item instanceof Weapon) {
             String n = item.getName().toLowerCase();
             if (n.contains("axe"))                         return axeSprite;
@@ -602,6 +992,7 @@ public class TileRenderer {
         if (item instanceof Wearable) {
             String n = item.getName().toLowerCase();
             if (n.contains("shield")) return shieldSprite;
+            if (n.contains("ring") || n.contains("amulet")) return ringSprite;
             return armorSprite;
         }
         if (item instanceof Consumable) {
@@ -611,99 +1002,308 @@ public class TileRenderer {
             return potionSprite;
         }
         if (item instanceof Scroll) return scrollSprite;
-        if (item instanceof Key)    return keySprite;
+        if (item instanceof Key) {
+            String n = item.getName().toLowerCase();
+            if (n.contains("gem") || n.contains("crystal") || n.contains("jewel")
+                    || n.contains("orb") || n.contains("idol") || n.contains("relic")) {
+                return gemSprite;
+            }
+            return keySprite;
+        }
         return gemSprite;
     }
 
-    /** Small preview for level-editor palette chips (PBI-16). */
+    /**
+     * Palette preview for the level editor. Uses the real sprite art for every
+     * placeable asset via the shared {@link #spriteForAsset(String)} lookup,
+     * preserving aspect ratio so thin sprites (weapons) are not stretched.
+     */
     public void drawEditorPaletteIcon(GraphicsContext gc, double size, String objectName) {
         if (gc == null || objectName == null) {
             return;
         }
         int s = (int) size;
+        gc.setImageSmoothing(false);
         gc.clearRect(0, 0, s, s);
         gc.setFill(Color.web("#141428"));
         gc.fillRect(0, 0, s, s);
 
+        if ("Wall".equals(objectName)) {
+            Image w = wallStoneSprite != null ? wallStoneSprite
+                    : (wallSprites != null && wallSprites.length > 0 ? wallSprites[0] : null);
+            if (w != null) {
+                gc.drawImage(w, 1, 1, s - 2, s - 2);
+                return;
+            }
+        }
+        if ("Floor".equals(objectName)) {
+            Image f = (floorStoneSprites != null ? floorStoneSprites[0] : null);
+            if (f == null && floorSprites != null && floorSprites.length > 0) {
+                f = floorSprites[0];
+            }
+            if (f != null) {
+                gc.drawImage(f, 1, 1, s - 2, s - 2);
+                return;
+            }
+        }
+        if ("Hero".equals(objectName)) {
+            drawScaledFit(gc, heroSprite, 0, 0, s, 2);
+            return;
+        }
+
+        if ("Erase".equals(objectName)) {
+            gc.setFill(Color.web("#3a1a1a"));
+            gc.fillRoundRect(2, 2, s - 4, s - 4, 5, 5);
+            gc.setStroke(Color.web("#ff6b6b"));
+            gc.setLineWidth(2);
+            gc.strokeLine(7, 7, s - 7, s - 7);
+            gc.strokeLine(s - 7, 7, 7, s - 7);
+            return;
+        }
+
+        Image wall = wallSpriteFor(objectName);
+        if (wall != null) {
+            gc.drawImage(wall, 1, 1, s - 2, s - 2);
+            return;
+        }
+        Image floor = floorSpriteFor(objectName);
+        if (floor != null) {
+            gc.drawImage(floor, 1, 1, s - 2, s - 2);
+            return;
+        }
+
+        Image sprite = spriteForAsset(objectName);
+        if (sprite != null) {
+            drawScaledFit(gc, sprite, 0, 0, s, palettePaddingFor(objectName));
+            return;
+        }
+
+        // Character previews
         switch (objectName) {
-            case "Wall":
-                drawScaled(gc, pickWallSprite(0, 0), s);
-                break;
-            case "Floor":
-                drawScaled(gc, pickFloorSprite(0, 0), s);
-                break;
-            case "Gargoyle Pool":
-                drawScaled(gc, poolSprite, s);
-                break;
-            case "Ancient Bookshelf":
-            case "Wall Shelf":
-                drawScaled(gc, bookshelfSprite != null ? bookshelfSprite : crateSprite, s);
-                break;
-            case "Stone Column":
-                drawScaled(gc, columnSprite, s);
-                break;
-            case "Sword":
-                drawScaled(gc, swordSprite, s);
-                break;
-            case "Spell Book":
-                drawScaled(gc, scrollSprite, s);
-                break;
-            case "Health Potion":
-                drawScaled(gc, potionSprite, s);
-                break;
-            case "Armor":
-                drawScaled(gc, armorSprite != null ? armorSprite : shieldSprite, s);
-                break;
-            case "Golden Key":
-                drawScaled(gc, keySprite, s);
-                break;
-            case "Chest":
-                drawScaled(gc, chestSprite, s);
-                break;
-            case "Pouch":
-                drawScaled(gc, crateSprite, s);
-                break;
             case "Adventurer":
-                drawScaled(gc, heroSprite, s);
-                break;
+                drawScaledFit(gc, heroSprite, 0, 0, s, 2);
+                return;
             case "Knight":
-                drawScaled(gc, knightSprite, s);
-                break;
+                drawScaledFit(gc, knightSprite, 0, 0, s, 2);
+                return;
             case "Sorcerer":
-                drawScaled(gc, sorcererSprite, s);
-                break;
-            case "Erase":
-                gc.setFill(Color.web("#4a2020"));
-                gc.fillRoundRect(2, 2, s - 4, s - 4, 4, 4);
-                gc.setStroke(Color.web("#ff6b6b"));
-                gc.strokeLine(4, 4, s - 4, s - 4);
-                gc.strokeLine(s - 4, 4, 4, s - 4);
-                break;
+                drawScaledFit(gc, sorcererSprite, 0, 0, s, 2);
+                return;
             default:
-                gc.setFill(Color.web("#553355"));
-                gc.fillRoundRect(4, 4, s - 8, s - 8, 4, 4);
                 break;
         }
+
+        gc.setFill(Color.web("#553355"));
+        gc.fillRoundRect(4, 4, s - 8, s - 8, 4, 4);
     }
 
-    private Image pickWallSprite(int sx, int sy) {
-        if (wallSprites != null && wallSprites.length > 0) {
-            return wallSprites[tileHash(sx, sy) % wallSprites.length];
+    /** Small icons (weapons/items) get a little breathing room; props fill the chip. */
+    private double palettePaddingFor(String name) {
+        if (name == null) {
+            return 3;
         }
+        String n = name.toLowerCase();
+        if (n.contains("ring") || n.contains("gem") || n.contains("key")
+                || n.contains("dagger") || n.contains("scroll")) {
+            return 5;
+        }
+        if (n.contains("sword") || n.contains("axe") || n.contains("bow")
+                || n.contains("staff") || n.contains("hammer") || n.contains("potion")
+                || n.contains("elixir") || n.contains("apple")) {
+            return 4;
+        }
+        return 2;
+    }
+
+    /**
+     * Single source of truth mapping a placeable asset id/name to its sprite.
+     * Used by both palette previews and in-editor map rendering so they always match.
+     */
+    public Image spriteForAsset(String id) {
+        if (id == null) {
+            return null;
+        }
+        Image atlas = atlasRegistry.get(id);
+        if (atlas != null) {
+            return atlas;
+        }
+        String n = id.toLowerCase();
+
+        // --- Items / weapons (resolved before statics to avoid keyword clashes) ---
+        if (n.contains("spell book") || n.contains("scroll") || n.contains("tome")) return scrollSprite;
+        if (n.contains("dagger") || n.contains("knife")) return daggerSprite;
+        if (n.contains("axe")) return axeSprite;
+        if (n.contains("bow")) return bowSprite;
+        if (n.contains("staff") || n.contains("wand")) return staffSprite;
+        if (n.contains("hammer") || n.contains("mace")) return hammerSprite;
+        if (n.contains("sword") || n.contains("blade")) return swordSprite;
+        if (n.contains("shield")) return shieldSprite;
+        if (n.contains("armor") || n.contains("mail") || n.contains("plate")) return armorSprite;
+        if (n.contains("ring") || n.contains("amulet")) return ringSprite;
+        if (n.contains("gem") || n.contains("crystal") || n.contains("jewel")) return gemSprite;
+        if (n.contains("mana")) return potionSprite2;
+        if (n.contains("energy")) return energyPotionSprite != null ? energyPotionSprite : potionSprite;
+        if (n.contains("potion") || n.contains("elixir") || n.contains("apple") || n.contains("flask")) return potionSprite;
+
+        // --- Containers ---
+        if (n.contains("chest")) {
+            if (n.contains("open")) return chestOpenSprite;
+            if (n.contains("gold") || n.contains("stone") || n.contains("locked")) {
+                return goldChestSprite != null ? goldChestSprite : chestSprite;
+            }
+            return chestSprite;
+        }
+        if (n.contains("barrel")) return barrelSprite;
+        if (n.contains("crate")) return crateSprite;
+        if (n.contains("pouch") || n.contains("sack")) return crateSprite;
+
+        // --- Statics ---
+        if (n.contains("stairs") && n.contains("down")) return stairsDownSprite;
+        if (n.contains("stairs") && n.contains("up")) return stairsUpSprite;
+        if (n.contains("open door")) return doorOpenSprite;
+        if (n.contains("door")) return doorSprite;
+        if (n.contains("sarcophagus")) return sarcophagusSprite;
+        if (n.contains("altar")) return sarcophagusSprite != null ? sarcophagusSprite : pedestalSprite;
+        if (n.contains("pedestal")) return pedestalSprite;
+        if (n.contains("statue")) return statueSprite;
+        if (n.contains("fountain")) return fountainSprite;
+        if (n.contains("lantern") || n.contains("lamp") || n.contains("torch") || n.contains("sconce")) return lanternSprite;
+        if (n.contains("pool") || n.contains("gargoyle")) return poolSprite;
+        if (n.contains("bookshelf") || n.contains("shelf")) return bookshelfSprite;
+        if (n.contains("column") || n.contains("pillar")) return columnSprite;
+
+        // --- Misc keys / loot ---
+        if (n.contains("gold")) return goldPileSprite != null ? goldPileSprite : gemSprite;
+        if (n.contains("key")) return keySprite;
         return null;
     }
 
-    private Image pickFloorSprite(int sx, int sy) {
-        if (floorSprites != null && floorSprites.length > 0) {
-            return floorSprites[tileHash(sx, sy) % floorSprites.length];
+    private Image wallSpriteFor(String name) {
+        if (name == null) {
+            return null;
         }
+        String n = name.toLowerCase();
+        if (n.contains("brown wall")) return wallBrownSprite;
+        if (n.contains("dark wall")) return wallDarkSprite;
+        if (n.equals("wall") || n.contains("stone wall") || n.contains("brick")) return wallStoneSprite;
         return null;
     }
 
-    private void drawScaled(GraphicsContext gc, Image img, int size) {
-        if (img != null) {
-            gc.drawImage(img, 0, 0, size, size);
+    private Image floorSpriteFor(String name) {
+        if (name == null) {
+            return null;
         }
+        String n = name.toLowerCase();
+        // Named floor tiles are registered individually in the catalog.
+        if (n.contains("floor") || n.contains("cobble") || n.contains("gravel")
+                || n.contains("rubble") || n.contains("pebble")) {
+            Image reg = atlasRegistry.get(name);
+            if (reg != null) return reg;
+        }
+        if (floorStoneSprites == null) {
+            return null;
+        }
+        if (n.contains("crack")) return floorStoneSprites[1];
+        if (n.contains("cobble") || n.contains("moss")) return floorStoneSprites[2];
+        if (n.contains("stone floor")) return floorStoneSprites[0];
+        return null;
+    }
+
+    /** Aspect-preserving, centered draw within a square box (nearest-neighbour friendly). */
+    private void drawScaledFit(GraphicsContext gc, Image img, double x, double y, double box, double pad) {
+        if (img == null) {
+            return;
+        }
+        double avail = box - pad * 2;
+        double iw = img.getWidth();
+        double ih = img.getHeight();
+        if (iw <= 0 || ih <= 0) {
+            return;
+        }
+        double scale = avail / Math.max(iw, ih);
+        double w = iw * scale;
+        double h = ih * scale;
+        double dx = x + (box - w) / 2.0;
+        double dy = y + (box - h) / 2.0;
+        gc.drawImage(img, dx, dy, w, h);
+    }
+
+    /** Wall tile using a named DCSS variant when available, else the shared dungeon wall. */
+    public void drawWallByName(GraphicsContext gc, int screenX, int screenY, String name) {
+        Image w = wallSpriteFor(name);
+        if (w != null) {
+            gc.setFill(Color.web("#1a1a2e"));
+            gc.fillRect(screenX, screenY, tileSize, tileSize);
+            gc.drawImage(w, screenX, screenY, tileSize, tileSize);
+        } else {
+            drawWall(gc, screenX, screenY);
+        }
+    }
+
+    /** Floor tile using a named DCSS variant when available, else the shared dungeon floor. */
+    public void drawFloorByName(GraphicsContext gc, int screenX, int screenY, String name) {
+        String n = name == null ? "" : name.toLowerCase();
+        // The ubiquitous base floor uses the designed flagstone pattern; named
+        // variants (cracked, cobblestone, mossy...) keep their own sprite.
+        if (n.isEmpty() || n.equals("floor") || n.contains("stone floor")) {
+            drawPatternedFloor(gc, screenX, screenY);
+            return;
+        }
+        Image f = floorSpriteFor(name);
+        if (f != null) {
+            gc.setFill(Color.web("#1a1a2e"));
+            gc.fillRect(screenX, screenY, tileSize, tileSize);
+            gc.drawImage(f, screenX, screenY, tileSize, tileSize);
+        } else {
+            drawFloor(gc, screenX, screenY);
+        }
+    }
+
+    /**
+     * Draws a decorative / portal static (door, stairs, statue, fountain, pedestal,
+     * altar, column, lantern...) using its real sprite, plus the searchable marker
+     * when applicable. Floor must already be drawn underneath.
+     */
+    public void drawStaticDecor(GraphicsContext gc, int screenX, int screenY,
+            com.kurawler.model.object.StaticObject so) {
+        if (so == null) {
+            return;
+        }
+        Image sprite = spriteForAsset(so.getName());
+        if (sprite != null) {
+            gc.setImageSmoothing(false);
+            // Non-square structures (big door, arch, carpet...) keep their aspect ratio.
+            if (Math.abs(sprite.getWidth() - sprite.getHeight()) > 1) {
+                drawScaledFit(gc, sprite, screenX, screenY, tileSize, 0);
+            } else {
+                gc.drawImage(sprite, screenX, screenY, tileSize, tileSize);
+            }
+        } else if (!so.isPassable()) {
+            // Unknown solid prop — fall back to a column-like pillar.
+            drawColumnProp(gc, screenX, screenY);
+        }
+        if (so.isSearchable()) {
+            drawSearchableMarker(gc, screenX, screenY);
+        }
+    }
+
+    /** True when a static is just plain dungeon wall terrain. */
+    public boolean isWallName(String name) {
+        if (name == null) {
+            return false;
+        }
+        String n = name.toLowerCase();
+        return n.equals("wall") || n.contains("dark wall") || n.contains("brown wall");
+    }
+
+    /** True when a static is just plain dungeon floor terrain. */
+    public boolean isFloorName(String name) {
+        if (name == null) {
+            return false;
+        }
+        String n = name.toLowerCase();
+        return n.contains("floor") || n.contains("cobble") || n.contains("gravel")
+                || n.contains("rubble") || n.contains("pebble");
     }
 
     // ---------- HELPERS ----------

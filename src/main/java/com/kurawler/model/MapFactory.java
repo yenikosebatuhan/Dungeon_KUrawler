@@ -50,6 +50,10 @@ public class MapFactory {
 
         scatterDefaultLoot(hall, catacombs, vault);
 
+        addAmbiance(hall);
+        addAmbiance(catacombs);
+        addAmbiance(vault);
+
         placeVaultKeyInRandomBookshelf(hall, catacombs);
 
         placeTargetInRandomVaultChest(vault, session);
@@ -160,6 +164,8 @@ public class MapFactory {
         hall.placeObject(13, 12, new Scroll("Spell Book", "Arcane tome",
                 "Runes mend your wounds.", 12));
         hall.placeObject(14, 5, new Wearable("Armor", "Leather armor", 2));
+        hall.placeObject(3, 10, new Wearable("Shield", "A sturdy shield", 3));
+        hall.placeObject(11, 14, new Wearable("Ring", "A magical ring (+1 DEF)", 1));
         hall.placeObject(6, 14, new StaticContainer("Chest", "A dusty chest"));
 
         catacombs.placeObject(3, 5, new Weapon("Sword", "A chipped sword", 6));
@@ -194,7 +200,34 @@ public class MapFactory {
                 new Weapon("Sword", "Ornate sword", 9));
         populateChest(vault, 8, 10,
                 new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0),
+                new Key("Gem", "A precious gem worth a fortune", "gem"),
                 new Scroll("Spell Book", "Faded runes", "A spark of healing.", 8));
+    }
+
+    /**
+     * A few decorative props per map so the new dungeon statics also appear in
+     * play, not only in the editor. Placed on safe floor cells away from spawn,
+     * portals, and searchable furniture.
+     */
+    private static void addAmbiance(Map map) {
+        setDecor(map, 1, 1, new StaticObject("Statue", "A carved stone statue", false, false));
+        setDecor(map, 1, 20, new StaticObject("Lantern", "A hanging lantern", true, false));
+        setDecor(map, 14, 1, new StaticObject("Pedestal", "A stone display pedestal", true, false));
+        setDecor(map, 14, 20, new StaticObject("Fountain", "A bubbling fountain", false, false));
+    }
+
+    /** Replace a plain floor cell with a decorative static (never a wall or searchable cell). */
+    private static void setDecor(Map map, int row, int col, StaticObject decor) {
+        GridCell cell = map.getCell(row, col);
+        if (cell == null) {
+            return;
+        }
+        StaticObject existing = cell.getStaticObject();
+        boolean plainFloor = existing == null
+                || ("Floor".equalsIgnoreCase(existing.getName()) && !existing.isSearchable());
+        if (plainFloor && cell.getOccupyingCharacter() == null && !cell.hasObjects()) {
+            cell.setStaticObject(decor);
+        }
     }
 
     /**
@@ -368,13 +401,17 @@ public class MapFactory {
     }
 
     private static Item createDecoyHiddenItem(Random rng) {
-        switch (rng.nextInt(4)) {
+        switch (rng.nextInt(6)) {
             case 0:
                 return new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0);
             case 1:
                 return new Consumable("Energy Apple", "Restores energy", 0, 0, 20);
             case 2:
                 return new Scroll("Spell Book", "Faint magic", "A spark of healing.", 6);
+            case 3:
+                return new Wearable("Ring", "A magical ring (+1 DEF)", 1);
+            case 4:
+                return new Key("Gem", "A precious gem worth a fortune", "gem");
             default:
                 return new Weapon("Dagger", "A small blade", 4);
         }
