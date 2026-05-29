@@ -62,17 +62,29 @@ class HeroADTTest {
 
     // ── repOk after construction and basic operations ─────────────────────────
 
+    /**
+     * Tests that a freshly constructed hero satisfies the representation invariant.
+     * new Hero("TestHero")  →  repOk() = true
+     */
     @Test
     void repOk_freshHero_holdsRI() {
         assertTrue(hero.repOk());
     }
 
+    /**
+     * Tests that the RI holds after hero takes partial damage (HP still > 0).
+     * takeDamage(5)  →  repOk() = true
+     */
     @Test
     void repOk_afterPartialDamage_holdsRI() {
         hero.takeDamage(5);
         assertTrue(hero.repOk());
     }
 
+    /**
+     * Tests that HP=0 (dead state) is a valid RI state, not a violation.
+     * takeDamage(9999)  →  HP=0 and repOk() = true
+     */
     @Test
     void repOk_afterLethalDamage_healthZeroStillValid() {
         hero.takeDamage(9999);
@@ -81,12 +93,20 @@ class HeroADTTest {
         assertTrue(hero.repOk());
     }
 
+    /**
+     * Tests that the RI holds after equipping a wearable (DEF is updated).
+     * equipWearable(armor +3)  →  repOk() = true
+     */
     @Test
     void repOk_afterEquipWearable_holdsRI() {
         hero.equipWearable(new Wearable("Iron Armor", "Heavy plate", 3));
         assertTrue(hero.repOk());
     }
 
+    /**
+     * Tests that the RI holds after equipping and then unequipping a ring.
+     * equipWearable(ring), unequipWearable()  →  repOk() = true
+     */
     @Test
     void repOk_afterEquipAndUnequipRing_holdsRI() {
         hero.equipWearable(Ring.sorcererDrop());
@@ -94,6 +114,10 @@ class HeroADTTest {
         assertTrue(hero.repOk());
     }
 
+    /**
+     * Tests that the RI holds after using a consumable item (HP and mana are restored).
+     * takeDamage(5), setMana(0), useConsumable(potion)  →  repOk() = true
+     */
     @Test
     void repOk_afterUsingConsumable_holdsRI() {
         Consumable potion = new Consumable("Potion", "Restores HP and mana", 5, 10, 0);
@@ -107,6 +131,10 @@ class HeroADTTest {
 
     // ── calculateDamage reflects AF correctly ─────────────────────────────────
 
+    /**
+     * Tests that calculateDamage returns STR + weapon damage when a weapon is equipped.
+     * STR=10, weapon damage=4  →  calculateDamage() = 14
+     */
     @Test
     void calculateDamage_withWeapon_equalsStrengthPlusWeaponDamage() {
         Weapon sword = new Weapon("Sword", "Sharp blade", 4);
@@ -115,6 +143,10 @@ class HeroADTTest {
         assertTrue(hero.repOk());
     }
 
+    /**
+     * Tests that calculateDamage returns only STR when no weapon is equipped.
+     * STR=10, equippedWeapon=null  →  calculateDamage() = 10
+     */
     @Test
     void calculateDamage_withoutWeapon_equalsStrengthOnly() {
         hero.setEquippedWeapon(null);

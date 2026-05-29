@@ -82,6 +82,16 @@ public class Hero extends Character implements HeroSubject {
         }
     }
 
+    /**
+     * Calculates total damage output for this hero, including equipped weapon bonus.
+     *
+     * <p>REQUIRES: true</p>
+     *
+     * <p>MODIFIES: nothing</p>
+     *
+     * <p>EFFECTS: Returns getStrength() + equippedWeapon.getDamage() if a weapon
+     *            is equipped, or getStrength() if no weapon is equipped.</p>
+     */
     @Override
     public int calculateDamage() {
         int weaponDmg = (equippedWeapon != null) ? equippedWeapon.getDamage() : 0;
