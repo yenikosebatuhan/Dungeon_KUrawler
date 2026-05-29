@@ -1,5 +1,10 @@
 package com.kurawler.model.character;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
+
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Inventory;
@@ -10,10 +15,6 @@ import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.Wearable;
 import com.kurawler.model.observer.HeroObserver;
 import com.kurawler.model.observer.HeroSubject;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
 
 public class Hero extends Character implements HeroSubject {
     private final Inventory inventory;
@@ -82,50 +83,21 @@ public class Hero extends Character implements HeroSubject {
     }
 
     /**
-     * Returns the total damage including strength and equipped weapon.
+     * Calculates total damage output for this hero, including equipped weapon bonus.
      *
-     * @requires none
-     * @modifies none
-     * @effects Returns calculated damage as strength + weapon damage.
+     * <p>REQUIRES: true</p>
+     *
+     * <p>MODIFIES: nothing</p>
+     *
+     * <p>EFFECTS: Returns getStrength() + equippedWeapon.getDamage() if a weapon
+     *            is equipped, or getStrength() if no weapon is equipped.</p>
      */
     @Override
     public int calculateDamage() {
-        // Logic: STR + Weapon ATK
         int weaponDmg = (equippedWeapon != null) ? equippedWeapon.getDamage() : 0;
         return getStrength() + weaponDmg;
     }
 
-    /**
-     * @requires direction != null
-     *           && direction.toUpperCase() in {"UP", "DOWN", "LEFT", "RIGHT"}
-     *           && map != null
-     *           && this.currentCell != null (hero must be placed on the map)
-     *
-     * @modifies this.row, this.col, this.currentCell,
-     *           this.facingRow, this.facingCol,
-     *           this.currentCell (previous).occupyingCharacter,
-     *           targetCell.occupyingCharacter,
-     *           every registered HeroObserver (notified via onHeroMoved)
-     *
-     * @effects  Let (dRow, dCol) be the unit delta for direction
-     *           and targetCell = map.getCell(this.row + dRow, this.col + dCol).
-     *           - If direction == null, map == null, or direction is not a
-     *             recognised cardinal string: returns false, this unchanged.
-     *           - Else if targetCell == null (out of bounds) or
-     *             targetCell.isBlocked() (wall or occupied character):
-     *             returns false, this unchanged.
-     *           - Else: moves hero to targetCell —
-     *               this.row     = targetCell.row,
-     *               this.col     = targetCell.col,
-     *               this.currentCell = targetCell,
-     *               this.facingRow/facingCol = (dRow, dCol),
-     *               previous cell's occupyingCharacter set to null,
-     *               targetCell.occupyingCharacter set to this,
-     *               all HeroObservers notified with new position and delta;
-     *             returns true.
-     *           Note: session is accepted for API consistency but is not
-     *           read or modified by this method.
-     */
     public boolean move(String direction, Map map, GameSession session) {
         if (direction == null || map == null) return false;
         int dRow = 0, dCol = 0;
@@ -205,6 +177,19 @@ public class Hero extends Character implements HeroSubject {
         }
     }
 
+    /**
+     * Equips the given wearable item, adjusting this hero's defense power accordingly.
+     *
+     * <p>REQUIRES: wearable != null</p>
+     *
+     * <p>MODIFIES: this.defensePower, this.equippedWearable</p>
+     *
+     * <p>EFFECTS:  If wearable == equippedWearable, does nothing.
+     *              Otherwise, if equippedWearable != null, subtracts
+     *              equippedWearable.getDefenseBonus() from defensePower first.
+     *              Then sets equippedWearable = wearable and adds
+     *              wearable.getDefenseBonus() to defensePower.</p>
+     */
     public void equipWearable(Wearable wearable) {
         if (wearable == null || wearable == equippedWearable) return;
         if (equippedWearable != null) {
@@ -214,12 +199,37 @@ public class Hero extends Character implements HeroSubject {
         setDefensePower(getDefensePower() + wearable.getDefenseBonus());
     }
 
+    /**
+     * Unequips the currently equipped wearable item, if any.
+     *
+     * <p>REQUIRES: true</p>
+     *
+     * <p>MODIFIES: this.defensePower, this.equippedWearable</p>
+     *
+     * <p>EFFECTS: If equippedWearable != null, subtracts its defense bonus from
+     *            defensePower and sets equippedWearable = null.
+     *            If equippedWearable == null, does nothing.</p>
+     */
     public void unequipWearable() {
         if (equippedWearable == null) return;
         setDefensePower(getDefensePower() - equippedWearable.getDefenseBonus());
         equippedWearable = null;
     }
 
+    /**
+     * Uses (consumes) a consumable item from inventory.
+     *
+     * <p>REQUIRES: consumable != null</p>
+     *
+     * <p>MODIFIES: this.health, this.mana, this.energy, inventory</p>
+     *
+     * <p>EFFECTS: If consumable is not in inventory, returns false and does nothing.
+     *            Otherwise, removes consumable from inventory and applies its effects:
+     *            - Heals by consumable.getHealAmount() (clamped to maxHealth)
+     *            - Restores mana by consumable.getManaAmount() (clamped to maxMana)
+     *            - Restores energy by consumable.getEnergyAmount() (clamped to maxEnergy)
+     *            Returns true if consumable was consumed, false otherwise.</p>
+     */
     public boolean useConsumable(Consumable consumable) {
         if (consumable == null || !inventory.removeItem(consumable)) return false;
         if (consumable.getHealAmount() > 0) heal(consumable.getHealAmount());
@@ -243,17 +253,27 @@ public class Hero extends Character implements HeroSubject {
 
     public Inventory getInventory() { return inventory; }
     public Weapon getEquippedWeapon() { return equippedWeapon; }
-    /**
-     * Equips a weapon and notifies all observers of the stat change.
-     *
-     * @requires weapon != null
-     * @modifies this.equippedWeapon, observers
-     * @effects Sets the equipped weapon and triggers a stats update notification for the UI.
-     */
-    public void setEquippedWeapon(Weapon weapon) { 
-        this.equippedWeapon = weapon; 
-    }
-
-
+    public void setEquippedWeapon(Weapon weapon) { this.equippedWeapon = weapon; }
     public Wearable getEquippedWearable() { return equippedWearable; }
+
+    /**
+     * Checks the representation invariant of this Hero.
+     *
+     * <p>RI: name != null and non-empty; 0 <= health <= maxHealth; maxHealth > 0;
+     *        0 <= mana <= maxMana; 0 <= energy <= maxEnergy;
+     *        strength >= 0; attackPower >= 0; defensePower >= 0;
+     *        inventory != null</p>
+     *
+     * @return true iff all invariant conditions hold
+     */
+    public boolean repOk() {
+        if (getName() == null || getName().isEmpty()) return false;
+        if (getHealth() < 0 || getHealth() > getMaxHealth()) return false;
+        if (getMana() < 0 || getMana() > getMaxMana()) return false;
+        if (getEnergy() < 0 || getEnergy() > getMaxEnergy()) return false;
+        if (getMaxHealth() <= 0 || getMaxMana() < 0 || getMaxEnergy() < 0) return false;
+        if (getStrength() < 0 || getAttackPower() < 0 || getDefensePower() < 0) return false;
+        if (inventory == null) return false;
+        return true;
+    }
 }
