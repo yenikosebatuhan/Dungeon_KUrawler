@@ -71,6 +71,8 @@ public class TileRenderer {
     private Image bookshelfSprite;
     private Image doorSprite;
     private Image doorOpenSprite;
+    private Image energyPotionSprite;
+    private Image[] sparkleFrames;
 
     public TileRenderer(int tileSize) {
         this.tileSize = tileSize;
@@ -92,6 +94,59 @@ public class TileRenderer {
         loadWeapons();
         loadContainers();
         loadStatics();
+        loadDcssOverrides();
+    }
+
+    private Image loadImg(String path) {
+        try {
+            java.io.InputStream is = getClass().getResourceAsStream(path);
+            if (is == null) return null;
+            Image img = new Image(is);
+            return img.isError() ? null : img;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void loadDcssOverrides() {
+        Image img;
+        // Weapons — replace sprite-sheet guesses with verified DCSS tiles
+        if ((img = loadImg("/assets/dc_sword.png"))   != null) swordSprite   = img;
+        if ((img = loadImg("/assets/dc_dagger.png"))  != null) daggerSprite  = img;
+        if ((img = loadImg("/assets/dc_axe.png"))     != null) axeSprite     = img;
+        if ((img = loadImg("/assets/dc_bow.png"))     != null) bowSprite     = img;
+        if ((img = loadImg("/assets/dc_staff.png"))   != null) staffSprite   = img;
+        if ((img = loadImg("/assets/dc_hammer.png"))  != null) hammerSprite  = img;
+        // Wearable
+        if ((img = loadImg("/assets/dc_armor.png"))   != null) armorSprite   = img;
+        if ((img = loadImg("/assets/dc_shield.png"))  != null) shieldSprite  = img;
+        // Items
+        if ((img = loadImg("/assets/dc_key.png"))        != null) keySprite        = img;
+        if ((img = loadImg("/assets/dc_potion_hp.png"))  != null) potionSprite     = img;
+        if ((img = loadImg("/assets/dc_potion_mp.png"))  != null) potionSprite2    = img;
+        if ((img = loadImg("/assets/dc_potion_en.png"))  != null) energyPotionSprite = img;
+        if ((img = loadImg("/assets/dc_scroll.png"))     != null) scrollSprite     = img;
+        if ((img = loadImg("/assets/dc_gem.png"))        != null) gemSprite        = img;
+        if ((img = loadImg("/assets/dc_ring.png"))       != null) ringSprite       = img;
+        // Containers
+        if ((img = loadImg("/assets/dc_chest.png"))      != null) chestSprite      = img;
+        if ((img = loadImg("/assets/dc_chest_open.png")) != null) chestOpenSprite  = img;
+        if ((img = loadImg("/assets/dc_crate.png"))      != null) crateSprite      = img;
+        // Statics / dungeon
+        if ((img = loadImg("/assets/dc_pool.png"))        != null) poolSprite       = img;
+        if ((img = loadImg("/assets/dc_column.png"))      != null) columnSprite     = img;
+        if ((img = loadImg("/assets/dc_book.png"))         != null) bookshelfSprite  = img;
+        if ((img = loadImg("/assets/dc_pedestal.png"))    != null) pedestalSprite   = img;
+        if ((img = loadImg("/assets/dc_pedestal.png"))    != null) altarSprite      = img;
+        if ((img = loadImg("/assets/dc_door_closed.png")) != null) doorSprite       = img;
+        if ((img = loadImg("/assets/dc_door_open.png"))   != null) doorOpenSprite   = img;
+        // Sparkle animation frames for searchable indicator
+        Image s1 = loadImg("/assets/dc_fx_sparkle1.png");
+        Image s2 = loadImg("/assets/dc_fx_sparkle2.png");
+        Image s3 = loadImg("/assets/dc_fx_sparkle3.png");
+        if (s1 != null && s2 != null && s3 != null) {
+            sparkleFrames = new Image[]{s1, s2, s3};
+        }
     }
 
     private void loadWallsAndFloors() {
@@ -154,13 +209,14 @@ public class TileRenderer {
         staffSprite = weapons.getSprite(3, 0);
         daggerSprite = weapons.getSprite(4, 0);
         hammerSprite = weapons.getSprite(5, 0);
-        armorSprite = weapons.getSprite(4, 2);
-        shieldSprite = weapons.getSprite(0, 8);
+        armorSprite = weapons.getSprite(4, 3);
+        shieldSprite = weapons.getSprite(6, 3);
         if (axeSprite == null) axeSprite = swordSprite;
         if (bowSprite == null) bowSprite = swordSprite;
         if (staffSprite == null) staffSprite = swordSprite;
         if (daggerSprite == null) daggerSprite = swordSprite;
         if (hammerSprite == null) hammerSprite = swordSprite;
+        if (shieldSprite == null) shieldSprite = swordSprite;
         if (armorSprite == null) armorSprite = shieldSprite;
     }
 
@@ -287,7 +343,7 @@ public class TileRenderer {
                 glowColor = Color.web("#e040fb");
                 break;
             case "EnergyPotion":
-                sprite = ringSprite;
+                sprite = energyPotionSprite != null ? energyPotionSprite : ringSprite;
                 glowColor = Color.web("#66bb6a");
                 break;
             default: // HealthPotion
@@ -374,8 +430,11 @@ public class TileRenderer {
         drawSearchableLabel(gc, screenX, screenY, name);
     }
 
-    /** Tall bookshelf — not a floor hatch / chest (vault key is hidden here in Entry Hall). */
     private void drawColumnProp(GraphicsContext gc, int screenX, int screenY) {
+        if (columnSprite != null) {
+            gc.drawImage(columnSprite, screenX, screenY, tileSize, tileSize);
+            return;
+        }
         double cx = screenX + tileSize / 2.0 - 6;
         double baseY = screenY + tileSize - 10;
         gc.setFill(Color.web("#6a6a7a"));
@@ -388,6 +447,10 @@ public class TileRenderer {
     }
 
     private void drawPoolProp(GraphicsContext gc, int screenX, int screenY) {
+        if (poolSprite != null) {
+            gc.drawImage(poolSprite, screenX, screenY, tileSize, tileSize);
+            return;
+        }
         double cx = screenX + tileSize / 2.0;
         double cy = screenY + tileSize / 2.0 + 4;
         gc.setFill(Color.web("#1a4a6a", 0.9));
@@ -397,6 +460,10 @@ public class TileRenderer {
     }
 
     private void drawBookshelfProp(GraphicsContext gc, int screenX, int screenY) {
+        if (bookshelfSprite != null) {
+            gc.drawImage(bookshelfSprite, screenX, screenY, tileSize, tileSize);
+            return;
+        }
         double x = screenX + 8;
         double y = screenY + 4;
         double w = tileSize - 16;
@@ -418,25 +485,7 @@ public class TileRenderer {
     }
 
     private void drawSearchableLabel(GraphicsContext gc, int screenX, int screenY, String name) {
-        if (name == null) {
-            return;
-        }
-        String lower = name.toLowerCase();
-        String label;
-        if (lower.contains("bookshelf")) {
-            label = "BOOKSHELF";
-        } else if (lower.contains("pool") || lower.contains("gargoyle")) {
-            label = "POOL";
-        } else if (lower.contains("column") || lower.contains("pillar")) {
-            label = "COLUMN";
-        } else if (lower.contains("shelf")) {
-            label = "SHELF";
-        } else {
-            label = "SEARCH";
-        }
-        gc.setFill(Color.web("#ffd54f"));
-        gc.setFont(javafx.scene.text.Font.font("Monospaced", javafx.scene.text.FontWeight.BOLD, 8));
-        gc.fillText(label, screenX + 4, screenY + tileSize - 6);
+        // Labels removed — sparkle corners + "?" badge communicate searchability
     }
 
     /**
@@ -444,35 +493,27 @@ public class TileRenderer {
      * Gold frame + DOOR label so it is not confused with searchable furniture.
      */
     public void drawPortal(GraphicsContext gc, int screenX, int screenY, boolean open, String portalName) {
-        int pad = 6;
-        double x = screenX + pad;
-        double y = screenY + pad;
-        double w = tileSize - pad * 2;
-        double h = tileSize - pad * 2;
-
-        boolean iron = portalName != null && portalName.toLowerCase().contains("iron");
-
-        gc.setFill(Color.web("#1a1208", 0.85));
-        gc.fillRect(x, y, w, h);
-
-        gc.setStroke(Color.web(open ? "#ffd54f" : "#e74c3c"));
-        gc.setLineWidth(2.5);
-        gc.strokeRect(x + 2, y + 2, w - 4, h - 4);
-
-        gc.setFill(Color.web(open ? "#8b6914" : "#4a3520"));
-        double gap = open ? w * 0.22 : 0;
-        gc.fillRect(x + 4, y + 4, (w - 8 - gap) / 2, h - 8);
-        gc.fillRect(x + 4 + (w - 8 - gap) / 2 + gap, y + 4, (w - 8 - gap) / 2, h - 8);
-
-        if (!open) {
-            gc.setFill(Color.web("#e74c3c", 0.9));
-            gc.fillOval(screenX + tileSize / 2.0 - 6, screenY + tileSize / 2.0 - 8, 12, 12);
+        Image sprite = open ? doorOpenSprite : doorSprite;
+        if (sprite != null) {
+            gc.drawImage(sprite, screenX, screenY, tileSize, tileSize);
+        } else {
+            int pad = 6;
+            double x = screenX + pad, y = screenY + pad;
+            double w = tileSize - pad * 2, h = tileSize - pad * 2;
+            gc.setFill(Color.web("#1a1208", 0.85));
+            gc.fillRect(x, y, w, h);
+            gc.setStroke(Color.web(open ? "#ffd54f" : "#e74c3c"));
+            gc.setLineWidth(2.5);
+            gc.strokeRect(x + 2, y + 2, w - 4, h - 4);
+            gc.setFill(Color.web(open ? "#8b6914" : "#4a3520"));
+            double gap = open ? w * 0.22 : 0;
+            gc.fillRect(x + 4, y + 4, (w - 8 - gap) / 2, h - 8);
+            gc.fillRect(x + 4 + (w - 8 - gap) / 2 + gap, y + 4, (w - 8 - gap) / 2, h - 8);
         }
-
         gc.setFill(Color.web("#ffd54f"));
         gc.setFont(javafx.scene.text.Font.font("Monospaced", javafx.scene.text.FontWeight.BOLD, 9));
-        String label = iron ? "IRON DOOR" : "DOOR";
-        gc.fillText(label, screenX + tileSize / 2.0 - (iron ? 22 : 14), screenY + tileSize - 8);
+        String label = (portalName != null && portalName.toLowerCase().contains("iron")) ? "IRON DOOR" : "DOOR";
+        gc.fillText(label, screenX + tileSize / 2.0 - (label.length() > 4 ? 22 : 14), screenY + tileSize - 4);
         if (open) {
             gc.fillText("\u2192", screenX + tileSize / 2.0 - 4, screenY + 10);
         }
@@ -500,16 +541,27 @@ public class TileRenderer {
     }
 
     public void drawSearchableMarker(GraphicsContext gc, int screenX, int screenY) {
-        gc.setStroke(Color.web("#ffd54f", 0.85));
-        gc.setLineWidth(2);
-        gc.setLineDashes(5, 4);
-        gc.strokeRect(screenX + 2, screenY + 2, tileSize - 4, tileSize - 4);
-        gc.setLineDashes(null);
+        if (sparkleFrames != null) {
+            int frame = (int) ((System.currentTimeMillis() / 350) % sparkleFrames.length);
+            Image sparkle = sparkleFrames[frame];
+            // Four corner sparkles, scaled small
+            int sz = 14;
+            gc.drawImage(sparkle, screenX,                  screenY,                  sz, sz);
+            gc.drawImage(sparkle, screenX + tileSize - sz,  screenY,                  sz, sz);
+            gc.drawImage(sparkle, screenX,                  screenY + tileSize - sz,  sz, sz);
+            gc.drawImage(sparkle, screenX + tileSize - sz,  screenY + tileSize - sz,  sz, sz);
+        } else {
+            // Fallback: subtle thin glow border
+            gc.setStroke(Color.web("#ffd54f", 0.45));
+            gc.setLineWidth(1.5);
+            gc.strokeRect(screenX + 2, screenY + 2, tileSize - 4, tileSize - 4);
+        }
+        // Small "?" badge in top-right corner
+        gc.setFill(Color.web("#0a0908", 0.75));
+        gc.fillOval(screenX + tileSize - 12, screenY + 1, 11, 11);
         gc.setFill(Color.web("#ffd54f"));
-        gc.fillOval(screenX + tileSize - 11, screenY + 2, 9, 9);
-        gc.setFill(Color.web("#1a1a2e"));
-        gc.fillText("?", screenX + tileSize - 9, screenY + 9);
         gc.setFont(javafx.scene.text.Font.font("Monospaced", javafx.scene.text.FontWeight.BOLD, 8));
+        gc.fillText("?", screenX + tileSize - 9, screenY + 9);
     }
 
     public void drawHeroProjectile(GraphicsContext gc, int screenX, int screenY) {
@@ -555,7 +607,7 @@ public class TileRenderer {
         if (item instanceof Consumable) {
             String n = item.getName().toLowerCase();
             if (n.contains("mana"))   return potionSprite2;
-            if (n.contains("energy")) return ringSprite;
+            if (n.contains("energy")) return energyPotionSprite != null ? energyPotionSprite : ringSprite;
             return potionSprite;
         }
         if (item instanceof Scroll) return scrollSprite;

@@ -32,6 +32,7 @@ import com.kurawler.model.object.Wearable;
 
 import javafx.application.Platform;
 import javafx.animation.AnimationTimer;
+import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
 import javafx.scene.Scene;
 import javafx.geometry.Insets;
@@ -90,6 +91,7 @@ public class GameView {
     private GameLoop gameLoop;
     private TeamMatchGameLoop teamMatchGameLoop;
     private AnimationTimer animationTimer;
+    private PauseTransition messageDismissTimer;
     private boolean paused;
     private Scene playScene;
     private boolean playActive;
@@ -131,15 +133,45 @@ public class GameView {
         achievementPopupLabel.setMouseTransparent(true);
 
         messageLabel = new Label("");
-        messageLabel.setFont(Font.font("Monospaced", 11));
-        messageLabel.setTextFill(Color.web("#aaa090"));
+        messageLabel.setFont(Font.font("Monospaced", FontWeight.BOLD, 13));
+        messageLabel.setTextFill(Color.web("#f0e8c8"));
+        messageLabel.setStyle(
+                "-fx-background-color: rgba(10,9,8,0.88);"
+                + "-fx-background-radius: 5;"
+                + "-fx-border-color: #c8a840;"
+                + "-fx-border-width: 1.5;"
+                + "-fx-border-radius: 5;"
+                + "-fx-padding: 6 18 6 18;");
         messageLabel.setMouseTransparent(true);
+        messageLabel.setVisible(false);
+        messageLabel.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null && !newVal.isEmpty()) {
+                messageLabel.setOpacity(1.0);
+                messageLabel.setVisible(true);
+                if (messageDismissTimer != null) messageDismissTimer.stop();
+                messageDismissTimer = new PauseTransition(Duration.seconds(3));
+                messageDismissTimer.setOnFinished(e -> {
+                    FadeTransition ft = new FadeTransition(Duration.millis(400), messageLabel);
+                    ft.setFromValue(1.0);
+                    ft.setToValue(0.0);
+                    ft.setOnFinished(ev -> messageLabel.setVisible(false));
+                    ft.play();
+                });
+                messageDismissTimer.play();
+            } else {
+                if (messageDismissTimer != null) messageDismissTimer.stop();
+                messageLabel.setVisible(false);
+            }
+        });
 
-        StackPane hudStack = new StackPane(hudCanvas, achievementPopupLabel, messageLabel);
+        StackPane canvasStack = new StackPane(canvas, messageLabel);
+        StackPane.setAlignment(messageLabel, Pos.BOTTOM_CENTER);
+        StackPane.setMargin(messageLabel, new Insets(0, 0, 24, 0));
+
+        StackPane hudStack = new StackPane(hudCanvas, achievementPopupLabel);
         hudStack.setPrefHeight(HUD_HEIGHT);
         StackPane.setAlignment(achievementPopupLabel, Pos.CENTER_RIGHT);
         StackPane.setMargin(achievementPopupLabel, new Insets(0, 100, 0, 0));
-        StackPane.setAlignment(messageLabel, Pos.CENTER);
 
         AchievementManager achievementManager = session.getAchievementManager();
         if (achievementManager != null) {
@@ -148,7 +180,7 @@ public class GameView {
 
         BorderPane root = new BorderPane();
         root.setTop(hudStack);
-        root.setCenter(canvas);
+        root.setCenter(canvasStack);
         root.setStyle("-fx-background-color: #0a0a10;");
 
         Scene scene = new Scene(root, canvasW, canvasH + HUD_HEIGHT);
