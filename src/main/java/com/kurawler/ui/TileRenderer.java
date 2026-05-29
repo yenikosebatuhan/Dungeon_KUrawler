@@ -72,6 +72,7 @@ public class TileRenderer {
     private Image doorSprite;
     private Image doorOpenSprite;
     private Image energyPotionSprite;
+    private Image[] sparkleFrames;
 
     public TileRenderer(int tileSize) {
         this.tileSize = tileSize;
@@ -134,11 +135,18 @@ public class TileRenderer {
         // Statics / dungeon
         if ((img = loadImg("/assets/dc_pool.png"))        != null) poolSprite       = img;
         if ((img = loadImg("/assets/dc_column.png"))      != null) columnSprite     = img;
-        if ((img = loadImg("/assets/dc_bookshelf.png"))   != null) bookshelfSprite  = img;
+        if ((img = loadImg("/assets/dc_book.png"))         != null) bookshelfSprite  = img;
         if ((img = loadImg("/assets/dc_pedestal.png"))    != null) pedestalSprite   = img;
         if ((img = loadImg("/assets/dc_pedestal.png"))    != null) altarSprite      = img;
         if ((img = loadImg("/assets/dc_door_closed.png")) != null) doorSprite       = img;
         if ((img = loadImg("/assets/dc_door_open.png"))   != null) doorOpenSprite   = img;
+        // Sparkle animation frames for searchable indicator
+        Image s1 = loadImg("/assets/dc_fx_sparkle1.png");
+        Image s2 = loadImg("/assets/dc_fx_sparkle2.png");
+        Image s3 = loadImg("/assets/dc_fx_sparkle3.png");
+        if (s1 != null && s2 != null && s3 != null) {
+            sparkleFrames = new Image[]{s1, s2, s3};
+        }
     }
 
     private void loadWallsAndFloors() {
@@ -477,25 +485,7 @@ public class TileRenderer {
     }
 
     private void drawSearchableLabel(GraphicsContext gc, int screenX, int screenY, String name) {
-        if (name == null) {
-            return;
-        }
-        String lower = name.toLowerCase();
-        String label;
-        if (lower.contains("bookshelf")) {
-            label = "BOOKSHELF";
-        } else if (lower.contains("pool") || lower.contains("gargoyle")) {
-            label = "POOL";
-        } else if (lower.contains("column") || lower.contains("pillar")) {
-            label = "COLUMN";
-        } else if (lower.contains("shelf")) {
-            label = "SHELF";
-        } else {
-            label = "SEARCH";
-        }
-        gc.setFill(Color.web("#ffd54f"));
-        gc.setFont(javafx.scene.text.Font.font("Monospaced", javafx.scene.text.FontWeight.BOLD, 8));
-        gc.fillText(label, screenX + 4, screenY + tileSize - 6);
+        // Labels removed — sparkle corners + "?" badge communicate searchability
     }
 
     /**
@@ -551,16 +541,27 @@ public class TileRenderer {
     }
 
     public void drawSearchableMarker(GraphicsContext gc, int screenX, int screenY) {
-        gc.setStroke(Color.web("#ffd54f", 0.85));
-        gc.setLineWidth(2);
-        gc.setLineDashes(5, 4);
-        gc.strokeRect(screenX + 2, screenY + 2, tileSize - 4, tileSize - 4);
-        gc.setLineDashes(null);
+        if (sparkleFrames != null) {
+            int frame = (int) ((System.currentTimeMillis() / 350) % sparkleFrames.length);
+            Image sparkle = sparkleFrames[frame];
+            // Four corner sparkles, scaled small
+            int sz = 14;
+            gc.drawImage(sparkle, screenX,                  screenY,                  sz, sz);
+            gc.drawImage(sparkle, screenX + tileSize - sz,  screenY,                  sz, sz);
+            gc.drawImage(sparkle, screenX,                  screenY + tileSize - sz,  sz, sz);
+            gc.drawImage(sparkle, screenX + tileSize - sz,  screenY + tileSize - sz,  sz, sz);
+        } else {
+            // Fallback: subtle thin glow border
+            gc.setStroke(Color.web("#ffd54f", 0.45));
+            gc.setLineWidth(1.5);
+            gc.strokeRect(screenX + 2, screenY + 2, tileSize - 4, tileSize - 4);
+        }
+        // Small "?" badge in top-right corner
+        gc.setFill(Color.web("#0a0908", 0.75));
+        gc.fillOval(screenX + tileSize - 12, screenY + 1, 11, 11);
         gc.setFill(Color.web("#ffd54f"));
-        gc.fillOval(screenX + tileSize - 11, screenY + 2, 9, 9);
-        gc.setFill(Color.web("#1a1a2e"));
-        gc.fillText("?", screenX + tileSize - 9, screenY + 9);
         gc.setFont(javafx.scene.text.Font.font("Monospaced", javafx.scene.text.FontWeight.BOLD, 8));
+        gc.fillText("?", screenX + tileSize - 9, screenY + 9);
     }
 
     public void drawHeroProjectile(GraphicsContext gc, int screenX, int screenY) {
