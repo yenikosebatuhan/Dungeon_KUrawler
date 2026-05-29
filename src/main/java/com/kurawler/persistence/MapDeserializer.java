@@ -128,6 +128,9 @@ public class MapDeserializer {
                 session.setTargetObjective((Item) target);
             }
         }
+        if (root.containsKey("difficulty")) {
+            session.setDifficulty((String) root.get("difficulty"));
+        }
     }
 
     @SuppressWarnings("unchecked")
