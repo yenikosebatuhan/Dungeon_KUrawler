@@ -83,17 +83,24 @@ public class EnemySpawner {
         }
 
         if (enemy != null) {
+            String diff = session.getDifficulty();
+            if ("Easy".equals(diff)) {
+                enemy.setMaxHealth((int)(enemy.getMaxHealth() * 0.7));
+                enemy.setHealth((int)(enemy.getHealth() * 0.7));
+                enemy.setStrength((int)(enemy.getStrength() * 0.7));
+            } else if ("Hard".equals(diff)) {
+                enemy.setMaxHealth((int)(enemy.getMaxHealth() * 1.3));
+                enemy.setHealth((int)(enemy.getHealth() * 1.3));
+                enemy.setStrength((int)(enemy.getStrength() * 1.3));
+            }
+
             GridCell spawnCell = findSpawnLocation();
             if (spawnCell != null) {
                 enemy.moveToCell(spawnCell);
                 session.addEnemy(enemy);
-                System.out.println("[Spawn] " + enemy.getName()
-                        + " spawned at (" + spawnCell.getRow() + "," + spawnCell.getCol()
-                        + ") | Active enemies: " + session.getActiveEnemyCount());
             }
         }
     }
-
     /**
      * Finds a random walkable, unoccupied cell for spawning.
      * Prefers edge cells (top/bottom row); falls back to any walkable cell

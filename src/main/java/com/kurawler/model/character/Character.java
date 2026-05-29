@@ -96,4 +96,12 @@ public abstract class Character {
     
     public GridCell getCurrentCell() { return currentCell; }
     public void setCurrentCell(GridCell cell) { this.currentCell = cell; }
+    
+    public void setMaxHealth(int maxHealth) {
+        this.maxHealth = maxHealth;
+    }
+
+    public void setMaxEnergy(int maxEnergy) {
+        this.maxEnergy = maxEnergy;
+    }
 }
