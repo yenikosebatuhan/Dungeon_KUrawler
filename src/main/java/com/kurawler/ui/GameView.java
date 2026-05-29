@@ -205,17 +205,12 @@ public class GameView {
             session.setCurrentMode("Play");
         }
 
-        // PDF §4.1.2: Show target item popup at the start of a new play session.
-        // Team Match has no target item, so skip in that mode.
-        // Skip for editor test play — return to editor without quest/death overlays.
-        // IMPORTANT: defer startGameLoop() until the popup is dismissed so that
-        // enemies do not move/attack while the player is still reading the quest.
         if (!(session instanceof TeamMatchSession)
                 && !session.isEditorTestPlay()
                 && session.getTargetObjective() != null) {
             javafx.application.Platform.runLater(() -> {
                 new TargetItemPopup(stage, session.getTargetObjective()).show();
-                startGameLoop(session);   // blocks above: showAndWait() returns only after dismiss
+                startGameLoop(session);   
             });
         } else {
             startGameLoop(session);
@@ -311,7 +306,6 @@ public class GameView {
         animationTimer.start();
     }
 
-    /** Stops loop and UI; editor test play returns to editor without YOU DIED on editor. */
     public void shutdown() {
         playActive = false;
         endScreenShown = true;
@@ -357,14 +351,24 @@ public class GameView {
         }
         endScreenShown = true;
         AudioManager.getInstance().play("gameOver");
+        GameSession session = controller.getSession();
+        Hero hero = session.getHero();
+        
+        String stats = String.format("Cause of Death: Slain in battle\nHP at Death: %d / %d\nTime Played: %s\nFloors Cleared: %d\nEnemies Defeated: %d",
+                Math.max(0, hero.getHealth()), hero.getMaxHealth(),
+                formatTime(session.getPlayDurationTimer()),
+                session.getFloorsClearedCount(),
+                session.getEnemiesDefeatedCount()
+        );
+
         Platform.runLater(() -> {
-            if (!isPlaySceneActive()) {
-                return;
-            }
+            if (!isPlaySceneActive()) return;
             showEndScreen(
                     "\u2620 YOU DIED \u2620",
                     "Your hero has fallen in the dungeon.\nThe darkness claims another soul...",
-                    "#ff4444", "#4a1a1a");
+                    stats,
+                    "#ff4444", "#3a0a0a" 
+            );
         });
     }
 
@@ -377,116 +381,152 @@ public class GameView {
         GameSession session = controller.getSession();
         String itemName = session.getTargetObjective() != null
                 ? session.getTargetObjective().getName() : "the artifact";
-        String time = formatTime(session.getPlayDurationTimer());
+                
+        String stats = String.format("Time Taken: %s\nTotal Turns: %d\nItems Collected: %d\nEnemies Defeated: %d",
+                formatTime(session.getPlayDurationTimer()),
+                session.getTurnCount(),
+                session.getItemsCollectedCount(),
+                session.getEnemiesDefeatedCount()
+        );
+
         Platform.runLater(() -> {
-            if (!isPlaySceneActive()) {
-                return;
-            }
+            if (!isPlaySceneActive()) return;
             showEndScreen(
                     "\u2605 VICTORY \u2605",
-                    "You found the " + itemName + "!\n"
-                    + "Time: " + time + "  |  Turns: " + session.getTurnCount()
-                    + "\n\nCongratulations, brave adventurer!",
-                    "#e8c84a", "#3a3a1a");
+                    "You found the " + itemName + "!\nCongratulations, brave adventurer!",
+                    stats,
+                    "#e8c84a", "#2a2510" 
+            );
         });
     }
 
     private void showTeamMatchResult(String result) {
+        GameSession session = controller.getSession();
+        String stats = String.format("Result: %s\nTime Played: %s\nTurns: %d",
+                result, formatTime(session.getPlayDurationTimer()), session.getTurnCount());
+                
         Platform.runLater(() -> showEndScreen(
-                "\u2694 MATCH OVER \u2694", result, "#6fc3df", "#1a2a3a"));
+                "\u2694 MATCH OVER \u2694", result, stats, "#6fc3df", "#1a2a3a"));
     }
 
-    private void showEndScreen(String title, String message, String accent, String bgTint) {
+    private void showEndScreen(String title, String message, String statsText, String accent, String bgTint) {
         if (!isPlaySceneActive()) {
             return;
         }
         Stage popup = new Stage();
         popup.initOwner(stage);
-        popup.initModality(javafx.stage.Modality.APPLICATION_MODAL);
-        popup.initStyle(javafx.stage.StageStyle.UNDECORATED);
+        popup.initModality(Modality.APPLICATION_MODAL);
+        popup.initStyle(StageStyle.UNDECORATED);
 
-        Canvas bg = new Canvas(420, 300);
+        int popW = 500;
+        int popH = 450; 
+
+        Canvas bg = new Canvas(popW, popH);
         GraphicsContext gc = bg.getGraphicsContext2D();
         SpriteSheet wallSheet = new SpriteSheet("/assets/walls_x3.png", 48);
+        
         gc.setFill(Color.web("#0a0a10"));
-        gc.fillRect(0, 0, 420, 300);
+        gc.fillRect(0, 0, popW, popH);
         if (wallSheet.isLoaded()) {
-            for (int y = 0; y < 300; y += 48) {
-                for (int x = 0; x < 420; x += 48) {
+            for (int y = 0; y < popH; y += 48) {
+                for (int x = 0; x < popW; x += 48) {
                     int hash = Math.abs((x * 73856093) ^ (y * 19349663));
                     javafx.scene.image.Image tile = wallSheet.getSprite(hash % 5, 1);
                     if (tile != null) gc.drawImage(tile, x, y, 48, 48);
                 }
             }
         }
-        gc.setFill(Color.web(bgTint, 0.7));
-        gc.fillRect(0, 0, 420, 300);
+        gc.setFill(Color.web(bgTint, 0.85)); 
+        gc.fillRect(0, 0, popW, popH);
 
         Label titleLabel = new Label(title);
         titleLabel.setFont(Font.font("Serif", FontWeight.BOLD, 36));
         titleLabel.setTextFill(Color.web(accent));
-        javafx.scene.effect.InnerShadow engrave =
-                new javafx.scene.effect.InnerShadow(3, 1, 2, Color.web("#000000", 0.6));
-        javafx.scene.effect.DropShadow glow =
-                new javafx.scene.effect.DropShadow(20, Color.web(accent, 0.5));
+        javafx.scene.effect.InnerShadow engrave = new javafx.scene.effect.InnerShadow(3, 1, 2, Color.web("#000000", 0.8));
+        javafx.scene.effect.DropShadow glow = new javafx.scene.effect.DropShadow(25, Color.web(accent, 0.6));
         glow.setInput(engrave);
         titleLabel.setEffect(glow);
 
         Label msgLabel = new Label(message);
-        msgLabel.setFont(Font.font("Serif", 15));
-        msgLabel.setTextFill(Color.web("#c8b880"));
+        msgLabel.setFont(Font.font("Serif", 16));
+        msgLabel.setTextFill(Color.web("#d0c0a0"));
         msgLabel.setWrapText(true);
-        msgLabel.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
-        msgLabel.setMaxWidth(360);
-        msgLabel.setEffect(new javafx.scene.effect.DropShadow(4, 0, 1, Color.BLACK));
+        msgLabel.setTextAlignment(TextAlignment.CENTER);
+        msgLabel.setMaxWidth(400);
 
-        Button okBtn = new Button("Return to Menu");
-        okBtn.setFont(Font.font("Serif", FontWeight.BOLD, 15));
-        okBtn.setPrefWidth(200);
-        okBtn.setPrefHeight(40);
-        String base = "-fx-background-color: "
-                + "linear-gradient(to bottom, #4a4438, #2e2a22, #1e1b16, #2a2720); "
-                + "-fx-text-fill: " + accent + "; "
-                + "-fx-background-radius: 4; -fx-border-radius: 4; "
-                + "-fx-border-color: " + accent + "88 #3a3220 #3a3220 " + accent + "88; "
-                + "-fx-border-width: 2; -fx-cursor: hand;";
-        String hover = "-fx-background-color: "
-                + "linear-gradient(to bottom, #5a5448, #3e3a30, #2a2720, #353028); "
-                + "-fx-text-fill: #ffffff; "
-                + "-fx-background-radius: 4; -fx-border-radius: 4; "
-                + "-fx-border-color: " + accent + " " + accent + "aa " + accent + "aa " + accent + "; "
-                + "-fx-border-width: 2; -fx-cursor: hand; "
-                + "-fx-effect: dropshadow(gaussian, " + accent + "44, 10, 0, 0, 0);";
-        okBtn.setStyle(base);
-        okBtn.setOnMouseEntered(e -> okBtn.setStyle(hover));
-        okBtn.setOnMouseExited(e -> okBtn.setStyle(base));
-        okBtn.setOnAction(e -> {
+        // --- Stats Grid UI Polish ---
+        GridPane statsGrid = new GridPane();
+        statsGrid.setAlignment(Pos.CENTER);
+        statsGrid.setHgap(20);
+        statsGrid.setVgap(8);
+        statsGrid.setPadding(new Insets(15));
+        statsGrid.setStyle("-fx-background-color: rgba(0,0,0,0.5); -fx-background-radius: 8; -fx-border-color: " + accent + "44; -fx-border-radius: 8; -fx-border-width: 1;");
+
+        String[] statLines = statsText.split("\n");
+        for (int i = 0; i < statLines.length; i++) {
+            String[] parts = statLines[i].split(":");
+            if (parts.length == 2) {
+                Label lblKey = new Label(parts[0].trim());
+                lblKey.setFont(Font.font("Serif", FontWeight.NORMAL, 14));
+                lblKey.setTextFill(Color.web("#a09070"));
+                
+                Label lblVal = new Label(parts[1].trim());
+                lblVal.setFont(Font.font("Monospaced", FontWeight.BOLD, 15));
+                lblVal.setTextFill(Color.web(accent));
+                
+                statsGrid.add(lblKey, 0, i);
+                statsGrid.add(lblVal, 1, i);
+            } else {
+                Label lblSingle = new Label(statLines[i]);
+                lblSingle.setTextFill(Color.web("#a09070"));
+                statsGrid.add(lblSingle, 0, i, 2, 1);
+            }
+        }
+
+        // --- Action Buttons ---
+        HBox buttonBox = new HBox(15);
+        buttonBox.setAlignment(Pos.CENTER);
+
+        Button menuBtn = popupButton("Return to Menu", "#a09070");
+        menuBtn.setPrefWidth(180);
+        menuBtn.setOnAction(e -> {
             popup.close();
             playActive = false;
             shutdown();
             screenManager.showMainMenu();
         });
 
-        VBox content = new VBox(20, titleLabel, msgLabel, okBtn);
-        content.setAlignment(javafx.geometry.Pos.CENTER);
+        Button playAgainBtn = popupButton("Play Again", accent);
+        playAgainBtn.setPrefWidth(180);
+        playAgainBtn.setOnAction(e -> {
+            popup.close();
+            playActive = false;
+            shutdown();
+            screenManager.playAgain(); // Calls our newly created method
+        });
+
+        buttonBox.getChildren().addAll(menuBtn, playAgainBtn);
+
+        VBox content = new VBox(20, titleLabel, msgLabel, statsGrid, buttonBox);
+        content.setAlignment(Pos.CENTER);
         content.setPadding(new Insets(30));
-        content.setStyle("-fx-border-color: " + accent + "66; -fx-border-width: 3; "
-                + "-fx-border-radius: 4; -fx-background-radius: 4;");
+        content.setStyle("-fx-border-color: " + accent + "88; -fx-border-width: 3; -fx-border-radius: 4; -fx-background-radius: 4;");
 
         StackPane root = new StackPane(bg, content);
-        popup.setScene(new Scene(root, 420, 300));
-        popup.setTitle(title);
+        
+        // --- Animated Fade-In ---
+        root.setOpacity(0);
+        FadeTransition fadeIn = new FadeTransition(Duration.seconds(0.8), root);
+        fadeIn.setToValue(1.0);
+        fadeIn.play();
 
-        popup.setOnShown(e -> {
-            popup.setX(stage.getX() + (stage.getWidth() - 420) / 2);
-            popup.setY(stage.getY() + (stage.getHeight() - 300) / 2);
-        });
+        popup.setScene(new Scene(root, popW, popH));
+        popup.setTitle("Game Over");
+
+        popup.setOnShown(e -> centerPopup(popup));
         popup.showAndWait();
     }
-    
-    /**
-     * BUG-04 / SECTION 2.4: Displays the Character Sheet (Stats & Equipment)
-     */
+
     private void showCharacterSheetPopup(GameSession session) {
         if (animationTimer != null) animationTimer.stop();
         Hero hero = session.getHero();
@@ -511,20 +551,14 @@ public class GameView {
         grid.setVgap(15);
         grid.setAlignment(Pos.CENTER);
 
-        // Name & Class
         addStatRow(grid, 0, "Name:", hero.getName());
-        
-        // Core Stats
         addStatRow(grid, 1, "Health (HP):", hero.getHealth() + " / " + hero.getMaxHealth());
         addStatRow(grid, 2, "Mana (MP):", hero.getMana() + " / " + hero.getMaxMana());
         addStatRow(grid, 3, "Energy (EN):", hero.getEnergy() + " / " + hero.getMaxEnergy());
-        
-        // Combat Stats (Dynamic reading ensures correct values)
         addStatRow(grid, 4, "Strength (STR):", String.valueOf(hero.getStrength()));
         addStatRow(grid, 5, "Defense (DEF):", String.valueOf(hero.getDefensePower()));
         addStatRow(grid, 6, "Total Damage:", String.valueOf(hero.calculateDamage()));
 
-        // Equipment
         String wpnName = hero.getEquippedWeapon() != null ? hero.getEquippedWeapon().getName() : "None";
         String armorName = hero.getEquippedWearable() != null ? hero.getEquippedWearable().getName() : "None";
         
@@ -546,7 +580,6 @@ public class GameView {
         popup.showAndWait();
     }
 
-    /** Helper method for Character Sheet layout */
     private void addStatRow(GridPane grid, int row, String labelText, String valueText) {
         Label lbl = new Label(labelText);
         lbl.setFont(Font.font("Serif", FontWeight.BOLD, 15));
@@ -559,8 +592,9 @@ public class GameView {
         grid.add(lbl, 0, row);
         grid.add(val, 1, row);
     }
+
     private void handleKeyPress(KeyEvent event) {
-    	if (paused && event.getCode() != javafx.scene.input.KeyCode.ESCAPE && event.getCode() != javafx.scene.input.KeyCode.P) {
+        if (paused && event.getCode() != javafx.scene.input.KeyCode.ESCAPE && event.getCode() != javafx.scene.input.KeyCode.P) {
             return;
         }
 
@@ -612,7 +646,6 @@ public class GameView {
             default:            return;
         }
 
-        // --- ENERJİ KONTROLÜ (BUG-01 FIX) ---
         if (isMoveKey) {
             if (hero.getEnergy() < 1) {
                 messageLabel.setText("Not enough energy, you CAN NOT MOVE!");
@@ -633,9 +666,6 @@ public class GameView {
         }
     }
 
-    /**
-     * E key: melee attack the first adjacent enemy (same as ATTACK in the click menu).
-     */
     private boolean tryAttackAdjacentEnemy() {
         GameSession session = controller.getSession();
         Hero hero = session.getHero();
@@ -662,10 +692,6 @@ public class GameView {
         return false;
     }
 
-    /**
-     * E key: pick up the first item on the hero's tile or any adjacent tile (3×3).
-     * If nothing to pick up, caller may fall back to using a consumable.
-     */
     private boolean tryTakeAdjacentItem() {
         Hero hero = controller.getSession().getHero();
         com.kurawler.model.Map map = controller.getSession().getMap();
@@ -702,10 +728,6 @@ public class GameView {
         return false;
     }
 
-    /**
-     * E key: open the first adjacent StaticContainer (unlocked).
-     */
-    /** E key or fallback: use a door on the hero tile or any adjacent tile. */
     private boolean tryUseAdjacentPortal() {
         GameSession session = controller.getSession();
         Hero hero = session.getHero();
@@ -781,7 +803,6 @@ public class GameView {
         return false;
     }
 
-    /** 3x3 Interaction: click an adjacent cell to interact with objects on it. */
     private void handleMouseClick(MouseEvent event) {
         int col = (int) (event.getX() / TILE_SIZE);
         int row = (int) (event.getY() / TILE_SIZE);
@@ -807,7 +828,6 @@ public class GameView {
             if (obj instanceof StaticContainer) {
                 StaticContainer sc = (StaticContainer) obj;
                 if (sc.isLocked()) {
-                    // Check if Hero has the required key
                     boolean hasKey = false;
                     for (Item invItem : hero.getInventory().getItems()) {
                         if (invItem instanceof com.kurawler.model.object.Key && 
@@ -882,7 +902,6 @@ public class GameView {
 
             Button btn = popupButton(verb + " " + target, color);
             
-            // --- BUG-02 FIX: Disable TAKE button if inventory is full ---
             if ("take".equals(type) && hero.getInventory().isFull()) {
                 btn.setDisable(true);
                 btn.setText(verb + " " + target + " (Full)");
@@ -948,13 +967,13 @@ public class GameView {
                     else if (searched) messageLabel.setText("Nothing found.");
                     else messageLabel.setText("Cannot search.");
                     
-                    AudioManager.getInstance().play("interact"); // Added interact sound
+                    AudioManager.getInstance().play("interact");
                 }
                 break;
             case "break":
                 boolean broken = controller.breakObject(row, col);
                 messageLabel.setText(broken ? "Broke it!" : "Cannot break.");
-                AudioManager.getInstance().play("interact"); // Added interact sound
+                AudioManager.getInstance().play("interact"); 
                 break;
             case "attack":
                 if (cell.getOccupyingCharacter() instanceof Enemy) {
@@ -985,7 +1004,6 @@ public class GameView {
                             messageLabel.setText("Unlocked " + target + "!");
                         }
                         AudioManager.getInstance().play("interact");
-                        // Wait for any previous popup to close, then open contents
                         Platform.runLater(() -> showContainerContentsPopup(sc, session));
                         break;
                     }
@@ -993,7 +1011,7 @@ public class GameView {
                 break;
             case "locked_info":
                 messageLabel.setText("It is locked. You need a specific key.");
-                AudioManager.getInstance().play("error"); // Optional error sound
+                AudioManager.getInstance().play("error");
                 break;
         }
         render();
@@ -1069,7 +1087,6 @@ public class GameView {
         }
     }
 
-    /** Runs {@code draw} with the canvas rotated clockwise around the tile's centre. */
     private void withRotation(GraphicsContext gc, int sx, int sy, int rot, Runnable draw) {
         if (rot % 360 == 0) {
             draw.run();
@@ -1085,7 +1102,6 @@ public class GameView {
         gc.restore();
     }
 
-    /** Render the entire game state by reading the model. */
     private void render() {
         GameSession session = controller.getSession();
         com.kurawler.model.Map map = session.getMap();
@@ -1124,10 +1140,8 @@ public class GameView {
                     } else if (so != null && renderer.isWallName(so.getName()) && !so.isSearchable()) {
                         renderer.drawWallByName(gc, sx, sy, so.getName());
                     } else if (so != null && so.isSearchable()) {
-                        // Searchable props (pool, column, bookshelf) — floor underneath, not wall tiles.
                         renderer.drawFloor(gc, sx, sy);
                     } else if (so != null && renderer.spriteForAsset(so.getName()) != null) {
-                        // Decorative prop (statue, fountain, door, stairs, pedestal...) on a floor base.
                         renderer.drawFloor(gc, sx, sy);
                         renderer.drawStaticDecor(gc, sx, sy, so);
                     } else if (so != null && !so.isPassable()) {
@@ -1244,11 +1258,9 @@ public class GameView {
             } catch (Exception ignored) {}
         }
 
-        // Dark background
         gc.setFill(Color.web("#0e0c0a"));
         gc.fillRect(0, 0, w, h);
 
-        // Gold border lines
         gc.setStroke(Color.web("#c8a840"));
         gc.setLineWidth(2);
         gc.strokeLine(0, 0, w, 0);
@@ -1260,14 +1272,12 @@ public class GameView {
 
         double pad = 6;
 
-        // ── SECTION 1: Hero portrait (pad, pad) ──
         double portraitSize = h - pad * 2;
         drawGoldPanel(gc, pad, pad, portraitSize, portraitSize);
         renderer.drawHeroFacing(gc, (int)(pad + (portraitSize - TILE_SIZE) / 2),
                 (int)(pad + (portraitSize - TILE_SIZE) / 2),
                 hero.getFacingRow(), hero.getFacingCol());
 
-        // ── SECTION 2: Stat bars ──
         double barStartX = pad + portraitSize + 8;
         double barW = 150;
         double barH = 18;
@@ -1281,10 +1291,8 @@ public class GameView {
         drawStatBar(gc, barStartX, barsTopY + (barH + barGap) * 2, barW, barH,
                 "EN", hero.getEnergy(), hero.getMaxEnergy(), "#4a3d00", "#f9a825", "#f4d03f");
 
-        // ── SECTION 3: Stats text ──
         double statsX = barStartX + barW + 14;
 
-        // Gold divider line
         gc.setStroke(Color.web("#c8a840", 0.4));
         gc.setLineWidth(1);
         gc.strokeLine(statsX - 7, pad + 4, statsX - 7, h - pad - 4);
@@ -1308,7 +1316,6 @@ public class GameView {
         gc.setFill(Color.web("#aa9870"));
         gc.fillText("Foes " + session.getActiveEnemyCount(), statsX2, barsTopY + 14 + 40);
 
-        // ── SECTION 4: Achievements (trophy icon) ──
         double achX = statsX2 + 110;
         gc.setStroke(Color.web("#c8a840", 0.4));
         gc.strokeLine(achX - 7, pad + 4, achX - 7, h - pad - 4);
@@ -1330,7 +1337,6 @@ public class GameView {
         gc.setFill(Color.web("#ffffff", 0.9));
         gc.fillText(achUnlocked + "/" + achTotal, achX + 14, pad + 58);
 
-        // ── SECTION 5: Bag button ──
         double bagBtnX = achX + 68;
         gc.setStroke(Color.web("#c8a840", 0.4));
         gc.strokeLine(bagBtnX - 7, pad + 4, bagBtnX - 7, h - pad - 4);
@@ -1344,7 +1350,6 @@ public class GameView {
         gc.setFill(Color.web("#e8c84a"));
         gc.fillText(inv.getItemCount() + "/8", bagBtnX + 16, h - pad - 4);
 
-        // ── SECTION 6: Pause & Menu buttons ──
         double btnX = bagBtnX + 68;
         double btnSize = (h - pad * 2 - 8) / 2 - 2;
 
@@ -1396,7 +1401,6 @@ public class GameView {
         gc.setFill(Color.web("#ffffff", 0.95));
         gc.fillText(label + " " + val + "/" + max, x + 4, y + h - 4);
     }
-
 
     private void showAchievementPopup(Achievement achievement) {
         achievementPopupLabel.setText("\uD83C\uDFC6 " + achievement.getName() + " unlocked!");
@@ -1469,9 +1473,6 @@ public class GameView {
         centerPopup(popup);
     }
 
-    private void updateSidebar(GameSession session) {
-    }
-
     private String formatTime(int totalSeconds) {
         int minutes = Math.max(0, totalSeconds) / 60;
         int seconds = Math.max(0, totalSeconds) % 60;
@@ -1495,26 +1496,6 @@ public class GameView {
         gc.setStroke(Color.web("#000000", 0.6));
         gc.setLineWidth(1);
         gc.strokeOval(sx + TILE_SIZE - 12, sy + 2, 9, 9);
-    }
-
-    private String teamRoster(Team team) {
-        StringBuilder sb = new StringBuilder();
-        for (Character member : team.getMembers()) {
-            String icon = (member instanceof Hero) ? "  \u2694 "
-                    : (member instanceof Sorcerer) ? "  \u2728 " : "  \u2620 ";
-            if (member.isAlive()) {
-                sb.append(icon).append(member.getName())
-                  .append("  HP:").append(member.getHealth())
-                  .append("/").append(member.getMaxHealth()).append("\n");
-            } else {
-                sb.append(icon).append(member.getName())
-                  .append("  -- DEAD --\n");
-            }
-        }
-        return sb.toString();
-    }
-
-    private void buildInventoryUI(GameSession session) {
     }
 
     private void showInventoryPopup() {
@@ -1709,7 +1690,6 @@ public class GameView {
             Consumable cons = (Consumable) item;
             Button btn = popupButton("Eat " + cons.getName(), "#55efc4");
             btn.setOnAction(e -> {
-                // Use EatAction pipeline
                 com.kurawler.action.Action action = new com.kurawler.action.EatAction(cons);
                 for (com.kurawler.effect.Effect eff : action.resolve(session)) {
                     eff.apply(session);
@@ -1732,7 +1712,6 @@ public class GameView {
 
         Button discardBtn = popupButton("Discard", "#e74c3c");
         discardBtn.setOnAction(e -> {
-            // Use DiscardAction pipeline
             com.kurawler.action.Action action = new com.kurawler.action.DiscardAction(item);
             for (com.kurawler.effect.Effect eff : action.resolve(session)) {
                 eff.apply(session);
@@ -1749,8 +1728,6 @@ public class GameView {
         VBox content = new VBox(10, title, nameLabel, actions);
         content.setAlignment(Pos.CENTER);
         content.setPadding(new Insets(20));
-        // Solid CSS background so the popup is never blank even if the Canvas
-        // background fails to render on some platforms.
         content.setStyle("-fx-background-color: linear-gradient(to bottom, #2a2418, #15110c); "
                 + "-fx-border-color: #8b7940; -fx-border-width: 2; "
                 + "-fx-border-radius: 6; -fx-background-radius: 6;");
@@ -1901,25 +1878,6 @@ public class GameView {
         pane.setStyle("-fx-background-color: #1a1510; -fx-border-color: #8b7530; "
                 + "-fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4;");
         return pane;
-    }
-    private void showItemActions(Item item, GameSession session, MouseEvent event) {
-        showItemActionPopup(item, session);
-    }
-
-    private void updateAchievements(GameSession session) {
-        AchievementManager manager = session.getAchievementManager();
-        if (manager == null) {
-            achievementsLabel.setText("");
-            return;
-        }
-
-        StringBuilder sb = new StringBuilder();
-        for (Achievement achievement : manager.getAchievements()) {
-            sb.append(achievement.isUnlocked() ? "  \u2605 " : "  \u2606 ")
-              .append(achievement.getName())
-              .append("\n");
-        }
-        achievementsLabel.setText(sb.toString());
     }
 
     private double[] lerpPosition(Object entity, double targetX, double targetY) {
