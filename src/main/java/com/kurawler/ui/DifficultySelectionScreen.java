@@ -22,16 +22,16 @@ public class DifficultySelectionScreen {
     private static final int W = 1280;
     private static final int H = 720;
     private final ScreenManager screenManager;
-    private final boolean isRandomMap;
+    // --- DEĞİŞEN KISIM: Artık string olarak oyun modunu tutuyoruz ---
+    private final String gameType; 
     private String selectedDifficulty = "Normal";
 
-    public DifficultySelectionScreen(ScreenManager screenManager, boolean isRandomMap) {
+    public DifficultySelectionScreen(ScreenManager screenManager, String gameType) {
         this.screenManager = screenManager;
-        this.isRandomMap = isRandomMap;
+        this.gameType = gameType;
     }
 
     public Scene createScene() {
-        // --- 1. Background with Torchlight Vignette ---
         Canvas bg = new Canvas(W, H);
         drawDungeonBackground(bg);
 
@@ -39,7 +39,6 @@ public class DifficultySelectionScreen {
         vignette.setPrefSize(W, H);
         vignette.setStyle("-fx-background-color: radial-gradient(center 50% 50%, radius 75%, rgba(10,10,20,0.4), rgba(5,5,10,0.95));");
 
-        // --- 2. Title & Ornament ---
         Label title = new Label("SELECT DIFFICULTY");
         title.setFont(Font.font("Serif", FontWeight.BOLD, 55));
         title.setTextFill(Color.web("#e8c84a"));
@@ -54,7 +53,6 @@ public class DifficultySelectionScreen {
         ornament.setTextFill(Color.web("#8b6914", 0.7));
         ornament.setEffect(new DropShadow(4, 0, 1, Color.web("#000000", 0.5)));
 
-        // --- 3. Description Plaque ---
         Label descLabel = new Label("Normal:\nDefault enemy stats and starting energy.");
         descLabel.setFont(Font.font("Monospaced", FontWeight.BOLD, 18));
         descLabel.setTextFill(Color.web("#e8c84a"));
@@ -70,12 +68,10 @@ public class DifficultySelectionScreen {
                 + "-fx-border-width: 2; -fx-border-radius: 8; "
                 + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 10, 0, 0, 5);");
 
-        // --- 4. Difficulty Buttons ---
         Button easyBtn = stoneButton("Easy");
         Button normalBtn = stoneButton("Normal");
         Button hardBtn = stoneButton("Hard");
 
-        // Initial State
         setActiveStyle(normalBtn, "#e8c84a");
 
         easyBtn.setOnAction(e -> {
@@ -108,7 +104,6 @@ public class DifficultySelectionScreen {
         HBox diffBox = new HBox(40, easyBtn, normalBtn, hardBtn);
         diffBox.setAlignment(Pos.CENTER);
 
-        // --- 5. Action Buttons ---
         Button confirmBtn = new Button("\u2694 CONFIRM & START");
         confirmBtn.setFont(Font.font("Serif", FontWeight.BOLD, 24));
         confirmBtn.setPrefWidth(350);
@@ -124,7 +119,9 @@ public class DifficultySelectionScreen {
         confirmBtn.setStyle(confirmBase);
         confirmBtn.setOnMouseEntered(e -> confirmBtn.setStyle(confirmHover));
         confirmBtn.setOnMouseExited(e -> confirmBtn.setStyle(confirmBase));
-        confirmBtn.setOnAction(e -> screenManager.launchGameWithDifficulty(isRandomMap, selectedDifficulty));
+        
+        // --- DEĞİŞEN KISIM: gameType string'ini Manager'a yolluyoruz ---
+        confirmBtn.setOnAction(e -> screenManager.launchGameWithDifficulty(gameType, selectedDifficulty));
 
         Button backBtn = new Button("\u2190 Return to Main Menu");
         backBtn.setFont(Font.font("Serif", FontWeight.BOLD, 18));
@@ -133,7 +130,6 @@ public class DifficultySelectionScreen {
         backBtn.setOnMouseExited(e -> backBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #8b7940; -fx-cursor: hand;"));
         backBtn.setOnAction(e -> screenManager.showMainMenu());
 
-        // --- Layout Assembly ---
         VBox titleBox = new VBox(5, title, ornament);
         titleBox.setAlignment(Pos.CENTER);
 
