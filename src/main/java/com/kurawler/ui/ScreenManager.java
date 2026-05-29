@@ -75,7 +75,11 @@ public class ScreenManager {
 
     public void startNewGame() {
         currentSession = null;
-        showPlayMode();
+        showDifficultyScreen(false); 
+    }
+
+    public void startRandomDungeon() {
+        showDifficultyScreen(true); 
     }
 
     /** PBI-16: play a map JSON from maps/ with a win objective. */
@@ -189,12 +193,6 @@ public class ScreenManager {
         stage.show();
     }
 
-    public void startRandomDungeon() {
-        com.kurawler.model.ProceduralMapGenerator generator =
-                new com.kurawler.model.ProceduralMapGenerator();
-        currentSession = generator.generate();
-        showPlayMode(currentSession);
-    }
 
     public void startTeamMatch() {
         com.kurawler.model.Map map;
@@ -384,7 +382,98 @@ public class ScreenManager {
         }
         return null;
     }
+    
+    public void showDifficultyScreen(boolean isRandom) {
+        shutdownActiveGameView();
+        DifficultySelectionScreen diffScreen = new DifficultySelectionScreen(this, isRandom);
+        stage.setScene(diffScreen.createScene());
+        stage.setTitle("Select Difficulty");
+        stage.show();
+        stage.centerOnScreen();
+    }
 
+    public void launchGameWithDifficulty(boolean isRandom, String difficulty) {
+        if (isRandom) {
+            com.kurawler.model.ProceduralMapGenerator generator = new com.kurawler.model.ProceduralMapGenerator();
+            currentSession = generator.generate();
+        } else {
+            currentSession = MapFactory.createDefaultMap();
+        }
+        applyDifficultyToSession(currentSession, difficulty);
+        showPlayMode(currentSession);
+    }
+
+    private void applyDifficultyToSession(GameSession session, String difficulty) {
+        session.setDifficulty(difficulty);
+        Hero hero = session.getHero();
+        
+        // 1. Hero Energy Adjustment
+        if (hero != null) {
+            if ("Easy".equals(difficulty)) {
+                hero.setMaxEnergy(150);
+                hero.setEnergy(150);
+            } else if ("Hard".equals(difficulty)) {
+                hero.setMaxEnergy(75);
+                hero.setEnergy(75);
+            }
+        }
+
+        // 2. Adjust Initially Spawned Enemies & Remove Potions on Hard
+        List<com.kurawler.model.Map> mapsToCheck = new ArrayList<>();
+        mapsToCheck.add(session.getMap());
+        if (session.getWorldMaps() != null) {
+            mapsToCheck.addAll(session.getWorldMaps().values());
+        }
+
+        for (com.kurawler.model.Map m : mapsToCheck) {
+            if (m == null) continue;
+            for (int r = 0; r < m.getHeight(); r++) {
+                for (int c = 0; c < m.getWidth(); c++) {
+                    GridCell cell = m.getCell(r, c);
+                    if (cell == null) continue;
+
+                    // Apply difficulty to pre-spawned enemies (using fully qualified Character)
+                    com.kurawler.model.character.Character occupant = cell.getOccupyingCharacter();
+                    if (occupant instanceof Enemy) {
+                        Enemy enemy = (Enemy) occupant;
+                        if ("Easy".equals(difficulty)) {
+                            enemy.setMaxHealth((int)(enemy.getMaxHealth() * 0.7));
+                            enemy.setHealth((int)(enemy.getHealth() * 0.7));
+                            enemy.setStrength((int)(enemy.getStrength() * 0.7));
+                        } else if ("Hard".equals(difficulty)) {
+                            enemy.setMaxHealth((int)(enemy.getMaxHealth() * 1.3));
+                            enemy.setHealth((int)(enemy.getHealth() * 1.3));
+                            enemy.setStrength((int)(enemy.getStrength() * 1.3));
+                        }
+                    }
+
+                    // Remove Health Potions on Hard Mode (using fully qualified object names)
+                    if ("Hard".equals(difficulty)) {
+                        List<com.kurawler.model.object.GameObject> toRemove = new ArrayList<>();
+                        for (com.kurawler.model.object.GameObject obj : cell.getObjects()) {
+                            if (obj instanceof com.kurawler.model.object.Consumable && obj.getName().equals("Health Potion")) {
+                                toRemove.add(obj);
+                            } else if (obj instanceof com.kurawler.model.object.StaticContainer) {
+                                com.kurawler.model.object.StaticContainer sc = (com.kurawler.model.object.StaticContainer) obj;
+                                List<com.kurawler.model.object.Item> chestItems = new ArrayList<>(sc.getContents());
+                                sc.getContents().clear();
+                                for (com.kurawler.model.object.Item item : chestItems) {
+                                    if (!(item instanceof com.kurawler.model.object.Consumable && item.getName().equals("Health Potion"))) {
+                                        sc.addItem(item);
+                                    }
+                                }
+                            }
+                        }
+                        for (com.kurawler.model.object.GameObject obj : toRemove) {
+                            cell.removeObject(obj);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    
     public Stage getStage() {
         return stage;
     }
