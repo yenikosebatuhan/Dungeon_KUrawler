@@ -154,13 +154,14 @@ public class TileRenderer {
         staffSprite = weapons.getSprite(3, 0);
         daggerSprite = weapons.getSprite(4, 0);
         hammerSprite = weapons.getSprite(5, 0);
-        armorSprite = weapons.getSprite(4, 2);
-        shieldSprite = weapons.getSprite(0, 8);
+        armorSprite = weapons.getSprite(4, 3);
+        shieldSprite = weapons.getSprite(6, 3);
         if (axeSprite == null) axeSprite = swordSprite;
         if (bowSprite == null) bowSprite = swordSprite;
         if (staffSprite == null) staffSprite = swordSprite;
         if (daggerSprite == null) daggerSprite = swordSprite;
         if (hammerSprite == null) hammerSprite = swordSprite;
+        if (shieldSprite == null) shieldSprite = swordSprite;
         if (armorSprite == null) armorSprite = shieldSprite;
     }
 
