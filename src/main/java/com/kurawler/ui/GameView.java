@@ -1069,6 +1069,22 @@ public class GameView {
         }
     }
 
+    /** Runs {@code draw} with the canvas rotated clockwise around the tile's centre. */
+    private void withRotation(GraphicsContext gc, int sx, int sy, int rot, Runnable draw) {
+        if (rot % 360 == 0) {
+            draw.run();
+            return;
+        }
+        gc.save();
+        double cx = sx + TILE_SIZE / 2.0;
+        double cy = sy + TILE_SIZE / 2.0;
+        gc.translate(cx, cy);
+        gc.rotate(rot);
+        gc.translate(-cx, -cy);
+        draw.run();
+        gc.restore();
+    }
+
     /** Render the entire game state by reading the model. */
     private void render() {
         GameSession session = controller.getSession();
@@ -1094,47 +1110,60 @@ public class GameView {
 
                 StaticObject so = cell.getStaticObject();
                 boolean isPortal = so instanceof MapPortal;
-                if (isPortal) {
-                    MapPortal portal = (MapPortal) so;
-                    if (!portal.isPassable()) {
+                int soRot = so != null ? so.getRotation() : 0;
+                withRotation(gc, sx, sy, isPortal ? 0 : soRot, () -> {
+                    if (isPortal) {
+                        MapPortal portal = (MapPortal) so;
+                        if (!portal.isPassable()) {
+                            renderer.drawWall(gc, sx, sy);
+                        } else {
+                            renderer.drawFloor(gc, sx, sy);
+                        }
+                    } else if (so != null && renderer.isFloorName(so.getName())) {
+                        renderer.drawFloorByName(gc, sx, sy, so.getName());
+                    } else if (so != null && renderer.isWallName(so.getName()) && !so.isSearchable()) {
+                        renderer.drawWallByName(gc, sx, sy, so.getName());
+                    } else if (so != null && so.isSearchable()) {
+                        // Searchable props (pool, column, bookshelf) — floor underneath, not wall tiles.
+                        renderer.drawFloor(gc, sx, sy);
+                    } else if (so != null && renderer.spriteForAsset(so.getName()) != null) {
+                        // Decorative prop (statue, fountain, door, stairs, pedestal...) on a floor base.
+                        renderer.drawFloor(gc, sx, sy);
+                        renderer.drawStaticDecor(gc, sx, sy, so);
+                    } else if (so != null && !so.isPassable()) {
                         renderer.drawWall(gc, sx, sy);
                     } else {
                         renderer.drawFloor(gc, sx, sy);
                     }
-                } else if (so != null && so.isSearchable()) {
-                    // Searchable props (pool, column, bookshelf) — floor underneath, not wall tiles.
-                    renderer.drawFloor(gc, sx, sy);
-                } else if (so != null && !so.isPassable()) {
-                    renderer.drawWall(gc, sx, sy);
-                } else {
-                    renderer.drawFloor(gc, sx, sy);
-                }
 
-                if (so != null && so.isSearchable() && !isPortal) {
-                    renderer.drawSearchable(gc, sx, sy, so.getName());
-                }
+                    if (so != null && so.isSearchable() && !isPortal) {
+                        renderer.drawSearchable(gc, sx, sy, so.getName());
+                    }
+                });
 
                 for (GameObject obj : cell.getObjects()) {
-                    if (obj instanceof StaticContainer) {
-                        StaticContainer sc = (StaticContainer) obj;
-                        renderer.drawContainerByName(gc, sx, sy, sc.getSpriteName());
-                    } else if (obj instanceof Weapon) {
-                        renderer.drawWeaponByName(gc, sx, sy, obj.getName());
-                    } else if (obj instanceof Scroll) {
-                        renderer.drawItem(gc, sx, sy, "Scroll");
-                    } else if (obj instanceof Wearable) {
-                        renderer.drawItem(gc, sx, sy, "Wearable");
-                    } else if (obj instanceof Consumable) {
-                        Consumable cons = (Consumable) obj;
-                        String pt = cons.getManaAmount() > 0 ? "ManaPotion"
-                                  : cons.getEnergyAmount() > 0 ? "EnergyPotion"
-                                  : "HealthPotion";
-                        renderer.drawConsumable(gc, sx, sy, pt);
-                    } else if (obj instanceof Key) {
-                        renderer.drawItem(gc, sx, sy, "Key");
-                    } else if (obj instanceof Item) {
-                        renderer.drawItem(gc, sx, sy, "Item");
-                    }
+                    withRotation(gc, sx, sy, obj.getRotation(), () -> {
+                        if (obj instanceof StaticContainer) {
+                            StaticContainer sc = (StaticContainer) obj;
+                            renderer.drawContainerByName(gc, sx, sy, sc.getSpriteName());
+                        } else if (obj instanceof Weapon) {
+                            renderer.drawWeaponByName(gc, sx, sy, obj.getName());
+                        } else if (obj instanceof Scroll) {
+                            renderer.drawItem(gc, sx, sy, "Scroll");
+                        } else if (obj instanceof Wearable) {
+                            renderer.drawItem(gc, sx, sy, "Wearable");
+                        } else if (obj instanceof Consumable) {
+                            Consumable cons = (Consumable) obj;
+                            String pt = cons.getManaAmount() > 0 ? "ManaPotion"
+                                      : cons.getEnergyAmount() > 0 ? "EnergyPotion"
+                                      : "HealthPotion";
+                            renderer.drawConsumable(gc, sx, sy, pt);
+                        } else if (obj instanceof Key) {
+                            renderer.drawItem(gc, sx, sy, "Key");
+                        } else if (obj instanceof Item) {
+                            renderer.drawItem(gc, sx, sy, "Item");
+                        }
+                    });
                 }
 
                 if (isPortal) {

@@ -78,9 +78,7 @@ public class MapSerializer {
         for (int row = 0; row < map.getHeight(); row++) {
             for (int col = 0; col < map.getWidth(); col++) {
                 GridCell cell = map.getCell(row, col);
-                StaticObject so = cell.getStaticObject();
-                boolean hasSpecialStatic = so != null && (!so.isPassable() || so.isSearchable());
-                if (hasSpecialStatic || cell.hasObjects()) {
+                if (isPersistentStatic(cell.getStaticObject()) || cell.hasObjects()) {
                     entries.add(buildCellJson(cell, row, col));
                 }
             }
@@ -243,9 +241,7 @@ public class MapSerializer {
         for (int row = 0; row < map.getHeight(); row++) {
             for (int col = 0; col < map.getWidth(); col++) {
                 GridCell cell = map.getCell(row, col);
-                StaticObject so = cell.getStaticObject();
-                boolean hasSpecialStatic = so != null && (!so.isPassable() || so.isSearchable());
-                if (hasSpecialStatic || cell.hasObjects()) {
+                if (isPersistentStatic(cell.getStaticObject()) || cell.hasObjects()) {
                     entries.add(buildCellJson(cell, row, col));
                 }
             }
@@ -258,6 +254,25 @@ public class MapSerializer {
         return sb.toString();
     }
 
+    /**
+     * A static is worth persisting if it is a wall, a searchable prop, OR any named
+     * terrain/decor variant other than the implicit default floor. This keeps the
+     * paved base floor out of the file while preserving placed floor variants
+     * (e.g. "Cobbled Floor") and passable decor (e.g. "Lantern", "Pedestal").
+     */
+    private boolean isPersistentStatic(StaticObject so) {
+        if (so == null) {
+            return false;
+        }
+        if (!so.isPassable() || so.isSearchable()) {
+            return true;
+        }
+        String n = so.getName();
+        return n != null
+                && !"Floor".equalsIgnoreCase(n)
+                && !"Stone Floor".equalsIgnoreCase(n);
+    }
+
     private String buildCellJson(GridCell cell, int row, int col) {
         StringBuilder sb = new StringBuilder();
         sb.append("{ \"row\": ").append(row);
@@ -265,12 +280,17 @@ public class MapSerializer {
         sb.append(", \"walkable\": ").append(cell.isWalkable());
 
         StaticObject so = cell.getStaticObject();
-        if (so != null && (!so.isPassable() || so.isSearchable())) {
+        // Persist walls, searchable props, and any named decorative/terrain static
+        // (doors, stairs, statues, pedestals, floor variants...). Plain "Floor" is
+        // the implicit default and is left out to keep map files compact.
+        if (so != null && (!so.isPassable() || so.isSearchable()
+                || !"Floor".equalsIgnoreCase(so.getName()))) {
             sb.append(", \"staticObject\": {");
             sb.append(" \"name\": \"").append(escape(so.getName())).append("\"");
             sb.append(", \"description\": \"").append(escape(so.getDescription())).append("\"");
             sb.append(", \"passable\": ").append(so.isPassable());
             sb.append(", \"searchable\": ").append(so.isSearchable());
+            sb.append(", \"rotation\": ").append(so.getRotation());
             if (so.getHiddenItem() != null) {
                 sb.append(", \"hiddenItem\": ").append(buildObjectJson(so.getHiddenItem()));
             }
@@ -294,6 +314,7 @@ public class MapSerializer {
         sb.append("{ \"type\": \"").append(obj.getClass().getSimpleName()).append("\"");
         sb.append(", \"name\": \"").append(escape(obj.getName())).append("\"");
         sb.append(", \"description\": \"").append(escape(obj.getDescription())).append("\"");
+        sb.append(", \"rotation\": ").append(obj.getRotation());
 
         if (obj instanceof Weapon) {
             sb.append(", \"damage\": ").append(((Weapon) obj).getDamage());
