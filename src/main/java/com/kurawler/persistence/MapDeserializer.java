@@ -370,6 +370,7 @@ public class MapDeserializer {
             boolean soPassable = soJson.containsKey("passable") ? (boolean) soJson.get("passable") : true;
             boolean soSearchable = soJson.containsKey("searchable") ? (boolean) soJson.get("searchable") : false;
             StaticObject staticObject = new StaticObject(soName, soDesc, soPassable, soSearchable);
+            staticObject.setRotation(getIntOrZero(soJson, "rotation"));
             if (soJson.containsKey("hiddenItem") && soJson.get("hiddenItem") != null) {
                 @SuppressWarnings("unchecked")
                 LinkedHashMap<String, Object> hiddenJson =
@@ -393,6 +394,7 @@ public class MapDeserializer {
                 LinkedHashMap<String, Object> objJson = (LinkedHashMap<String, Object>) objEntry;
                 GameObject obj = deserializeObject(objJson);
                 if (obj != null) {
+                    obj.setRotation(getIntOrZero(objJson, "rotation"));
                     cell.addObject(obj);
                 }
             }
