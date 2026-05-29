@@ -8,7 +8,6 @@ import com.kurawler.model.TeamMatchSession;
 import com.kurawler.model.achievement.AchievementManager;
 import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
-import com.kurawler.model.character.ShadowClone;
 import com.kurawler.persistence.MapDeserializer;
 import com.kurawler.persistence.MapSerializer;
 import javafx.scene.control.Alert;
@@ -44,6 +43,10 @@ public class ScreenManager {
     private GameSession currentSession;
     private GameView activeGameView;
     private String pendingEditorStatus;
+    
+    // --- Added fields to support "Play Again" functionality ---
+    private String lastGameType = "Default";
+    private String lastDifficulty = "Normal";
 
     public ScreenManager(Stage stage) {
         this.stage = stage;
@@ -102,6 +105,12 @@ public class ScreenManager {
 
         showDifficultyScreen("TeamMatch");
     }
+    
+    // --- Added Play Again support ---
+    public void playAgain() {
+        shutdownActiveGameView();
+        launchGameWithDifficulty(lastGameType, lastDifficulty);
+    }
 
     /** PBI-16: play a map JSON from maps/ with a win objective. */
     public void startNewGameFromCustomMap() {
@@ -114,6 +123,9 @@ public class ScreenManager {
         MapFactory.configureObjectiveForMap(map, session);
         session.setAchievementManager(new AchievementManager());
         session.wireObservers();
+        
+        lastGameType = "Custom";
+        lastDifficulty = "Normal";
         showPlayMode(session);
     }
 
@@ -202,6 +214,10 @@ public class ScreenManager {
             return false;
         }
         currentSession = loadedSession;
+        
+        lastGameType = loadedSession.getCurrentMode();
+        lastDifficulty = loadedSession.getDifficulty();
+        
         showPlayMode(currentSession);
         return true;
     }
@@ -224,7 +240,6 @@ public class ScreenManager {
         editorView.show(stage);
     }
 
-    /** After Play This Map — return to editor without game-over overlay on editor UI. */
     public void returnToEditorAfterTest(com.kurawler.model.Map map, String statusMessage) {
         shutdownActiveGameView();
         restoreHeroForEditor(map);
@@ -237,7 +252,6 @@ public class ScreenManager {
         return map != null && serializer.saveMapToFile(map, filename);
     }
 
-    /** Save editor map to {@code maps/<name>.json} (PDF §4.2). */
     public boolean showSaveMapDialog(com.kurawler.model.Map map) {
         if (map == null) {
             return false;
@@ -263,7 +277,6 @@ public class ScreenManager {
         return serializer.saveMapToFile(map, MAPS_DIR.resolve(name).toString());
     }
 
-    /** Load a map JSON into the level editor (PDF §4.2). */
     public com.kurawler.model.Map showLoadMapDialog() {
         List<MapFileEntry> maps = listMapFiles();
         if (maps.isEmpty()) {
@@ -304,7 +317,6 @@ public class ScreenManager {
                         .sorted(Comparator.comparing(this::lastModifiedSafe).reversed())
                         .forEach(p -> entries.add(new MapFileEntry(p, p.getFileName().toString())));
             } catch (IOException ignored) {
-                // empty list
             }
         }
         return entries;
@@ -359,8 +371,6 @@ public class ScreenManager {
             session.setHero(hero);
         }
 
-        // PDF Phase II: Shadow Clone appears only after READing a Shadow Clone
-        // Scroll (auto-spawned every 15 s), not at game start.
         session.setAchievementManager(new AchievementManager());
         session.wireObservers();
     }
@@ -387,6 +397,10 @@ public class ScreenManager {
     }
 
     public void launchGameWithDifficulty(String gameType, String difficulty) {
+        // Track the current selection for "Play Again" functionality
+        this.lastGameType = gameType;
+        this.lastDifficulty = difficulty;
+        
         if ("Random".equals(gameType)) {
             com.kurawler.model.ProceduralMapGenerator generator = new com.kurawler.model.ProceduralMapGenerator();
             currentSession = generator.generate();
@@ -407,7 +421,6 @@ public class ScreenManager {
         }
         
         applyDifficultyToSession(currentSession, difficulty);
-        
         showPlayMode(currentSession);
     }
 
@@ -440,7 +453,6 @@ public class ScreenManager {
                     GridCell cell = m.getCell(r, c);
                     if (cell == null) continue;
 
-                    // Apply difficulty to pre-spawned enemies (using fully qualified Character)
                     com.kurawler.model.character.Character occupant = cell.getOccupyingCharacter();
                     if (occupant instanceof Enemy) {
                         Enemy enemy = (Enemy) occupant;
@@ -455,7 +467,6 @@ public class ScreenManager {
                         }
                     }
 
-                    // Remove Health Potions on Hard Mode (using fully qualified object names)
                     if ("Hard".equals(difficulty)) {
                         List<com.kurawler.model.object.GameObject> toRemove = new ArrayList<>();
                         for (com.kurawler.model.object.GameObject obj : cell.getObjects()) {
@@ -480,7 +491,6 @@ public class ScreenManager {
             }
         }
     }
-    
     
     public Stage getStage() {
         return stage;
