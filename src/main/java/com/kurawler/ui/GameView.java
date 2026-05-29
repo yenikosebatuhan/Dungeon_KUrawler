@@ -560,7 +560,7 @@ public class GameView {
         grid.add(val, 1, row);
     }
     private void handleKeyPress(KeyEvent event) {
-        if (paused && event.getCode() != javafx.scene.input.KeyCode.ESCAPE) {
+    	if (paused && event.getCode() != javafx.scene.input.KeyCode.ESCAPE && event.getCode() != javafx.scene.input.KeyCode.P) {
             return;
         }
 
