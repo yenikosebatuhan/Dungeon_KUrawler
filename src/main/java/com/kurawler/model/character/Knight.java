@@ -18,7 +18,7 @@ public class Knight extends Enemy {
      * @effects Creates a Knight with 20 HP, ATK 1, DEF 1, STR 1, 80 energy.
      */
     public Knight() {
-        super("Knight", 20, 1, 1, 1, 0, 80);
+        super("Knight", 20, 4, 1, 8, 0, 80);
     }
 
     /**

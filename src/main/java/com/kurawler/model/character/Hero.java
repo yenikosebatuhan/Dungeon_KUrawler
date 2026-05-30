@@ -354,4 +354,28 @@ public class Hero extends Character implements HeroSubject {
      * @effects Returns the currently equipped wearable, or null.
      */
     public Wearable getEquippedWearable() { return equippedWearable; }
+
+    /**
+     * Checks the Hero's representation invariant.
+     *
+     * @requires none
+     * @modifies none
+     * @effects Returns true iff: name != null and not empty; maxHealth > 0 and
+     *          0 <= health <= maxHealth; 0 <= mana <= maxMana; 0 <= energy <= maxEnergy;
+     *          strength >= 0; attackPower >= 0; defensePower >= 0; inventory != null.
+     */
+    public boolean repOk() {
+        if (getName() == null || getName().isEmpty()) return false;
+        if (getMaxHealth() <= 0) return false;
+        if (getHealth() < 0 || getHealth() > getMaxHealth()) return false;
+        if (getMaxMana() < 0) return false;
+        if (getMana() < 0 || getMana() > getMaxMana()) return false;
+        if (getMaxEnergy() < 0) return false;
+        if (getEnergy() < 0 || getEnergy() > getMaxEnergy()) return false;
+        if (getStrength() < 0) return false;
+        if (getAttackPower() < 0) return false;
+        if (getDefensePower() < 0) return false;
+        if (inventory == null) return false;
+        return true;
+    }
 }
