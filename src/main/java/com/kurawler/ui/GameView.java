@@ -32,15 +32,14 @@ import com.kurawler.model.object.Wearable;
 
 import javafx.application.Platform;
 import javafx.animation.AnimationTimer;
+import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
 import javafx.scene.Scene;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.input.KeyEvent;
@@ -86,6 +85,7 @@ public class GameView {
     private Canvas canvas;
     private Canvas hudCanvas;
     private Label messageLabel;
+    private PauseTransition messageDismissTimer;
     private Label achievementsLabel;
     private Label achievementPopupLabel;
     private GameLoop gameLoop;
@@ -134,9 +134,52 @@ public class GameView {
         achievementPopupLabel.setMouseTransparent(true);
 
         messageLabel = new Label("");
-        messageLabel.setFont(Font.font("Monospaced", 11));
-        messageLabel.setTextFill(Color.web("#aaa090"));
+        messageLabel.setFont(Font.font("Monospaced", FontWeight.BOLD, 13));
+        messageLabel.setTextFill(Color.web("#f0e8c8"));
+        messageLabel.setAlignment(Pos.CENTER);
+        messageLabel.setMaxWidth(Double.MAX_VALUE);
+        messageLabel.setStyle(
+                "-fx-background-color: rgba(10,9,8,0.88);"
+                + "-fx-background-radius: 5;"
+                + "-fx-border-color: #c8a840;"
+                + "-fx-border-width: 1.5;"
+                + "-fx-border-radius: 5;"
+                + "-fx-padding: 6 18 6 18;");
         messageLabel.setMouseTransparent(true);
+        messageLabel.setVisible(false);
+        messageLabel.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null && !newVal.isEmpty()) {
+                messageLabel.setOpacity(1.0);
+                messageLabel.setVisible(true);
+                if ("PAUSED".equals(newVal)) {
+                    if (messageDismissTimer != null) {
+                        messageDismissTimer.stop();
+                    }
+                    return;
+                }
+                if (messageDismissTimer != null) {
+                    messageDismissTimer.stop();
+                }
+                int dismissSec = newVal.length() > 48 ? 8 : 5;
+                messageDismissTimer = new PauseTransition(Duration.seconds(dismissSec));
+                messageDismissTimer.setOnFinished(e -> {
+                    FadeTransition ft = new FadeTransition(Duration.millis(400), messageLabel);
+                    ft.setFromValue(1.0);
+                    ft.setToValue(0.0);
+                    ft.setOnFinished(ev -> {
+                        messageLabel.setVisible(false);
+                        messageLabel.setText("");
+                    });
+                    ft.play();
+                });
+                messageDismissTimer.play();
+            } else {
+                if (messageDismissTimer != null) {
+                    messageDismissTimer.stop();
+                }
+                messageLabel.setVisible(false);
+            }
+        });
 
         double availableW = ScreenManager.WINDOW_W;
         double availableH = ScreenManager.WINDOW_H - HUD_HEIGHT;
@@ -205,16 +248,14 @@ public class GameView {
                 && session.getTargetObjective() != null) {
             javafx.application.Platform.runLater(() -> {
                 new TargetItemPopup(stage, session.getTargetObjective()).show();
-                startGameLoop(session);   // blocks above: showAndWait() returns only after dismiss
+                startGameLoop(session);
+                render();
+                showInitialPlayMessages(session);
             });
         } else {
             startGameLoop(session);
-        }
-        render();
-        if (!session.isEditorTestPlay() && session.getTargetObjective() != null
-                && "hall".equals(session.getCurrentMapId())) {
-            messageLabel.setText(
-                    "EXIT: east DOOR (\u2192). SEARCH a shelf (?) for the Golden Key. Win item is in a vault chest.");
+            render();
+            showInitialPlayMessages(session);
         }
     }
 
@@ -621,6 +662,37 @@ public class GameView {
         render();
     }
 
+
+    private void showInitialPlayMessages(GameSession session) {
+        if (session.isEditorTestPlay() || session instanceof TeamMatchSession) {
+            return;
+        }
+        showPortalMessageIfAny();
+        if (messageLabel.getText() == null || messageLabel.getText().isEmpty()) {
+            String mapId = session.getCurrentMapId();
+            if (mapId != null && !mapId.isEmpty()) {
+                messageLabel.setText("Entered " + mapDisplayName(mapId) + ".");
+            }
+        }
+        if (session.getTargetObjective() != null && "hall".equals(session.getCurrentMapId())) {
+            messageLabel.setText(
+                    "EXIT: east DOOR (\u2192). SEARCH a shelf (?) for the Golden Key. Win item is in a vault chest.");
+        }
+    }
+
+    private static String mapDisplayName(String mapId) {
+        if ("hall".equals(mapId)) {
+            return "Entry Hall";
+        }
+        if ("catacombs".equals(mapId)) {
+            return "Catacombs";
+        }
+        if ("vault".equals(mapId)) {
+            return "Treasure Vault";
+        }
+        return mapId;
+    }
+
     private void showPortalMessageIfAny() {
         String portalMsg = controller.getSession().consumeLastPortalMessage();
         if (portalMsg != null && !portalMsg.isEmpty()) {
@@ -995,46 +1067,104 @@ public class GameView {
     }
 
     private void showInGameMenu() {
-        if (animationTimer != null) animationTimer.stop();
+        if (animationTimer != null) {
+            animationTimer.stop();
+        }
+        AudioManager.getInstance().play("button");
 
-        ButtonType save    = new ButtonType("Save");
-        ButtonType load    = new ButtonType("Load");
-        ButtonType mainMenu = new ButtonType("Main Menu");
-        ButtonType resume  = new ButtonType("Resume");
+        final boolean[] leavePlay = {false};
 
-        Alert alert = new Alert(Alert.AlertType.NONE,
-                "Press Save to save your progress,\nLoad to restore a save, or\nMain Menu to quit.",
-                save, load, mainMenu, resume);
-        alert.setTitle("Dungeon KUrawler");
-        alert.setHeaderText("Game Menu");
-        alert.initOwner(stage);
+        Stage popup = new Stage();
+        popup.initModality(Modality.APPLICATION_MODAL);
+        popup.initOwner(stage);
+        popup.initStyle(StageStyle.TRANSPARENT);
 
-        alert.showAndWait().ifPresent(choice -> {
-            if (choice == save) {
-                boolean saved = screenManager.showSaveDialog();
-                messageLabel.setText(saved ? "Game saved." : "Save cancelled.");
-            } else if (choice == load) {
-                boolean loaded = screenManager.showLoadDialogAndStart();
-                if (loaded) {
-                    animationTimer = null;
-                    return;
-                } else {
-                    messageLabel.setText("No save file found.");
-                }
-            } else if (choice == mainMenu) {
-                GameSession s = controller.getSession();
-                if (s.isEditorTestPlay()) {
-                    shutdown();
-                    screenManager.returnToEditorAfterTest(
-                            s.getMap(), "Returned to level editor.");
-                } else {
-                    screenManager.showMainMenu();
-                }
-                return;
+        int popupW = 440;
+        int popupH = 340;
+        Canvas bg = new Canvas(popupW, popupH);
+        drawDungeonBg(bg, popupW, popupH);
+
+        Label title = new Label("\u2630  GAME MENU");
+        title.setFont(Font.font("Monospaced", FontWeight.BOLD, 22));
+        title.setTextFill(Color.web("#e8c84a"));
+        title.setEffect(new javafx.scene.effect.DropShadow(6, 0, 1, Color.BLACK));
+
+        Label subtitle = new Label(
+                "Save your progress, load a previous run, or return to the title screen.");
+        subtitle.setFont(Font.font("Monospaced", 12));
+        subtitle.setTextFill(Color.web("#c8b880"));
+        subtitle.setWrapText(true);
+        subtitle.setTextAlignment(TextAlignment.CENTER);
+        subtitle.setMaxWidth(360);
+        subtitle.setAlignment(Pos.CENTER);
+
+        Button saveBtn = popupButton("Save Game", "#55efc4");
+        Button loadBtn = popupButton("Load Game", "#5dade2");
+        Button mainMenuBtn = popupButton("Main Menu", "#e8c84a");
+        Button resumeBtn = popupButton("Resume", "#a09070");
+
+        Runnable closePopup = popup::close;
+
+        saveBtn.setOnAction(e -> {
+            AudioManager.getInstance().play("button");
+            boolean saved = screenManager.showSaveDialog();
+            messageLabel.setText(saved ? "Game saved." : "Save cancelled.");
+            closePopup.run();
+        });
+        loadBtn.setOnAction(e -> {
+            AudioManager.getInstance().play("button");
+            boolean loaded = screenManager.showLoadDialogAndStart();
+            if (loaded) {
+                leavePlay[0] = true;
+                animationTimer = null;
+                closePopup.run();
+            } else {
+                messageLabel.setText("No save file found.");
             }
         });
+        mainMenuBtn.setOnAction(e -> {
+            AudioManager.getInstance().play("button");
+            leavePlay[0] = true;
+            closePopup.run();
+            GameSession s = controller.getSession();
+            if (s.isEditorTestPlay()) {
+                shutdown();
+                screenManager.returnToEditorAfterTest(
+                        s.getMap(), "Returned to level editor.");
+            } else {
+                screenManager.showMainMenu();
+            }
+        });
+        resumeBtn.setOnAction(e -> {
+            AudioManager.getInstance().play("button");
+            closePopup.run();
+        });
 
-        if (animationTimer != null) animationTimer.start();
+        VBox panel = new VBox(12, title, subtitle, saveBtn, loadBtn, mainMenuBtn, resumeBtn);
+        panel.setAlignment(Pos.CENTER);
+        panel.setPadding(new Insets(22, 28, 24, 28));
+        panel.setStyle("-fx-background-color: rgba(14,12,10,0.94); "
+                + "-fx-border-color: #c8a840; -fx-border-width: 2.5; "
+                + "-fx-border-radius: 10; -fx-background-radius: 10;");
+
+        StackPane root = new StackPane(bg, panel);
+        StackPane.setAlignment(panel, Pos.CENTER);
+
+        Scene scene = new Scene(root, popupW, popupH);
+        scene.setFill(Color.TRANSPARENT);
+        scene.setOnKeyPressed(e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                resumeBtn.fire();
+            }
+        });
+        popup.setScene(scene);
+        popup.setResizable(false);
+        popup.setOnShown(ev -> centerPopup(popup));
+        popup.showAndWait();
+
+        if (!leavePlay[0] && animationTimer != null) {
+            animationTimer.start();
+        }
     }
 
     private void togglePause() {
@@ -1332,8 +1462,27 @@ public class GameView {
         gc.setFill(Color.web("#e8c84a"));
         gc.fillText(paused ? "\u25B6" : "\u23F8", btnX + 8, pad + 4 + btnSize - 8);
 
-        drawGoldPanel(gc, btnX, pad + 4 + btnSize + 4, btnSize + 8, btnSize);
-        gc.fillText("\u2630", btnX + 8, h - pad - 10);
+        double menuBtnY = pad + 4 + btnSize + 4;
+        double menuBtnW = btnSize + 8;
+        drawGoldPanel(gc, btnX, menuBtnY, menuBtnW, btnSize);
+        drawMenuButtonIcon(gc, btnX, menuBtnY, menuBtnW, btnSize);
+    }
+
+    /** Three-line menu glyph + MENU label for the HUD menu control. */
+    private void drawMenuButtonIcon(GraphicsContext gc, double x, double y, double w, double h) {
+        double cx = x + w / 2;
+        double lineW = w * 0.52;
+        double top = y + h * 0.22;
+        gc.setStroke(Color.web("#e8c84a"));
+        gc.setLineWidth(2.2);
+        gc.setLineCap(javafx.scene.shape.StrokeLineCap.ROUND);
+        for (int i = 0; i < 3; i++) {
+            double ly = top + i * (h * 0.17);
+            gc.strokeLine(cx - lineW / 2, ly, cx + lineW / 2, ly);
+        }
+        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 9));
+        gc.setFill(Color.web("#c8b880"));
+        gc.fillText("MENU", cx - 16, y + h - 6);
     }
 
     private void drawGoldPanel(GraphicsContext gc, double x, double y, double w, double h) {
