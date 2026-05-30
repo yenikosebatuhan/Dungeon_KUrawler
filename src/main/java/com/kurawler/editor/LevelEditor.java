@@ -3,6 +3,7 @@ package com.kurawler.editor;
 import com.kurawler.model.Map;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.object.GameObject;
+import com.kurawler.model.object.Item;
 
 /**
  * Level editor for placing/removing objects and generating random items.

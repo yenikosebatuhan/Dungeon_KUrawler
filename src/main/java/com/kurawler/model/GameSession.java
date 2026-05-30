@@ -32,7 +32,6 @@ public class GameSession {
     private String currentMode;
     private String difficulty = "Normal";
     private Item targetObjective;
-  /** True when playing a map launched from the level editor (no game-over popup on editor). */
     private boolean editorTestPlay;
 
     public GameSession() {
@@ -230,10 +229,8 @@ public class GameSession {
     public boolean isGameOver() { return hero != null && !hero.isAlive(); }
 
     public boolean isEditorTestPlay() { return editorTestPlay; }
+    public void setEditorTestPlay(boolean editorTestPlay) { this.editorTestPlay = editorTestPlay; }
 
-    public void setEditorTestPlay(boolean editorTestPlay) {
-        this.editorTestPlay = editorTestPlay;
-    }
     public int getEnemiesDefeatedCount() { return enemiesDefeatedCount; }
     public void incrementEnemiesDefeated() { this.enemiesDefeatedCount++; }
 

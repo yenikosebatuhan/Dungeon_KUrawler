@@ -302,25 +302,12 @@ public class Hero extends Character implements HeroSubject {
 
     public Inventory getInventory() { return inventory; }
     public Weapon getEquippedWeapon() { return equippedWeapon; }
-    /**
-     * Equips a weapon and notifies all observers of the stat change.
-     *
-     * @requires weapon != null
-     * @modifies this.equippedWeapon, observers
-     * @effects Sets the equipped weapon and triggers a stats update notification for the UI.
-     */
-    public void setEquippedWeapon(Weapon weapon) { 
-        this.equippedWeapon = weapon; 
-    }
+    public void setEquippedWeapon(Weapon weapon) { this.equippedWeapon = weapon; }
 
-
-    /** Body armor / ring slot (not shield). */
     public Wearable getEquippedArmor() { return equippedArmor; }
-
     public Wearable getEquippedShield() { return equippedShield; }
-
     public Wearable getEquippedRing() { return equippedRing; }
 
-    /** @deprecated use {@link #getEquippedArmor()} — kept for older save format */
+    /** @deprecated use {@link #getEquippedArmor()} */
     public Wearable getEquippedWearable() { return equippedArmor; }
 }
