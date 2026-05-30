@@ -10,10 +10,21 @@ import java.util.List;
 public class SearchAction implements Action {
     private final StaticObject object;
 
+    /**
+     * @requires object != null
+     * @modifies this.object
+     * @effects Stores the static object to search for use in resolve().
+     */
     public SearchAction(StaticObject object) {
         this.object = object;
     }
 
+    /**
+     * @requires session != null
+     * @modifies none
+     * @effects Returns a singleton list containing a SearchObjectEffect if
+     *          object is non-null and searchable; otherwise returns an empty list.
+     */
     @Override
     public List<Effect> resolve(GameSession session) {
         List<Effect> effects = new ArrayList<>();

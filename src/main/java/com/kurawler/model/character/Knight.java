@@ -12,10 +12,21 @@ public class Knight extends Enemy {
 
     private Weapon equippedMatchWeapon;
 
+    /**
+     * @requires none
+     * @modifies this (via Enemy/Character constructors)
+     * @effects Creates a Knight with 20 HP, ATK 1, DEF 1, STR 1, 80 energy.
+     */
     public Knight() {
         super("Knight", 20, 1, 1, 1, 0, 80);
     }
 
+    /**
+     * @requires true
+     * @modifies this.equippedMatchWeapon, this.attackPower
+     * @effects Stores the weapon and sets attackPower to 4 + weapon.getDamage().
+     *          If weapon is null, only stores null (attack power unchanged).
+     */
     public void equipMatchWeapon(Weapon weapon) {
         this.equippedMatchWeapon = weapon;
         if (weapon != null) {
@@ -23,19 +34,33 @@ public class Knight extends Enemy {
         }
     }
 
+    /**
+     * @requires none
+     * @modifies none
+     * @effects Returns the weapon equipped for team-match play, or null.
+     */
     public Weapon getEquippedMatchWeapon() { return equippedMatchWeapon; }
 
     /**
      * PDF §2.5.1: a Knight's melee attack deals 4 HP of damage (before the
      * defender's DEF is subtracted). Uses the attackPower field (4 by default,
-     * or 4 + weapon ATK in Team Match) instead of attackPower + strength, which
-     * was far too high (4 + 8 = 12) and killed the hero in 1-2 hits.
+     * or 4 + weapon ATK in Team Match) instead of attackPower + strength.
+     *
+     * @requires none
+     * @modifies none
+     * @effects Returns attackPower (not attackPower + strength).
      */
     @Override
     public int calculateDamage() {
         return getAttackPower();
     }
 
+    /**
+     * @requires map != null
+     * @modifies this.row, this.col, this.currentCell, target.health (if adjacent)
+     * @effects If target is adjacent, performs a melee attack. Otherwise if within
+     *          SIGHT_RADIUS, steps toward target; otherwise moves randomly.
+     */
     @Override
     public void decideAction(Character target, Map map, GameSession session) {
         if (target == null || map == null || !isAlive() || !target.isAlive()) return;
@@ -73,5 +98,10 @@ public class Knight extends Enemy {
         return true;
     }
 
+    /**
+     * @requires none
+     * @modifies none
+     * @effects Returns the knight's sight radius used for target detection.
+     */
     public int getSightRadius() { return SIGHT_RADIUS; }
 }
