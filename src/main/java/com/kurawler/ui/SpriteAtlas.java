@@ -95,6 +95,40 @@ public class SpriteAtlas {
      * Crops to the tight bounding box of opaque pixels (nearest-neighbour safe).
      * Returns {@code src} unchanged when empty or already trimmed.
      */
+    /**
+     * Inclusive opaque bounds in image pixels, or {@code null} if empty.
+     * Returns {@code {minX, minY, maxX, maxY}}.
+     */
+    public static int[] opaqueBounds(Image src) {
+        if (src == null) {
+            return null;
+        }
+        PixelReader pr = src.getPixelReader();
+        if (pr == null) {
+            return null;
+        }
+        int w = (int) src.getWidth();
+        int h = (int) src.getHeight();
+        int minX = w;
+        int minY = h;
+        int maxX = -1;
+        int maxY = -1;
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                if (pr.getColor(x, y).getOpacity() > 0.18) {
+                    minX = Math.min(minX, x);
+                    minY = Math.min(minY, y);
+                    maxX = Math.max(maxX, x);
+                    maxY = Math.max(maxY, y);
+                }
+            }
+        }
+        if (maxX < minX) {
+            return null;
+        }
+        return new int[] { minX, minY, maxX, maxY };
+    }
+
     public static Image trimOpaqueBounds(Image src) {
         if (src == null) {
             return null;
