@@ -68,8 +68,8 @@ public class EditorView {
     private static final int CARD_SIZE = 96;
     private static final int CARD_ICON = 48;
     private static final int WINDOW_FRAME_PAD = 16;
-    private static final double MAX_WINDOW_W = 1280.0;
-    private static final double MAX_WINDOW_H = 760.0;
+    private static final double MAX_WINDOW_W = ScreenManager.WINDOW_W;
+    private static final double MAX_WINDOW_H = ScreenManager.WINDOW_H;
     private static final int BG_TILE = 48;
 
     // Dungeon-stone palette
@@ -196,7 +196,7 @@ public class EditorView {
         sceneRoot = new StackPane(bgCanvas, content);
 
         stage.setTitle("Dungeon KUrawler - Level Editor");
-        Scene scene = new Scene(sceneRoot, sceneW, sceneH);
+        Scene scene = new Scene(sceneRoot, ScreenManager.WINDOW_W, ScreenManager.WINDOW_H);
         // 'R' rotates the asset that gets placed next (also available as a toolbar button).
         scene.setOnKeyPressed(e -> {
             if (e.getCode() == javafx.scene.input.KeyCode.R) {
@@ -721,21 +721,10 @@ public class EditorView {
         canvas.setWidth(canvasW);
         canvas.setHeight(canvasH);
 
+        // Compute the new scale for the inner map, but DO NOT touch the Stage bounds!
         double scale = computeEditorScale(canvasW, canvasH);
         canvas.getTransforms().setAll(new Scale(scale, scale));
 
-        if (stage != null) {
-            double sceneW = sceneWidth(canvasW, scale);
-            double sceneH = sceneHeight(canvasH, scale);
-            stage.setWidth(sceneW);
-            stage.setHeight(sceneH);
-            stage.centerOnScreen();
-            if (bgCanvas != null) {
-                bgCanvas.setWidth(sceneW);
-                bgCanvas.setHeight(sceneH);
-                drawDungeonBackground(bgCanvas, sceneW, sceneH);
-            }
-        }
         hoverRow = -1;
         hoverCol = -1;
         render();
