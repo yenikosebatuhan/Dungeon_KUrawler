@@ -14,6 +14,11 @@ public class AttackAction implements Action {
     private final Character attacker;
     private final Character defender;
 
+    /**
+     * @requires attacker != null && defender != null
+     * @modifies this.attacker, this.defender
+     * @effects Stores attacker and defender for use in resolve().
+     */
     public AttackAction(Character attacker, Character defender) {
         this.attacker = attacker;
         this.defender = defender;

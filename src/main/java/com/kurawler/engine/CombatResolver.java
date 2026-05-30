@@ -13,6 +13,11 @@ public class CombatResolver {
 
     /**
      * Performs a melee attack from attacker to defender using the new formula.
+     *
+     * @requires attacker != null && defender != null
+     * @modifies defender.health
+     * @effects Calculates final damage via calculateFinalDamage() and applies it
+     *          to defender. No-op if either character is null or not alive.
      */
     public static void performMeleeAttack(Character attacker, Character defender) {
         if (attacker == null || defender == null || !attacker.isAlive() || !defender.isAlive()) {
@@ -54,6 +59,14 @@ public class CombatResolver {
         return Math.max(1, damage); // Minimum damage is 1
     }
 
+    /**
+     * Applies projectile damage to a target character, respecting DEF but bypassing STR.
+     *
+     * @requires projectile != null && target != null
+     * @modifies target.health
+     * @effects Deals Max(1, projectile.damage - target.DEF) to target. No-op if
+     *          either argument is null or target is not alive.
+     */
     public static void applyProjectileDamage(Projectile projectile, Character target) {
         if (projectile == null || target == null || !target.isAlive()) {
             return;
