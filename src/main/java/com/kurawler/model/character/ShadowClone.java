@@ -20,6 +20,11 @@ public class ShadowClone extends Character implements HeroObserver {
     private final Map map;
     private long remainingMs;
 
+    /**
+     * @requires map != null && startRow >= 0 && startCol >= 0
+     * @modifies this (via Character constructor), this.map, this.remainingMs
+     * @effects Creates a ShadowClone at (startRow, startCol) with LIFETIME_MS lifetime.
+     */
     public ShadowClone(int startRow, int startCol, Map map) {
         super("Shadow Clone", 8, 0, 0, 4, 40, 50);
         this.map = map;
@@ -27,6 +32,11 @@ public class ShadowClone extends Character implements HeroObserver {
         setPosition(startRow, startCol);
     }
 
+    /**
+     * @requires none
+     * @modifies none
+     * @effects Returns this.strength (clone does not use weapon damage).
+     */
     @Override
     public int calculateDamage() {
         return getStrength();
@@ -36,60 +46,84 @@ public class ShadowClone extends Character implements HeroObserver {
      * @requires map != null && (deltaRow != 0 || deltaCol != 0)
      * @modifies this.row, this.col
      * @effects Moves the clone one step in the direction opposite to the hero
-     * (i.e., -deltaRow, -deltaCol). If the target cell is out of bounds
-     * or a wall, the clone's position is unchanged.
+     *          (-deltaRow, -deltaCol). If the target cell is out of bounds or a
+     *          wall, the clone's position is unchanged.
      */
     @Override
     public void onHeroMoved(int newRow, int newCol, int deltaRow, int deltaCol) {
         if (!isAlive() || map == null) return;
 
-        // --- BUG-01 FIX: Move in reverse direction ---
-        // As per PBI-07: must move clone to (row - deltaRow, col - deltaCol)
         int targetRow = getRow() - deltaRow;
         int targetCol = getCol() - deltaCol;
-        
+
         GridCell cell = map.getCell(targetRow, targetCol);
         if (cell != null && !isWall(cell)) {
             setPosition(targetRow, targetCol);
         }
     }
 
+    /**
+     * @requires none
+     * @modifies none
+     * @effects No-op — reserved for future clone-assisted attack behavior.
+     */
     @Override
     public void onHeroAttacked(int damage) {
-        // Hook reserved for future clone-assisted attacks.
     }
 
+    /**
+     * @requires none
+     * @modifies none
+     * @effects No-op — the clone is invulnerable and does not react to hero damage.
+     */
     @Override
     public void onHeroDamageTaken(int amount) {
-        // --- BUG-02 FIX: Clone should be invulnerable ---
-        // Do absolutely nothing. The clone must not take damage when the hero takes damage.
     }
 
+    /**
+     * @requires none
+     * @modifies none
+     * @effects No-op — the clone has no behavior on enemy defeat.
+     */
     @Override
     public void onEnemyDefeated() {
-        // No behavior for this event yet.
     }
 
+    /**
+     * @requires none
+     * @modifies none
+     * @effects No-op — the clone has no behavior on item collection.
+     */
     @Override
     public void onItemCollected() {
-        // No behavior for this event yet.
     }
 
     /**
      * Advances the clone's lifetime countdown.
      *
-     * @param deltaMs milliseconds elapsed since the last game update
+     * @requires deltaMs >= 0
+     * @modifies this.remainingMs
+     * @effects Decrements remainingMs by deltaMs. The GameLoop sets the clone
+     *          reference to null when isExpired() returns true.
      */
     public void tick(long deltaMs) {
         remainingMs -= deltaMs;
-        // Expired clone logic is handled in the GameLoop (it sets clone to null)
     }
 
-    /** Returns true once the 7-second lifetime has elapsed. */
+    /**
+     * @requires none
+     * @modifies none
+     * @effects Returns true once the 7-second lifetime has elapsed.
+     */
     public boolean isExpired() {
         return remainingMs <= 0;
     }
 
+    /**
+     * @requires none
+     * @modifies none
+     * @effects Returns the remaining lifetime in milliseconds.
+     */
     public long getRemainingMs() { return remainingMs; }
 
     private boolean isWall(GridCell cell) {

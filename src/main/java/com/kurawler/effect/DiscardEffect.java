@@ -23,10 +23,22 @@ public class DiscardEffect implements Effect {
 
     private final Item item;
 
+    /**
+     * @requires item != null
+     * @modifies this.item
+     * @effects Stores the item to be discarded for use in apply().
+     */
     public DiscardEffect(Item item) {
         this.item = item;
     }
 
+    /**
+     * @requires session != null && session.getHero() != null
+     * @modifies hero.inventory, hero.equippedWeapon or hero.equippedWearable,
+     *           hero.currentCell.objects
+     * @effects Removes item from inventory. If item was the equipped weapon or
+     *          wearable, unequips it first. Drops item on the hero's current cell.
+     */
     @Override
     public void apply(GameSession session) {
         Hero hero = session.getHero();
