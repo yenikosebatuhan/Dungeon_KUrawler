@@ -46,9 +46,6 @@ public class GameLoop {
     /**
      * Creates a new game loop bound to the given session.
      *
-     * @requires session != null
-     * @modifies this.session, this.enemySpawner, this.collisionDetector, this.activeProjectiles
-     * @effects Initialises spawner and collision detector; throws IllegalArgumentException if null.
      * @param session the active game session; must not be null
      */
     public GameLoop(GameSession session) {
@@ -63,10 +60,6 @@ public class GameLoop {
 
     /**
      * Starts the game loop. Blocks the calling thread until {@link #stop()} is called.
-     *
-     * @requires none
-     * @modifies this.isRunning, this.lastUpdateTime
-     * @effects Sets isRunning to true and begins the update/sleep cycle.
      */
     public void start() {
         isRunning = true;
@@ -76,22 +69,12 @@ public class GameLoop {
 
     /**
      * Signals the game loop to stop after the current frame completes.
-     *
-     * @requires none
-     * @modifies this.isRunning
-     * @effects Sets isRunning to false; the loop exits after the current frame.
      */
     public void stop() {
         isRunning = false;
     }
 
-    /**
-     * Call after the active map changes (door / stairs).
-     *
-     * @requires none
-     * @modifies this.collisionDetector (map reference)
-     * @effects Updates the CollisionDetector to use the session's current map.
-     */
+    /** Call after the active map changes (door / stairs). */
     public void refreshMap() {
         if (session != null && session.getMap() != null) {
             collisionDetector.setMap(session.getMap());
@@ -124,13 +107,6 @@ public class GameLoop {
      * enemy spawning, and win/lose checks.
      * Public so that JavaFX AnimationTimer can drive the loop externally.
      *
-     * @requires deltaTime >= 0
-     * @modifies session.enemies, session.projectiles, session.playDurationTimer,
-     *           hero.energy, this.enemyTickCounter, this.projectileTickCounter
-     * @effects No-op if session mode is not "Play". Otherwise advances shadow
-     *          clone timer, runs enemy AI every ENEMY_TICK_INTERVAL frames, moves
-     *          projectiles every PROJECTILE_TICK_INTERVAL frames, drives enemy
-     *          spawning, and stops the loop if win or hero-death condition is met.
      * @param deltaTime milliseconds elapsed since the last frame
      */
     public void update(long deltaTime) {
@@ -301,9 +277,6 @@ public class GameLoop {
     /**
      * Adds a projectile to the active tracking list.
      *
-     * @requires none
-     * @modifies this.activeProjectiles
-     * @effects Adds projectile to activeProjectiles if non-null.
      * @param projectile the projectile to track
      */
     public void addProjectile(Projectile projectile) {
@@ -315,9 +288,6 @@ public class GameLoop {
     /**
      * Returns the list of active projectiles.
      *
-     * @requires none
-     * @modifies none
-     * @effects Returns the live activeProjectiles list (not a copy).
      * @return the active projectile list
      */
     public List<Projectile> getActiveProjectiles() {
@@ -327,9 +297,6 @@ public class GameLoop {
     /**
      * Returns whether the game loop is currently running.
      *
-     * @requires none
-     * @modifies none
-     * @effects Returns isRunning.
      * @return true if the loop is active
      */
     public boolean isRunning() {
@@ -339,9 +306,6 @@ public class GameLoop {
     /**
      * Returns the active game session.
      *
-     * @requires none
-     * @modifies none
-     * @effects Returns the session this loop is bound to.
      * @return the current GameSession
      */
     public GameSession getSession() {
@@ -351,9 +315,6 @@ public class GameLoop {
     /**
      * Returns the collision detector used by this loop.
      *
-     * @requires none
-     * @modifies none
-     * @effects Returns the CollisionDetector instance.
      * @return the CollisionDetector instance
      */
     public CollisionDetector getCollisionDetector() {
@@ -363,9 +324,6 @@ public class GameLoop {
     /**
      * Returns the enemy spawner used by this loop.
      *
-     * @requires none
-     * @modifies none
-     * @effects Returns the EnemySpawner instance.
      * @return the EnemySpawner instance
      */
     public EnemySpawner getEnemySpawner() {

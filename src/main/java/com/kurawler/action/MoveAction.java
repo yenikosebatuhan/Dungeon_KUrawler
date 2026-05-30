@@ -20,23 +20,11 @@ public class MoveAction implements Action {
     private final int deltaRow;
     private final int deltaCol;
 
-    /**
-     * @requires true
-     * @modifies this.deltaRow, this.deltaCol
-     * @effects Stores the movement delta for use in resolve().
-     */
     public MoveAction(int deltaRow, int deltaCol) {
         this.deltaRow = deltaRow;
         this.deltaCol = deltaCol;
     }
 
-    /**
-     * @requires session != null && session.getHero() != null && session.getMap() != null
-     * @modifies none
-     * @effects Returns a MoveEffect if the target cell is walkable and hero has
-     *          enough energy. Also appends a MapTransitionEffect if the target
-     *          cell contains a MapPortal. Returns an empty list otherwise.
-     */
     @Override
     public List<Effect> resolve(GameSession session) {
         List<Effect> effects = new ArrayList<>();

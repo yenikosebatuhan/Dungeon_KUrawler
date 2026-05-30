@@ -12,11 +12,6 @@ public class BreakObjectEffect implements Effect {
     private final int row;
     private final int col;
 
-    /**
-     * @requires row >= 0 && col >= 0
-     * @modifies this.row, this.col
-     * @effects Stores target cell coordinates for use in apply().
-     */
     public BreakObjectEffect(int row, int col) {
         this.row = row;
         this.col = col;

@@ -17,9 +17,7 @@ public class CollisionDetector {
     /**
      * Creates a collision detector for the given map.
      *
-     * @requires map != null
-     * @modifies this.map
-     * @effects Stores map reference; throws IllegalArgumentException if map is null.
+     * @param map the game map to check collisions against; must not be null
      */
     public CollisionDetector(Map map) {
         if (map == null) {
@@ -77,9 +75,6 @@ public class CollisionDetector {
     /**
      * Returns the GridCell at the given position, or null if out of bounds.
      *
-     * @requires none
-     * @modifies none
-     * @effects Returns map.getCell(row, col); null if coordinates are out of bounds.
      * @param row the row coordinate
      * @param col the column coordinate
      * @return the GridCell at (row, col), or null if coordinates are invalid
@@ -91,9 +86,6 @@ public class CollisionDetector {
     /**
      * Updates the map reference (e.g., when a new level is loaded).
      *
-     * @requires map != null
-     * @modifies this.map
-     * @effects Sets the map to the new value; throws IllegalArgumentException if null.
      * @param map the new map; must not be null
      */
     public void setMap(Map map) {
@@ -106,9 +98,6 @@ public class CollisionDetector {
     /**
      * Returns the map this detector operates on.
      *
-     * @requires none
-     * @modifies none
-     * @effects Returns the current Map instance.
      * @return the current Map instance
      */
     public Map getMap() {

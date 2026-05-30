@@ -10,21 +10,10 @@ import java.util.List;
 public class EatAction implements Action {
     private final Consumable consumable;
 
-    /**
-     * @requires consumable != null
-     * @modifies this.consumable
-     * @effects Stores the consumable to be used for use in resolve().
-     */
     public EatAction(Consumable consumable) {
         this.consumable = consumable;
     }
 
-    /**
-     * @requires session != null && session.getHero() != null
-     * @modifies none
-     * @effects Returns a singleton list containing an EatEffect if consumable is
-     *          in the hero's inventory; otherwise returns an empty list.
-     */
     @Override
     public List<Effect> resolve(GameSession session) {
         if (!session.getHero().getInventory().hasItem(consumable)) {
