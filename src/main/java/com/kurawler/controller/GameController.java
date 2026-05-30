@@ -21,8 +21,8 @@ import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Projectile;
 import com.kurawler.model.object.Scroll;
 import com.kurawler.model.object.StaticObject;
-import com.kurawler.model.object.Wearable;
 import com.kurawler.model.object.Weapon;
+import com.kurawler.model.object.Wearable;
 import com.kurawler.persistence.MapDeserializer;
 import com.kurawler.persistence.MapSerializer;
 import java.util.List;
@@ -137,14 +137,6 @@ public class GameController {
         return true;
     }
 
-    /**
-     * Equips or unequips a weapon (toggle). If the weapon is already equipped,
-     * it is unequipped; otherwise it replaces any current weapon.
-     *
-     * @requires weapon != null && weapon is in hero inventory
-     * @modifies hero.equippedWeapon
-     * @effects Delegates to EquipAction → EquipEffect.
-     */
     public boolean equipWeapon(Weapon weapon) {
         if (weapon == null || !session.getHero().getInventory().hasItem(weapon)) {
             return false;
@@ -153,19 +145,12 @@ public class GameController {
         return true;
     }
 
-    /**
-     * Unequips the hero's currently worn wearable, restoring the DEF bonus.
-     *
-     * @requires hero.equippedWearable != null
-     * @modifies hero.equippedWearable, hero.defensePower
-     * @effects Calls hero.unequipWearable() if something is currently worn.
-     */
-    public boolean unequipWearable() {
+    public boolean unequipWearable(Wearable wearable) {
         Hero hero = session.getHero();
-        if (hero.getEquippedWearable() == null) {
+        if (wearable == null || !hero.isWearableEquipped(wearable)) {
             return false;
         }
-        hero.unequipWearable();
+        hero.unequipWearable(wearable);
         return true;
     }
 
@@ -199,12 +184,14 @@ public class GameController {
      * Interact with a specific item on a cell (triggered by 3x3 click menu).
      * Creates a TakeAction and runs it through the pipeline.
      */
-    public void interactWithObject(int row, int col, Item item) {
-        if (session.getHero().getInventory().isFull()) return;
+    public boolean interactWithObject(int row, int col, Item item) {
+        if (session.getHero().getInventory().isFull()) {
+            return false;
+        }
         new RemoveFromCellEffect(row, col, item).apply(session);
         new AddToInventoryEffect(item).apply(session);
-        session.getHero().notifyItemCollected();
         session.advanceTurn();
+        return true;
     }
 
     public boolean heroShoot() {
@@ -219,49 +206,5 @@ public class GameController {
 
     public GameSession getSession() {
         return session;
-    }
-    
-    /**
-     * Executes a melee attack against a grid cell using the Action-Effect pipeline.
-     * Handles post-combat map cleanup and specific loot drops.
-     *
-     * @requires row and col are within map bounds, session is actively running.
-     * @modifies session (enemy lists), map (cell occupants and items).
-     * @effects Prevents attacks on empty cells or non-enemies.
-     * If an enemy is defeated, removes them from the cell (clearing ghost sprites).
-     * Spawns a "Sorcerer's Ring" on the cell if the defeated enemy is a Sorcerer.
-     * Returns true if a valid attack was executed.
-     */
-    public boolean attackEnemyAt(int row, int col) {
-        Hero hero = session.getHero();
-        GridCell targetCell = session.getMap().getCell(row, col);
-        
-        if (targetCell == null || !(targetCell.getOccupyingCharacter() instanceof com.kurawler.model.character.Enemy)) {
-            return false;
-        }
-        
-        com.kurawler.model.character.Enemy enemy = (com.kurawler.model.character.Enemy) targetCell.getOccupyingCharacter();
-        if (!enemy.isAlive()) return false;
-        
-        // Pipeline Execution
-        com.kurawler.action.AttackAction attack = new com.kurawler.action.AttackAction(hero, enemy);
-        executeAction(attack);
-        
-        // Post-combat cleanup
-        if (!enemy.isAlive()) {
-            enemy.moveToCell(null); // Removes ghost sprite visually
-            session.removeEnemy(enemy);
-            
-            // Sorcerer drop logic
-            if (enemy instanceof com.kurawler.model.character.Sorcerer) {
-                com.kurawler.model.character.Sorcerer sorcerer = (com.kurawler.model.character.Sorcerer) enemy;
-                if (!sorcerer.isRingDropped()) {
-                    com.kurawler.model.object.Wearable ring = new com.kurawler.model.object.Wearable("Sorcerer's Ring", "Increases magical power.", 2);
-                    targetCell.addObject(ring);
-                    sorcerer.markRingDropped();
-                }
-            }
-        }
-        return true; 
     }
 }

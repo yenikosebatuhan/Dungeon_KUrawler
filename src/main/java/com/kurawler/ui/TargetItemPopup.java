@@ -79,6 +79,10 @@ public class TargetItemPopup {
         Label titleLabel = new Label("☠  YOUR QUEST  ☠");
         titleLabel.setFont(Font.font("Serif", FontWeight.BOLD, 32));
         titleLabel.setTextFill(Color.web(accent));
+        titleLabel.setAlignment(Pos.CENTER);
+        titleLabel.setPrefWidth(W - 40);
+        titleLabel.setMaxWidth(W - 40);
+        titleLabel.setStyle("-fx-text-alignment: center;");
         InnerShadow engrave = new InnerShadow(3, 1, 2, Color.web("#000000", 0.6));
         DropShadow glow = new DropShadow(20, Color.web(accent, 0.5));
         glow.setInput(engrave);
@@ -88,6 +92,10 @@ public class TargetItemPopup {
         Label itemLabel = new Label(targetItem.getName());
         itemLabel.setFont(Font.font("Serif", FontWeight.BOLD, 24));
         itemLabel.setTextFill(Color.web("#ffd54f"));
+        itemLabel.setAlignment(Pos.CENTER);
+        itemLabel.setPrefWidth(W - 40);
+        itemLabel.setMaxWidth(W - 40);
+        itemLabel.setStyle("-fx-text-alignment: center;");
         itemLabel.setEffect(new DropShadow(8, 0, 0, Color.web(accent, 0.7)));
 
         // --- main quest message ---
@@ -102,8 +110,11 @@ public class TargetItemPopup {
         msgLabel.setFont(Font.font("Serif", 14));
         msgLabel.setTextFill(Color.web("#c8b880"));
         msgLabel.setWrapText(true);
+        msgLabel.setAlignment(Pos.CENTER);
         msgLabel.setTextAlignment(TextAlignment.CENTER);
-        msgLabel.setMaxWidth(380);
+        msgLabel.setPrefWidth(W - 80);
+        msgLabel.setMaxWidth(W - 80);
+        msgLabel.setStyle("-fx-text-alignment: center;");
         msgLabel.setEffect(new DropShadow(4, 0, 1, Color.BLACK));
 
         // --- begin button ---
@@ -134,7 +145,9 @@ public class TargetItemPopup {
 
         // --- layout ---
         VBox content = new VBox(14, titleLabel, itemLabel, msgLabel, beginBtn);
-        content.setAlignment(Pos.CENTER);
+        content.setAlignment(Pos.TOP_CENTER);
+        content.setFillWidth(true);
+        content.setPadding(new javafx.geometry.Insets(24, 20, 20, 20));
 
         StackPane root = new StackPane(bg, content);
         root.setStyle("-fx-border-color: " + accent + "; -fx-border-width: 3;");

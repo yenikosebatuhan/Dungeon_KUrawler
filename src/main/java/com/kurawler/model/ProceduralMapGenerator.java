@@ -4,7 +4,9 @@ import com.kurawler.model.achievement.AchievementManager;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Consumable;
+import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Key;
+import com.kurawler.model.object.Scroll;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.Wearable;
@@ -163,18 +165,46 @@ public class ProceduralMapGenerator {
     }
 
     private void placeObjective(Map map, List<int[]> rooms, GameSession session) {
-        int[] lastRoom = rooms.get(rooms.size() - 1);
-        int r = lastRoom[0] + lastRoom[2] / 2;
-        int c = lastRoom[1] + lastRoom[3] / 2;
-        GridCell cell = map.getCell(r, c);
-
         Key target = new Key("Crystal Orb", "The legendary artifact — find it to win!", "objective");
         session.setTargetObjective(target);
 
-        StaticObject pedestal = new StaticObject(
-                "Ancient Pedestal", "Something glimmers inside...", true, true);
-        pedestal.setHiddenItem(target);
-        cell.setStaticObject(pedestal);
+        List<GridCell> floors = allFloors(map);
+        if (floors.isEmpty()) {
+            return;
+        }
+
+        int searchableCount = Math.min(2 + rng.nextInt(3), floors.size()); // 2..4
+        List<GridCell> searchableCells = new ArrayList<>();
+        for (int i = 0; i < searchableCount; i++) {
+            GridCell cell = floors.remove(rng.nextInt(floors.size()));
+            StaticObject pedestal = new StaticObject(
+                    "Ancient Pedestal", "Something glimmers inside...", true, true);
+            cell.setStaticObject(pedestal);
+            searchableCells.add(cell);
+        }
+
+        GridCell objectiveCell = searchableCells.get(rng.nextInt(searchableCells.size()));
+        objectiveCell.getStaticObject().setHiddenItem(target);
+
+        for (GridCell cell : searchableCells) {
+            if (cell == objectiveCell) {
+                continue;
+            }
+            cell.getStaticObject().setHiddenItem(createDecoyHiddenItem());
+        }
+    }
+
+    private Item createDecoyHiddenItem() {
+        switch (rng.nextInt(4)) {
+            case 0:
+                return new Consumable("Health Potion", "Restores 15 HP", 15, 0, 0);
+            case 1:
+                return new Consumable("Energy Apple", "Restores energy", 0, 0, 20);
+            case 2:
+                return new Scroll("Spark Scroll", "A crackling note", "A minor shock courses through you.", 4);
+            default:
+                return new Weapon("Rusty Dagger", "Worn but usable", 3);
+        }
     }
 
     private List<GridCell> allFloors(Map map) {
