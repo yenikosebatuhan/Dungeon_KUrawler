@@ -1,11 +1,10 @@
 package com.kurawler.action;
 
 import com.kurawler.effect.Effect;
+import com.kurawler.effect.TakeFromContainerEffect;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.object.Item;
-import com.kurawler.model.object.PortableContainer;
-import com.kurawler.model.object.StaticContainer;
 import java.util.Collections;
 import java.util.List;
 
@@ -14,53 +13,20 @@ import java.util.List;
  */
 public class TakeFromContainerAction implements Action {
 
-    private final Object container; // Can be StaticContainer or PortableContainer
+    private final Object container;
     private final Item item;
 
-    /**
-     * @requires container != null && item != null
-     * @modifies this.container, this.item
-     * @effects Stores the source container and item for use in resolve().
-     */
     public TakeFromContainerAction(Object container, Item item) {
         this.container = container;
         this.item = item;
     }
 
-    /**
-     * @requires session != null && session.getHero() != null
-     * @modifies none
-     * @effects Returns a singleton list with an inline Effect that removes item
-     *          from the container and adds it to the hero's inventory, if the
-     *          inventory is not full; otherwise returns an empty list.
-     */
     @Override
     public List<Effect> resolve(GameSession session) {
         Hero hero = session.getHero();
-
-        if (hero.getInventory().isFull()) {
-            return Collections.emptyList(); // Cannot take if inventory is full
+        if (hero == null || hero.getInventory().isFull()) {
+            return Collections.emptyList();
         }
-
-        return Collections.singletonList(new Effect() {
-            @Override
-            public void apply(GameSession s) {
-                // Remove from the respective container
-                if (container instanceof StaticContainer) {
-                    ((StaticContainer) container).removeItem(item);
-                } else if (container instanceof PortableContainer) {
-                    ((PortableContainer) container).getContents().remove(item); // Note: Portable container needs remove logic, handled here via list ref if exposed, but let's assume standard behavior.
-                }
-
-                // Add to hero inventory
-                s.getHero().getInventory().addItem(item);
-                s.getHero().notifyItemCollected();
-            }
-
-            @Override
-            public String describe() {
-                return "Takes " + item.getName() + " from container.";
-            }
-        });
+        return Collections.singletonList(new TakeFromContainerEffect(container, item));
     }
 }
