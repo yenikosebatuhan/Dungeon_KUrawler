@@ -13,6 +13,8 @@ public class Hero extends Character {
     private final Inventory inventory;
     private Weapon equippedWeapon;
     private Wearable equippedWearable;
+    private int facingRow = 1;
+    private int facingCol = 0;
 
     private static final int ATTACK_ENERGY_COST = 1;
     private static final int MELEE_REACH = 1;
@@ -84,4 +86,15 @@ public class Hero extends Character {
     public Weapon getEquippedWeapon() { return equippedWeapon; }
     public void setEquippedWeapon(Weapon weapon) { this.equippedWeapon = weapon; }
     public Wearable getEquippedWearable() { return equippedWearable; }
+
+    // Facing direction (set by GameController on each move)
+    public int getFacingRow() { return facingRow; }
+    public int getFacingCol() { return facingCol; }
+    public void setFacing(int row, int col) { this.facingRow = row; this.facingCol = col; }
+
+    // Multi-slot equipment stubs (tek slot şimdilik)
+    public Wearable getEquippedArmor()  { return equippedWearable; }
+    public Wearable getEquippedShield() { return null; }
+    public Wearable getEquippedRing()   { return null; }
+    public boolean isWearableEquipped(Wearable w) { return w != null && w == equippedWearable; }
 }

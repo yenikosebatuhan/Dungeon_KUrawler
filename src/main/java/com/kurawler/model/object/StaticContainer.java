@@ -10,6 +10,10 @@ public class StaticContainer extends GameObject {
 
     private final List<Item> contents;
 
+    public StaticContainer(String name, int capacity) {
+        this(name, name);
+    }
+
     public StaticContainer(String name, String description) {
         super(name, description);
         this.contents = new ArrayList<>();
@@ -33,4 +37,17 @@ public class StaticContainer extends GameObject {
     public boolean isEmpty() {
         return contents.isEmpty();
     }
+
+    public boolean removeItem(Item item) {
+        return contents.remove(item);
+    }
+
+    // Lock support
+    private boolean locked;
+    private String requiredKeyId;
+
+    public boolean isLocked() { return locked; }
+    public String getRequiredKeyId() { return requiredKeyId; }
+    public void lock(String keyId) { this.locked = true; this.requiredKeyId = keyId; }
+    public void unlock() { this.locked = false; }
 }

@@ -90,7 +90,7 @@ public class GameLoop {
      *
      * @param deltaTime milliseconds elapsed since the last frame
      */
-    private void update(long deltaTime) {
+    public void update(long deltaTime) {
         if (!"Play".equals(session.getCurrentMode())) {
             return;
         }

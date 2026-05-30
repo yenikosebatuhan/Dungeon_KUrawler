@@ -157,4 +157,79 @@ public class TileRenderer {
     public int getTileSize() {
         return tileSize;
     }
+
+    /** Render hero facing direction (facingRow/Col currently unused — same sprite for all dirs). */
+    public void drawHeroFacing(GraphicsContext gc, int screenX, int screenY, int facingRow, int facingCol) {
+        drawHero(gc, screenX, screenY);
+    }
+
+    /** Render a shadow clone (translucent hero tint). */
+    public void drawShadowClone(GraphicsContext gc, int screenX, int screenY) {
+        gc.save();
+        gc.setGlobalAlpha(0.45);
+        gc.setGlobalBlendMode(javafx.scene.effect.BlendMode.ADD);
+        drawHero(gc, screenX, screenY);
+        gc.restore();
+    }
+
+    /** Render a searchable static object indicator. */
+    public void drawSearchable(GraphicsContext gc, int screenX, int screenY, String name) {
+        gc.setFill(Color.web("#4a3a18", 0.6));
+        gc.fillRect(screenX + 4, screenY + 4, tileSize - 8, tileSize - 8);
+        gc.setStroke(Color.web("#c8a840", 0.8));
+        gc.setLineWidth(1.5);
+        gc.strokeRect(screenX + 4, screenY + 4, tileSize - 8, tileSize - 8);
+        gc.setFont(javafx.scene.text.Font.font("Serif", 10));
+        gc.setFill(Color.web("#e8c84a"));
+        gc.fillText("?", screenX + tileSize / 2.0 - 3, screenY + tileSize / 2.0 + 4);
+    }
+
+    /** Render an enemy. Type is "Knight" or "Sorcerer". */
+    public void drawEnemy(GraphicsContext gc, int screenX, int screenY, String type) {
+        Color c = "Sorcerer".equals(type) ? Color.web("#9b59b6") : Color.web("#e74c3c");
+        gc.setFill(c.deriveColor(0, 1, 0.3, 1));
+        gc.fillRoundRect(screenX + 6, screenY + 2, tileSize - 12, tileSize - 4, 6, 6);
+        gc.setFill(c);
+        gc.fillOval(screenX + 14, screenY + 4, tileSize - 28, tileSize - 28);
+    }
+
+    /** Render an HP bar above a tile. */
+    public void drawHpBar(GraphicsContext gc, int screenX, int screenY, int hp, int maxHp) {
+        if (maxHp <= 0) return;
+        double ratio = Math.max(0, Math.min(1.0, (double) hp / maxHp));
+        double barW = tileSize - 8;
+        double barH = 5;
+        double barX = screenX + 4;
+        double barY = screenY - 7;
+        gc.setFill(Color.web("#330000"));
+        gc.fillRect(barX, barY, barW, barH);
+        Color fill = ratio > 0.5 ? Color.web("#27ae60") : ratio > 0.25 ? Color.web("#f39c12") : Color.web("#e74c3c");
+        gc.setFill(fill);
+        gc.fillRect(barX, barY, barW * ratio, barH);
+    }
+
+    /** Render an enemy projectile. */
+    public void drawProjectile(GraphicsContext gc, int screenX, int screenY) {
+        gc.setFill(Color.web("#e74c3c"));
+        gc.fillOval(screenX + tileSize / 2.0 - 4, screenY + tileSize / 2.0 - 4, 8, 8);
+    }
+
+    /** Render a hero projectile (bolt). */
+    public void drawHeroProjectile(GraphicsContext gc, int screenX, int screenY) {
+        gc.setFill(Color.web("#f1c40f"));
+        gc.fillOval(screenX + tileSize / 2.0 - 5, screenY + tileSize / 2.0 - 5, 10, 10);
+        gc.setStroke(Color.web("#e8c84a", 0.5));
+        gc.setLineWidth(1);
+        gc.strokeOval(screenX + tileSize / 2.0 - 7, screenY + tileSize / 2.0 - 7, 14, 14);
+    }
+
+    /** Render a weapon on the floor, choosing sprite by name. */
+    public void drawWeaponByName(GraphicsContext gc, int screenX, int screenY, String name) {
+        drawItem(gc, screenX, screenY, "Weapon");
+    }
+
+    /** Render a container on the floor, choosing sprite by name. */
+    public void drawContainerByName(GraphicsContext gc, int screenX, int screenY, String name) {
+        drawContainer(gc, screenX, screenY);
+    }
 }

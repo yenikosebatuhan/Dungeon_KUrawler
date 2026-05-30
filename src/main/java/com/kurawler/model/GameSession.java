@@ -1,7 +1,9 @@
 package com.kurawler.model;
 
+import com.kurawler.model.achievement.AchievementManager;
 import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Item;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +19,8 @@ public class GameSession {
     private int activeEnemyCount;
     private String currentMode; // "Play" or "Design"
     private Item targetObjective;
+    private AchievementManager achievementManager;
+    private ShadowClone shadowClone;
 
     public GameSession() {
         this.turnCount = 0;
@@ -78,4 +82,9 @@ public class GameSession {
         return null;
     }
     public boolean isGameOver() { return hero != null && !hero.isAlive(); }
+
+    public AchievementManager getAchievementManager() { return achievementManager; }
+    public void setAchievementManager(AchievementManager am) { this.achievementManager = am; }
+    public ShadowClone getShadowClone() { return shadowClone; }
+    public void setShadowClone(ShadowClone clone) { this.shadowClone = clone; }
 }

@@ -66,8 +66,22 @@ public class ScreenManager {
     }
 
     public void showBuildMode() {
-        // TODO: Phase 3 — EditorView
         System.out.println("[ScreenManager] Build mode not yet implemented.");
+    }
+
+    /** Save current session to the default save file. */
+    public boolean showSaveDialog() {
+        if (currentSession == null) currentSession = MapFactory.createDefaultMap();
+        return serializer.saveMapToFile(currentSession.getMap(), "map_save.json");
+    }
+
+    /** Load from the default save file and immediately start play mode. Returns false if no save exists. */
+    public boolean showLoadDialogAndStart() {
+        com.kurawler.model.Map loaded = deserializer.loadMapFromFile("map_save.json");
+        if (loaded == null) return false;
+        currentSession = new com.kurawler.model.GameSession(loaded);
+        showPlayMode(currentSession);
+        return true;
     }
 
     public Stage getStage() {
