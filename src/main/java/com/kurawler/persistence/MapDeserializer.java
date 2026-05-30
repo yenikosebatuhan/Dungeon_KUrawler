@@ -128,9 +128,6 @@ public class MapDeserializer {
                 session.setTargetObjective((Item) target);
             }
         }
-        if (root.containsKey("difficulty")) {
-            session.setDifficulty((String) root.get("difficulty"));
-        }
     }
 
     @SuppressWarnings("unchecked")
@@ -159,7 +156,13 @@ public class MapDeserializer {
         String equippedName = (String) heroJson.get("equippedWeapon");
         String equippedWearableName = heroJson.containsKey("equippedWearable")
                 ? (String) heroJson.get("equippedWearable") : "";
-        Wearable wearableToEquip = null;
+        String equippedShieldName = heroJson.containsKey("equippedShield")
+                ? (String) heroJson.get("equippedShield") : "";
+        String equippedRingName = heroJson.containsKey("equippedRing")
+                ? (String) heroJson.get("equippedRing") : "";
+        Wearable armorToEquip = null;
+        Wearable shieldToEquip = null;
+        Wearable ringToEquip = null;
 
         List<Object> invJson = (List<Object>) heroJson.get("inventory");
         for (Object entry : invJson) {
@@ -169,14 +172,39 @@ public class MapDeserializer {
                 hero.getInventory().addItem((Item) obj);
                 if (obj instanceof Weapon && obj.getName().equals(equippedName)) {
                     hero.setEquippedWeapon((Weapon) obj);
-                } else if (obj instanceof Wearable && obj.getName().equals(equippedWearableName)) {
-                    wearableToEquip = (Wearable) obj;
+                } else if (obj instanceof Wearable) {
+                    Wearable w = (Wearable) obj;
+                    if (!equippedWearableName.isEmpty() && obj.getName().equals(equippedWearableName)) {
+                        armorToEquip = w;
+                    }
+                    if (!equippedShieldName.isEmpty() && obj.getName().equals(equippedShieldName)) {
+                        shieldToEquip = w;
+                    }
+                    if (!equippedRingName.isEmpty() && obj.getName().equals(equippedRingName)) {
+                        ringToEquip = w;
+                    }
                 }
             }
         }
-        if (wearableToEquip != null) {
-            hero.setDefensePower(savedDefense - wearableToEquip.getDefenseBonus());
-            hero.equipWearable(wearableToEquip);
+        int baseDefense = savedDefense;
+        if (armorToEquip != null) {
+            baseDefense -= armorToEquip.getDefenseBonus();
+        }
+        if (shieldToEquip != null) {
+            baseDefense -= shieldToEquip.getDefenseBonus();
+        }
+        if (ringToEquip != null) {
+            baseDefense -= ringToEquip.getDefenseBonus();
+        }
+        hero.setDefensePower(baseDefense);
+        if (armorToEquip != null) {
+            hero.equipWearable(armorToEquip);
+        }
+        if (shieldToEquip != null) {
+            hero.equipWearable(shieldToEquip);
+        }
+        if (ringToEquip != null) {
+            hero.equipWearable(ringToEquip);
         }
 
         session.setHero(hero);
@@ -370,7 +398,6 @@ public class MapDeserializer {
             boolean soPassable = soJson.containsKey("passable") ? (boolean) soJson.get("passable") : true;
             boolean soSearchable = soJson.containsKey("searchable") ? (boolean) soJson.get("searchable") : false;
             StaticObject staticObject = new StaticObject(soName, soDesc, soPassable, soSearchable);
-            staticObject.setRotation(getIntOrZero(soJson, "rotation"));
             if (soJson.containsKey("hiddenItem") && soJson.get("hiddenItem") != null) {
                 @SuppressWarnings("unchecked")
                 LinkedHashMap<String, Object> hiddenJson =
@@ -394,7 +421,6 @@ public class MapDeserializer {
                 LinkedHashMap<String, Object> objJson = (LinkedHashMap<String, Object>) objEntry;
                 GameObject obj = deserializeObject(objJson);
                 if (obj != null) {
-                    obj.setRotation(getIntOrZero(objJson, "rotation"));
                     cell.addObject(obj);
                 }
             }

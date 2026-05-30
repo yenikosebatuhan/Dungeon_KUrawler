@@ -32,7 +32,6 @@ import com.kurawler.model.object.Wearable;
 
 import javafx.application.Platform;
 import javafx.animation.AnimationTimer;
-import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
 import javafx.scene.Scene;
 import javafx.geometry.Insets;
@@ -48,6 +47,7 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -91,7 +91,6 @@ public class GameView {
     private GameLoop gameLoop;
     private TeamMatchGameLoop teamMatchGameLoop;
     private AnimationTimer animationTimer;
-    private PauseTransition messageDismissTimer;
     private boolean paused;
     private Scene playScene;
     private boolean playActive;
@@ -135,62 +134,27 @@ public class GameView {
         achievementPopupLabel.setMouseTransparent(true);
 
         messageLabel = new Label("");
-        messageLabel.setFont(Font.font("Monospaced", FontWeight.BOLD, 13));
-        messageLabel.setTextFill(Color.web("#f0e8c8"));
-        messageLabel.setStyle(
-                "-fx-background-color: rgba(10,9,8,0.88);"
-                + "-fx-background-radius: 5;"
-                + "-fx-border-color: #c8a840;"
-                + "-fx-border-width: 1.5;"
-                + "-fx-border-radius: 5;"
-                + "-fx-padding: 6 18 6 18;");
+        messageLabel.setFont(Font.font("Monospaced", 11));
+        messageLabel.setTextFill(Color.web("#aaa090"));
         messageLabel.setMouseTransparent(true);
-        messageLabel.setVisible(false);
-        messageLabel.textProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal != null && !newVal.isEmpty()) {
-                messageLabel.setOpacity(1.0);
-                messageLabel.setVisible(true);
-                if (messageDismissTimer != null) messageDismissTimer.stop();
-                messageDismissTimer = new PauseTransition(Duration.seconds(3));
-                messageDismissTimer.setOnFinished(e -> {
-                    FadeTransition ft = new FadeTransition(Duration.millis(400), messageLabel);
-                    ft.setFromValue(1.0);
-                    ft.setToValue(0.0);
-                    ft.setOnFinished(ev -> messageLabel.setVisible(false));
-                    ft.play();
-                });
-                messageDismissTimer.play();
-            } else {
-                if (messageDismissTimer != null) messageDismissTimer.stop();
-                messageLabel.setVisible(false);
-            }
-        });
 
-        // --- FIXED VIEWPORT & AUTO-SCALING LOGIC ---
-        // Calculate available space for the map
         double availableW = ScreenManager.WINDOW_W;
         double availableH = ScreenManager.WINDOW_H - HUD_HEIGHT;
-
-        // Calculate scales to fit the map exactly into the available space
         double scaleX = availableW / canvasW;
         double scaleY = availableH / canvasH;
         double scale = Math.min(scaleX, scaleY);
-        
-        // Prevent extremely tiny maps (e.g. 5x5) from zooming in to the point of being pixelated
-        scale = Math.min(scale, 1.5); 
+        scale = Math.min(scale, 1.5);
 
         canvas.getTransforms().clear();
         canvas.getTransforms().add(new javafx.scene.transform.Scale(scale, scale));
 
-        // Group is required in JavaFX so the parent StackPane respects the new scaled bounds
         javafx.scene.Group canvasGroup = new javafx.scene.Group(canvas);
         StackPane mapContainer = new StackPane(canvasGroup);
-        mapContainer.setStyle("-fx-background-color: #0a0a10;"); 
-        
+        mapContainer.setStyle("-fx-background-color: #0a0a10;");
+
         StackPane canvasStack = new StackPane(mapContainer, messageLabel);
         StackPane.setAlignment(messageLabel, Pos.BOTTOM_CENTER);
         StackPane.setMargin(messageLabel, new Insets(0, 0, 24, 0));
-        // -------------------------------------------
 
         StackPane hudStack = new StackPane(hudCanvas, achievementPopupLabel);
         hudStack.setPrefHeight(HUD_HEIGHT);
@@ -231,12 +195,17 @@ public class GameView {
             session.setCurrentMode("Play");
         }
 
+        // PDF §4.1.2: Show target item popup at the start of a new play session.
+        // Team Match has no target item, so skip in that mode.
+        // Skip for editor test play — return to editor without quest/death overlays.
+        // IMPORTANT: defer startGameLoop() until the popup is dismissed so that
+        // enemies do not move/attack while the player is still reading the quest.
         if (!(session instanceof TeamMatchSession)
                 && !session.isEditorTestPlay()
                 && session.getTargetObjective() != null) {
             javafx.application.Platform.runLater(() -> {
                 new TargetItemPopup(stage, session.getTargetObjective()).show();
-                startGameLoop(session);   
+                startGameLoop(session);   // blocks above: showAndWait() returns only after dismiss
             });
         } else {
             startGameLoop(session);
@@ -332,6 +301,7 @@ public class GameView {
         animationTimer.start();
     }
 
+    /** Stops loop and UI; editor test play returns to editor without YOU DIED on editor. */
     public void shutdown() {
         playActive = false;
         endScreenShown = true;
@@ -372,219 +342,141 @@ public class GameView {
     }
 
     private void showGameOver() {
-        if (endScreenShown || !isPlaySceneActive()) return;
+        if (endScreenShown || !isPlaySceneActive()) {
+            return;
+        }
         endScreenShown = true;
         AudioManager.getInstance().play("gameOver");
-        GameSession session = controller.getSession();
-
-        // HP at death removed \u2014 irrelevant; time, items, floors matter
-        com.kurawler.model.achievement.AchievementManager am = session.getAchievementManager();
-        int itemsCollected  = am != null ? am.getItemsCollected()  : session.getItemsCollectedCount();
-        int enemiesDefeated = am != null ? am.getEnemiesKilled()   : session.getEnemiesDefeatedCount();
-        String stats = String.format(
-                "Time Survived: %s\nFloors Cleared: %d\nItems Collected: %d\nEnemies Defeated: %d",
-                formatTime(session.getPlayDurationTimer()),
-                session.getFloorsClearedCount(),
-                itemsCollected,
-                enemiesDefeated);
-
         Platform.runLater(() -> {
-            if (!isPlaySceneActive()) return;
-            showEndScreen(false, false,
-                    "\u2620  YOU DIED  \u2620",
+            if (!isPlaySceneActive()) {
+                return;
+            }
+            showEndScreen(
+                    "\u2620 YOU DIED \u2620",
                     "Your hero has fallen in the dungeon.\nThe darkness claims another soul...",
-                    stats);
+                    "#ff4444", "#4a1a1a");
         });
     }
 
     private void showVictory() {
-        if (endScreenShown || !isPlaySceneActive()) return;
+        if (endScreenShown || !isPlaySceneActive()) {
+            return;
+        }
         endScreenShown = true;
         AudioManager.getInstance().play("victory");
         GameSession session = controller.getSession();
         String itemName = session.getTargetObjective() != null
                 ? session.getTargetObjective().getName() : "the artifact";
-
-        // Use AchievementManager for real counters
-        com.kurawler.model.achievement.AchievementManager am = session.getAchievementManager();
-        int itemsCollected  = am != null ? am.getItemsCollected()  : session.getItemsCollectedCount();
-        int enemiesDefeated = am != null ? am.getEnemiesKilled()   : session.getEnemiesDefeatedCount();
-
-        String stats = String.format(
-                "Time Taken: %s\nTotal Turns: %d\nItems Collected: %d\nEnemies Defeated: %d",
-                formatTime(session.getPlayDurationTimer()),
-                session.getTurnCount(),
-                itemsCollected,
-                enemiesDefeated);
-
+        String time = formatTime(session.getPlayDurationTimer());
         Platform.runLater(() -> {
-            if (!isPlaySceneActive()) return;
-            showEndScreen(true, false,
-                    "\u2605  VICTORY  \u2605",
-                    "You retrieved the " + itemName + "!\nCongratulations, brave adventurer!",
-                    stats);
+            if (!isPlaySceneActive()) {
+                return;
+            }
+            showEndScreen(
+                    "\u2605 VICTORY \u2605",
+                    "You found the " + itemName + "!\n"
+                    + "Time: " + time + "  |  Turns: " + session.getTurnCount()
+                    + "\n\nCongratulations, brave adventurer!",
+                    "#e8c84a", "#3a3a1a");
         });
     }
 
     private void showTeamMatchResult(String result) {
-        GameSession session = controller.getSession();
-        boolean won = result != null && result.toLowerCase().contains("win");
-
-        // Use AchievementManager for real counters
-        com.kurawler.model.achievement.AchievementManager am = session.getAchievementManager();
-        int itemsCollected = am != null ? am.getItemsCollected() : session.getItemsCollectedCount();
-
-        String stats = String.format(
-                "Outcome: %s\nTime Played: %s\nTotal Turns: %d\nItems Collected: %d",
-                result,
-                formatTime(session.getPlayDurationTimer()),
-                session.getTurnCount(),
-                itemsCollected);
-
-        Platform.runLater(() -> showEndScreen(won, true,
-                won ? "\u2694  MATCH WON  \u2694" : "\u2694  MATCH OVER  \u2694",
-                result,
-                stats));
+        Platform.runLater(() -> showEndScreen(
+                "\u2694 MATCH OVER \u2694", result, "#6fc3df", "#1a2a3a"));
     }
 
-    /**
-     * Dungeon-themed end screen.
-     * @param won   true = gold/victory palette; false = red/death palette
-     * @param isTeam true for team-match variant
-     */
-    private void showEndScreen(boolean won, boolean isTeam,
-                               String title, String message, String statsText) {
-        if (!isPlaySceneActive()) return;
-
-        final String GOLD   = "#e8c84a";
-        final String RED    = "#cc4444";
-        final String accent = won ? GOLD : RED;
-        final String dimTxt = "#a09070";
-
+    private void showEndScreen(String title, String message, String accent, String bgTint) {
+        if (!isPlaySceneActive()) {
+            return;
+        }
         Stage popup = new Stage();
         popup.initOwner(stage);
-        popup.initModality(Modality.APPLICATION_MODAL);
-        popup.initStyle(StageStyle.UNDECORATED);
+        popup.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        popup.initStyle(javafx.stage.StageStyle.UNDECORATED);
 
-        final int PW = 540, PH = 500;
-
-        // \u2500\u2500 Background: dungeon tiles + themed vignette \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-        Canvas bgCanvas = new Canvas(PW, PH);
-        drawDungeonBg(bgCanvas, PW, PH);
-
-        // Subtle edge vignette \u2014 lets tiles breathe in the center
-        javafx.scene.layout.Pane vignette = new javafx.scene.layout.Pane();
-        vignette.setPrefSize(PW, PH);
-        String vigColor = won
-                ? "radial-gradient(center 50% 40%, radius 55%, rgba(0,0,0,0.0), rgba(0,0,0,0.72))"
-                : "radial-gradient(center 50% 40%, radius 55%, rgba(40,0,0,0.25), rgba(0,0,0,0.80))";
-        vignette.setStyle("-fx-background-color: " + vigColor + ";");
-
-        // \u2500\u2500 Title \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-        Label titleLbl = new Label(title);
-        titleLbl.setFont(Font.font("Serif", FontWeight.BOLD, won ? 38 : 40));
-        titleLbl.setTextFill(Color.web(accent));
-        titleLbl.setAlignment(Pos.CENTER);
-        {
-            javafx.scene.effect.InnerShadow eng =
-                    new javafx.scene.effect.InnerShadow(4, 1, 2, Color.web("#000000", 0.9));
-            javafx.scene.effect.DropShadow glow =
-                    new javafx.scene.effect.DropShadow(won ? 28 : 24,
-                            Color.web(accent, won ? 0.55 : 0.70));
-            glow.setInput(eng);
-            javafx.scene.effect.DropShadow deep =
-                    new javafx.scene.effect.DropShadow(8, 2, 3, Color.web("#000000", 0.85));
-            deep.setInput(glow);
-            titleLbl.setEffect(deep);
-        }
-
-        // \u2500\u2500 Ornament \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-        Label orn = new Label("\u2501\u2501\u2501\u2501 \u2726 \u2726 \u2726 \u2501\u2501\u2501\u2501");
-        orn.setFont(Font.font("Monospaced", 14));
-        orn.setTextFill(Color.web("#8b6914", 0.75));
-        orn.setEffect(new javafx.scene.effect.DropShadow(4, 0, 1, Color.BLACK));
-
-        // \u2500\u2500 Flavour message \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-        Label msgLbl = new Label(message);
-        msgLbl.setFont(Font.font("Serif", javafx.scene.text.FontPosture.ITALIC, 15));
-        msgLbl.setTextFill(Color.web("#c8b890"));
-        msgLbl.setWrapText(true);
-        msgLbl.setTextAlignment(TextAlignment.CENTER);
-        msgLbl.setAlignment(Pos.CENTER);
-        msgLbl.setMinWidth(PW - 80);
-        msgLbl.setPrefWidth(PW - 80);
-        msgLbl.setMaxWidth(PW - 80);
-        msgLbl.setEffect(new javafx.scene.effect.DropShadow(3, 0, 1, Color.BLACK));
-
-        // \u2500\u2500 Stats panel \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-        GridPane statsGrid = new GridPane();
-        statsGrid.setAlignment(Pos.CENTER);
-        statsGrid.setHgap(24);
-        statsGrid.setVgap(10);
-        statsGrid.setPadding(new Insets(16, 28, 16, 28));
-        statsGrid.setStyle("-fx-background-color: rgba(0,0,0,0.55); "
-                + "-fx-background-radius: 6; "
-                + "-fx-border-color: " + accent + "55; "
-                + "-fx-border-radius: 6; -fx-border-width: 1;");
-
-        String[] lines = statsText.split("\n");
-        for (int i = 0; i < lines.length; i++) {
-            int colon = lines[i].indexOf(':');
-            if (colon > 0) {
-                Label k = new Label(lines[i].substring(0, colon).trim());
-                k.setFont(Font.font("Serif", 14));
-                k.setTextFill(Color.web(dimTxt));
-                k.setAlignment(Pos.CENTER_RIGHT);
-
-                Label v = new Label(lines[i].substring(colon + 1).trim());
-                v.setFont(Font.font("Monospaced", FontWeight.BOLD, 15));
-                v.setTextFill(Color.web(accent));
-                v.setAlignment(Pos.CENTER);
-
-                statsGrid.add(k, 0, i);
-                statsGrid.add(v, 1, i);
-                javafx.scene.layout.GridPane.setHalignment(k, javafx.geometry.HPos.RIGHT);
-                javafx.scene.layout.GridPane.setHalignment(v, javafx.geometry.HPos.CENTER);
-            } else {
-                Label single = new Label(lines[i]);
-                single.setFont(Font.font("Serif", 13));
-                single.setTextFill(Color.web(dimTxt));
-                single.setAlignment(Pos.CENTER);
-                statsGrid.add(single, 0, i, 2, 1);
-                javafx.scene.layout.GridPane.setHalignment(single, javafx.geometry.HPos.CENTER);
+        Canvas bg = new Canvas(420, 300);
+        GraphicsContext gc = bg.getGraphicsContext2D();
+        SpriteSheet wallSheet = new SpriteSheet("/assets/walls_x3.png", 48);
+        gc.setFill(Color.web("#0a0a10"));
+        gc.fillRect(0, 0, 420, 300);
+        if (wallSheet.isLoaded()) {
+            for (int y = 0; y < 300; y += 48) {
+                for (int x = 0; x < 420; x += 48) {
+                    int hash = Math.abs((x * 73856093) ^ (y * 19349663));
+                    javafx.scene.image.Image tile = wallSheet.getSprite(hash % 5, 1);
+                    if (tile != null) gc.drawImage(tile, x, y, 48, 48);
+                }
             }
         }
+        gc.setFill(Color.web(bgTint, 0.7));
+        gc.fillRect(0, 0, 420, 300);
 
-        // \u2500\u2500 Buttons \u2014 stone style matching pause menu \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-        Button playAgainBtn = pauseMenuBtn(won ? "\u25b6  Play Again" : "\u27f3  Try Again", false);
-        playAgainBtn.setOnAction(e -> {
-            popup.close(); playActive = false; shutdown(); screenManager.playAgain();
+        Label titleLabel = new Label(title);
+        titleLabel.setFont(Font.font("Serif", FontWeight.BOLD, 36));
+        titleLabel.setTextFill(Color.web(accent));
+        javafx.scene.effect.InnerShadow engrave =
+                new javafx.scene.effect.InnerShadow(3, 1, 2, Color.web("#000000", 0.6));
+        javafx.scene.effect.DropShadow glow =
+                new javafx.scene.effect.DropShadow(20, Color.web(accent, 0.5));
+        glow.setInput(engrave);
+        titleLabel.setEffect(glow);
+
+        Label msgLabel = new Label(message);
+        msgLabel.setFont(Font.font("Serif", 15));
+        msgLabel.setTextFill(Color.web("#c8b880"));
+        msgLabel.setWrapText(true);
+        msgLabel.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+        msgLabel.setMaxWidth(360);
+        msgLabel.setEffect(new javafx.scene.effect.DropShadow(4, 0, 1, Color.BLACK));
+
+        Button okBtn = new Button("Return to Menu");
+        okBtn.setFont(Font.font("Serif", FontWeight.BOLD, 15));
+        okBtn.setPrefWidth(200);
+        okBtn.setPrefHeight(40);
+        String base = "-fx-background-color: "
+                + "linear-gradient(to bottom, #4a4438, #2e2a22, #1e1b16, #2a2720); "
+                + "-fx-text-fill: " + accent + "; "
+                + "-fx-background-radius: 4; -fx-border-radius: 4; "
+                + "-fx-border-color: " + accent + "88 #3a3220 #3a3220 " + accent + "88; "
+                + "-fx-border-width: 2; -fx-cursor: hand;";
+        String hover = "-fx-background-color: "
+                + "linear-gradient(to bottom, #5a5448, #3e3a30, #2a2720, #353028); "
+                + "-fx-text-fill: #ffffff; "
+                + "-fx-background-radius: 4; -fx-border-radius: 4; "
+                + "-fx-border-color: " + accent + " " + accent + "aa " + accent + "aa " + accent + "; "
+                + "-fx-border-width: 2; -fx-cursor: hand; "
+                + "-fx-effect: dropshadow(gaussian, " + accent + "44, 10, 0, 0, 0);";
+        okBtn.setStyle(base);
+        okBtn.setOnMouseEntered(e -> okBtn.setStyle(hover));
+        okBtn.setOnMouseExited(e -> okBtn.setStyle(base));
+        okBtn.setOnAction(e -> {
+            popup.close();
+            playActive = false;
+            shutdown();
+            screenManager.showMainMenu();
         });
 
-        Button menuBtn = pauseMenuBtn("\u2694  Main Menu", true);
-        menuBtn.setOnAction(e -> {
-            popup.close(); playActive = false; shutdown(); screenManager.showMainMenu();
+        VBox content = new VBox(20, titleLabel, msgLabel, okBtn);
+        content.setAlignment(javafx.geometry.Pos.CENTER);
+        content.setPadding(new Insets(30));
+        content.setStyle("-fx-border-color: " + accent + "66; -fx-border-width: 3; "
+                + "-fx-border-radius: 4; -fx-background-radius: 4;");
+
+        StackPane root = new StackPane(bg, content);
+        popup.setScene(new Scene(root, 420, 300));
+        popup.setTitle(title);
+
+        popup.setOnShown(e -> {
+            popup.setX(stage.getX() + (stage.getWidth() - 420) / 2);
+            popup.setY(stage.getY() + (stage.getHeight() - 300) / 2);
         });
-
-        HBox btns = new HBox(16, playAgainBtn, menuBtn);
-        btns.setAlignment(Pos.CENTER);
-
-        // \u2500\u2500 Layout \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-        VBox content = new VBox(14, titleLbl, orn, msgLbl, statsGrid, btns);
-        content.setAlignment(Pos.CENTER);
-        content.setPadding(new Insets(32, 36, 28, 36));
-
-        StackPane root = new StackPane(bgCanvas, vignette, content);
-        root.setOpacity(0);
-        FadeTransition fadeIn = new FadeTransition(Duration.millis(700), root);
-        fadeIn.setToValue(1.0);
-        fadeIn.play();
-
-        popup.setScene(new Scene(root, PW, PH));
-        popup.setOnShown(e -> centerPopup(popup));
         popup.showAndWait();
     }
-
+    
+    /**
+     * BUG-04 / SECTION 2.4: Displays the Character Sheet (Stats & Equipment)
+     */
     private void showCharacterSheetPopup(GameSession session) {
         if (animationTimer != null) animationTimer.stop();
         Hero hero = session.getHero();
@@ -609,19 +501,29 @@ public class GameView {
         grid.setVgap(15);
         grid.setAlignment(Pos.CENTER);
 
+        // Name & Class
         addStatRow(grid, 0, "Name:", hero.getName());
+        
+        // Core Stats
         addStatRow(grid, 1, "Health (HP):", hero.getHealth() + " / " + hero.getMaxHealth());
         addStatRow(grid, 2, "Mana (MP):", hero.getMana() + " / " + hero.getMaxMana());
         addStatRow(grid, 3, "Energy (EN):", hero.getEnergy() + " / " + hero.getMaxEnergy());
+        
+        // Combat Stats (Dynamic reading ensures correct values)
         addStatRow(grid, 4, "Strength (STR):", String.valueOf(hero.getStrength()));
         addStatRow(grid, 5, "Defense (DEF):", String.valueOf(hero.getDefensePower()));
         addStatRow(grid, 6, "Total Damage:", String.valueOf(hero.calculateDamage()));
 
+        // Equipment
         String wpnName = hero.getEquippedWeapon() != null ? hero.getEquippedWeapon().getName() : "None";
-        String armorName = hero.getEquippedWearable() != null ? hero.getEquippedWearable().getName() : "None";
-        
+        String armorName = hero.getEquippedArmor() != null ? hero.getEquippedArmor().getName() : "None";
+        String shieldName = hero.getEquippedShield() != null ? hero.getEquippedShield().getName() : "None";
+        String ringName = hero.getEquippedRing() != null ? hero.getEquippedRing().getName() : "None";
+
         addStatRow(grid, 7, "Weapon:", wpnName);
         addStatRow(grid, 8, "Armor:", armorName);
+        addStatRow(grid, 9, "Shield:", shieldName);
+        addStatRow(grid, 10, "Ring:", ringName);
 
         Button closeBtn = popupButton("Close", "#a09070");
         closeBtn.setOnAction(e -> popup.close());
@@ -638,6 +540,7 @@ public class GameView {
         popup.showAndWait();
     }
 
+    /** Helper method for Character Sheet layout */
     private void addStatRow(GridPane grid, int row, String labelText, String valueText) {
         Label lbl = new Label(labelText);
         lbl.setFont(Font.font("Serif", FontWeight.BOLD, 15));
@@ -650,9 +553,9 @@ public class GameView {
         grid.add(lbl, 0, row);
         grid.add(val, 1, row);
     }
-
     private void handleKeyPress(KeyEvent event) {
-        if (paused && event.getCode() != javafx.scene.input.KeyCode.ESCAPE && event.getCode() != javafx.scene.input.KeyCode.P) {
+        if (paused && event.getCode() != javafx.scene.input.KeyCode.ESCAPE
+                && event.getCode() != javafx.scene.input.KeyCode.P) {
             return;
         }
 
@@ -704,6 +607,7 @@ public class GameView {
             default:            return;
         }
 
+        // --- ENERJİ KONTROLÜ (BUG-01 FIX) ---
         if (isMoveKey) {
             if (hero.getEnergy() < 1) {
                 messageLabel.setText("Not enough energy, you CAN NOT MOVE!");
@@ -724,6 +628,9 @@ public class GameView {
         }
     }
 
+    /**
+     * E key: melee attack the first adjacent enemy (same as ATTACK in the click menu).
+     */
     private boolean tryAttackAdjacentEnemy() {
         GameSession session = controller.getSession();
         Hero hero = session.getHero();
@@ -750,6 +657,10 @@ public class GameView {
         return false;
     }
 
+    /**
+     * E key: pick up the first item on the hero's tile or any adjacent tile (3×3).
+     * If nothing to pick up, caller may fall back to using a consumable.
+     */
     private boolean tryTakeAdjacentItem() {
         Hero hero = controller.getSession().getHero();
         com.kurawler.model.Map map = controller.getSession().getMap();
@@ -786,6 +697,10 @@ public class GameView {
         return false;
     }
 
+    /**
+     * E key: open the first adjacent StaticContainer (unlocked).
+     */
+    /** E key or fallback: use a door on the hero tile or any adjacent tile. */
     private boolean tryUseAdjacentPortal() {
         GameSession session = controller.getSession();
         Hero hero = session.getHero();
@@ -861,6 +776,7 @@ public class GameView {
         return false;
     }
 
+    /** 3x3 Interaction: click an adjacent cell to interact with objects on it. */
     private void handleMouseClick(MouseEvent event) {
         int col = (int) (event.getX() / TILE_SIZE);
         int row = (int) (event.getY() / TILE_SIZE);
@@ -886,6 +802,7 @@ public class GameView {
             if (obj instanceof StaticContainer) {
                 StaticContainer sc = (StaticContainer) obj;
                 if (sc.isLocked()) {
+                    // Check if Hero has the required key
                     boolean hasKey = false;
                     for (Item invItem : hero.getInventory().getItems()) {
                         if (invItem instanceof com.kurawler.model.object.Key && 
@@ -960,6 +877,7 @@ public class GameView {
 
             Button btn = popupButton(verb + " " + target, color);
             
+            // --- BUG-02 FIX: Disable TAKE button if inventory is full ---
             if ("take".equals(type) && hero.getInventory().isFull()) {
                 btn.setDisable(true);
                 btn.setText(verb + " " + target + " (Full)");
@@ -1025,13 +943,13 @@ public class GameView {
                     else if (searched) messageLabel.setText("Nothing found.");
                     else messageLabel.setText("Cannot search.");
                     
-                    AudioManager.getInstance().play("interact");
+                    AudioManager.getInstance().play("interact"); // Added interact sound
                 }
                 break;
             case "break":
                 boolean broken = controller.breakObject(row, col);
                 messageLabel.setText(broken ? "Broke it!" : "Cannot break.");
-                AudioManager.getInstance().play("interact"); 
+                AudioManager.getInstance().play("interact"); // Added interact sound
                 break;
             case "attack":
                 if (cell.getOccupyingCharacter() instanceof Enemy) {
@@ -1062,6 +980,7 @@ public class GameView {
                             messageLabel.setText("Unlocked " + target + "!");
                         }
                         AudioManager.getInstance().play("interact");
+                        // Wait for any previous popup to close, then open contents
                         Platform.runLater(() -> showContainerContentsPopup(sc, session));
                         break;
                     }
@@ -1069,213 +988,51 @@ public class GameView {
                 break;
             case "locked_info":
                 messageLabel.setText("It is locked. You need a specific key.");
-                AudioManager.getInstance().play("error");
+                AudioManager.getInstance().play("error"); // Optional error sound
                 break;
         }
         render();
     }
 
-    // ── Pause-menu helpers (style mirrors MainMenuScreen) ──────────────
-
-    private void drawPauseMenuBackground(javafx.scene.canvas.Canvas canvas, int w, int h) {
-        javafx.scene.canvas.GraphicsContext gc = canvas.getGraphicsContext2D();
-        SpriteSheet wallSheet = new SpriteSheet("/assets/walls_x3.png", 48);
-        gc.setFill(javafx.scene.paint.Color.web("#0a0a14"));
-        gc.fillRect(0, 0, w, h);
-        if (!wallSheet.isLoaded()) return;
-        javafx.scene.image.Image[] wt = {
-            wallSheet.getSprite(0,1), wallSheet.getSprite(1,1),
-            wallSheet.getSprite(2,1), wallSheet.getSprite(3,1)
-        };
-        javafx.scene.image.Image[] ft = {
-            wallSheet.getSprite(0,3), wallSheet.getSprite(1,3),
-            wallSheet.getSprite(2,3), wallSheet.getSprite(3,3)
-        };
-        for (int y = 0; y <= h; y += 48) {
-            for (int x = 0; x <= w; x += 48) {
-                int hash = Math.abs((x * 73856093) ^ (y * 19349663));
-                boolean isWall = (y < 48) || (y >= h - 48) || (x < 48) || (x >= w - 48);
-                javafx.scene.image.Image tile = isWall
-                    ? (wt[hash % wt.length]) : (ft[hash % ft.length]);
-                if (tile != null) gc.drawImage(tile, x, y, 48, 48);
-            }
-        }
-        gc.setFill(javafx.scene.paint.Color.web("#0a0a14", 0.60));
-        gc.fillRect(0, 0, w, h);
-    }
-
-    private javafx.scene.control.Button pauseMenuBtn(String text, boolean destructive) {
-        javafx.scene.control.Button btn = new javafx.scene.control.Button(text);
-        btn.setFont(Font.font("Serif", javafx.scene.text.FontWeight.BOLD, 20));
-        btn.setPrefWidth(320);
-        btn.setPrefHeight(52);
-        btn.setAlignment(javafx.geometry.Pos.CENTER);
-
-        if (destructive) {
-            String base = "-fx-background-color: linear-gradient(to bottom,#5a2020,#381414,#281010,#381414);"
-                + "-fx-text-fill:#e08080;-fx-background-radius:6;-fx-border-radius:6;"
-                + "-fx-border-color:#8b4040 #5a2020 #3a1818 #8b4040;-fx-border-width:2;"
-                + "-fx-cursor:hand;-fx-effect:innershadow(gaussian,rgba(0,0,0,0.5),6,0,0,3);";
-            String hover = "-fx-background-color: linear-gradient(to bottom,#6a2828,#4a1c1c,#381414,#4a1c1c);"
-                + "-fx-text-fill:#ffaaaa;-fx-background-radius:6;-fx-border-radius:6;"
-                + "-fx-border-color:#cc6060 #8b4040 #5a2020 #cc6060;-fx-border-width:2;"
-                + "-fx-cursor:hand;-fx-effect:dropshadow(gaussian,rgba(200,80,80,0.3),12,0,0,0);";
-            String pressed = "-fx-background-color: linear-gradient(to bottom,#1c0e0e,#241212,#2a1414);"
-                + "-fx-text-fill:#a07070;-fx-background-radius:6;-fx-border-radius:6;"
-                + "-fx-border-color:#5a2020 #8b4040 #8b4040 #5a2020;-fx-border-width:2;"
-                + "-fx-cursor:hand;";
-            btn.setStyle(base);
-            btn.setOnMouseEntered(e -> btn.setStyle(hover));
-            btn.setOnMouseExited(e  -> btn.setStyle(base));
-            btn.setOnMousePressed(e  -> btn.setStyle(pressed));
-            btn.setOnMouseReleased(e -> btn.setStyle(btn.isHover() ? hover : base));
-        } else {
-            String base = "-fx-background-color: linear-gradient(to bottom,#4a4438,#2e2a22,#1e1b16,#2a2720,#3a362e);"
-                + "-fx-text-fill:#c8b880;-fx-background-radius:6;-fx-border-radius:6;"
-                + "-fx-border-color:#8b7940 #5a4e30 #3a3220 #8b7940;-fx-border-width:2;"
-                + "-fx-cursor:hand;-fx-effect:innershadow(gaussian,rgba(0,0,0,0.5),6,0,0,3);";
-            String hover = "-fx-background-color: linear-gradient(to bottom,#5a5448,#3e3a30,#2a2720,#353028,#4a4638);"
-                + "-fx-text-fill:#f0e0a0;-fx-background-radius:6;-fx-border-radius:6;"
-                + "-fx-border-color:#c8a850 #8b7940 #5a4e30 #c8a850;-fx-border-width:2;"
-                + "-fx-cursor:hand;-fx-effect:dropshadow(gaussian,rgba(200,168,80,0.3),12,0,0,0);";
-            String pressed = "-fx-background-color: linear-gradient(to bottom,#1e1b16,#252018,#2e2a22);"
-                + "-fx-text-fill:#a89860;-fx-background-radius:6;-fx-border-radius:6;"
-                + "-fx-border-color:#5a4e30 #8b7940 #8b7940 #5a4e30;-fx-border-width:2;"
-                + "-fx-cursor:hand;";
-            btn.setStyle(base);
-            btn.setOnMouseEntered(e -> btn.setStyle(hover));
-            btn.setOnMouseExited(e  -> btn.setStyle(base));
-            btn.setOnMousePressed(e  -> btn.setStyle(pressed));
-            btn.setOnMouseReleased(e -> btn.setStyle(btn.isHover() ? hover : base));
-        }
-        return btn;
-    }
-
     private void showInGameMenu() {
         if (animationTimer != null) animationTimer.stop();
 
-        javafx.stage.Stage dialog = new javafx.stage.Stage();
-        dialog.initOwner(stage);
-        dialog.initModality(javafx.stage.Modality.WINDOW_MODAL);
-        dialog.initStyle(javafx.stage.StageStyle.UNDECORATED);
-        dialog.setResizable(false);
+        ButtonType save    = new ButtonType("Save");
+        ButtonType load    = new ButtonType("Load");
+        ButtonType mainMenu = new ButtonType("Main Menu");
+        ButtonType resume  = new ButtonType("Resume");
 
-        final int DW = 460, DH = 430;
+        Alert alert = new Alert(Alert.AlertType.NONE,
+                "Press Save to save your progress,\nLoad to restore a save, or\nMain Menu to quit.",
+                save, load, mainMenu, resume);
+        alert.setTitle("Dungeon KUrawler");
+        alert.setHeaderText("Game Menu");
+        alert.initOwner(stage);
 
-        // Dungeon tile background — same as main menu
-        javafx.scene.canvas.Canvas bg = new javafx.scene.canvas.Canvas(DW, DH);
-        drawPauseMenuBackground(bg, DW, DH);
-
-        // Radial dark overlay so the central content reads clearly
-        javafx.scene.layout.Pane overlay = new javafx.scene.layout.Pane();
-        overlay.setPrefSize(DW, DH);
-        overlay.setStyle("-fx-background-color: radial-gradient("
-                + "center 50% 40%, radius 60%, rgba(0,0,0,0.1), rgba(0,0,0,0.72));");
-
-        // Title — Serif Bold gold with glow, matching main menu
-        javafx.scene.control.Label title = new javafx.scene.control.Label("GAME MENU");
-        title.setFont(Font.font("Serif", javafx.scene.text.FontWeight.BOLD, 36));
-        title.setTextFill(javafx.scene.paint.Color.web("#e8c84a"));
-        title.setAlignment(javafx.geometry.Pos.CENTER);
-        javafx.scene.effect.InnerShadow engrave =
-                new javafx.scene.effect.InnerShadow(4, 1, 2,
-                        javafx.scene.paint.Color.web("#5a4210"));
-        javafx.scene.effect.DropShadow outerGlow =
-                new javafx.scene.effect.DropShadow(22,
-                        javafx.scene.paint.Color.web("#ff9500", 0.45));
-        outerGlow.setInput(engrave);
-        javafx.scene.effect.DropShadow deepShadow =
-                new javafx.scene.effect.DropShadow(8, 2, 3,
-                        javafx.scene.paint.Color.web("#000000", 0.85));
-        deepShadow.setInput(outerGlow);
-        title.setEffect(deepShadow);
-
-        // Ornament — same style as main menu
-        javafx.scene.control.Label ornament1 =
-                new javafx.scene.control.Label("━━━━ ✦ ✦ ✦ ━━━━");
-        ornament1.setFont(Font.font("Monospaced", 16));
-        ornament1.setTextFill(javafx.scene.paint.Color.web("#8b6914", 0.75));
-        ornament1.setEffect(new javafx.scene.effect.DropShadow(4, 0, 1,
-                javafx.scene.paint.Color.web("#000000", 0.5)));
-
-        // Stone buttons — identical factory to main menu's stoneButton()
-        javafx.scene.control.Button resumeBtn = pauseMenuBtn("▶  Resume", false);
-        javafx.scene.control.Button saveBtn   = pauseMenuBtn("Save Game",    false);
-        javafx.scene.control.Button loadBtn   = pauseMenuBtn("Load Game",    false);
-        javafx.scene.control.Button menuBtn   = pauseMenuBtn("⚔  Main Menu", true);
-
-        final String[] choice = {null};
-        resumeBtn.setOnAction(e -> { choice[0] = "resume"; dialog.close(); });
-        saveBtn.setOnAction(e   -> { choice[0] = "save";   dialog.close(); });
-        loadBtn.setOnAction(e   -> { choice[0] = "load";   dialog.close(); });
-        menuBtn.setOnAction(e   -> { choice[0] = "menu";   dialog.close(); });
-
-        javafx.scene.control.Label ornament2 =
-                new javafx.scene.control.Label("━━━━ ✦ ✦ ✦ ━━━━");
-        ornament2.setFont(Font.font("Monospaced", 16));
-        ornament2.setTextFill(javafx.scene.paint.Color.web("#8b6914", 0.75));
-        ornament2.setEffect(new javafx.scene.effect.DropShadow(4, 0, 1,
-                javafx.scene.paint.Color.web("#000000", 0.5)));
-
-        javafx.scene.control.Label hint =
-                new javafx.scene.control.Label("Press ESC to return to the dungeon");
-        hint.setFont(Font.font("Serif", 12));
-        hint.setTextFill(javafx.scene.paint.Color.web("#5a5a66"));
-        hint.setEffect(new javafx.scene.effect.DropShadow(2, 0, 1,
-                javafx.scene.paint.Color.BLACK));
-
-        javafx.scene.layout.VBox menu = new javafx.scene.layout.VBox(12,
-                title, ornament1,
-                resumeBtn, saveBtn, loadBtn, menuBtn,
-                ornament2, hint);
-        menu.setAlignment(javafx.geometry.Pos.CENTER);
-        menu.setPadding(new javafx.geometry.Insets(32, 40, 24, 40));
-
-        javafx.scene.layout.StackPane root =
-                new javafx.scene.layout.StackPane(bg, overlay, menu);
-
-        // ESC while dialog is open → close and resume
-        root.setOnKeyPressed(ke -> {
-            if (ke.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
-                choice[0] = "resume";
-                dialog.close();
-            }
-        });
-
-        javafx.scene.Scene dialogScene = new javafx.scene.Scene(root, DW, DH);
-        dialog.setScene(dialogScene);
-
-        // Centre relative to the game window, not the OS screen
-        dialog.setOnShown(ev -> {
-            dialog.setX(stage.getX() + (stage.getWidth()  - DW) / 2.0);
-            dialog.setY(stage.getY() + (stage.getHeight() - DH) / 2.0);
-            root.requestFocus();
-        });
-
-        dialog.showAndWait();
-
-        // Handle choice
-        if ("save".equals(choice[0])) {
-            boolean saved = screenManager.showSaveDialog();
-            messageLabel.setText(saved ? "Game saved." : "Save cancelled.");
-        } else if ("load".equals(choice[0])) {
-            boolean loaded = screenManager.showLoadDialogAndStart();
-            if (loaded) {
-                animationTimer = null;
+        alert.showAndWait().ifPresent(choice -> {
+            if (choice == save) {
+                boolean saved = screenManager.showSaveDialog();
+                messageLabel.setText(saved ? "Game saved." : "Save cancelled.");
+            } else if (choice == load) {
+                boolean loaded = screenManager.showLoadDialogAndStart();
+                if (loaded) {
+                    animationTimer = null;
+                    return;
+                } else {
+                    messageLabel.setText("No save file found.");
+                }
+            } else if (choice == mainMenu) {
+                GameSession s = controller.getSession();
+                if (s.isEditorTestPlay()) {
+                    shutdown();
+                    screenManager.returnToEditorAfterTest(
+                            s.getMap(), "Returned to level editor.");
+                } else {
+                    screenManager.showMainMenu();
+                }
                 return;
-            } else {
-                messageLabel.setText("No save file found.");
             }
-        } else if ("menu".equals(choice[0])) {
-            GameSession s = controller.getSession();
-            if (s.isEditorTestPlay()) {
-                shutdown();
-                screenManager.returnToEditorAfterTest(s.getMap(), "Returned to level editor.");
-            } else {
-                screenManager.showMainMenu();
-            }
-            return;
-        }
+        });
 
         if (animationTimer != null) animationTimer.start();
     }
@@ -1307,21 +1064,7 @@ public class GameView {
         }
     }
 
-    private void withRotation(GraphicsContext gc, int sx, int sy, int rot, Runnable draw) {
-        if (rot % 360 == 0) {
-            draw.run();
-            return;
-        }
-        gc.save();
-        double cx = sx + TILE_SIZE / 2.0;
-        double cy = sy + TILE_SIZE / 2.0;
-        gc.translate(cx, cy);
-        gc.rotate(rot);
-        gc.translate(-cx, -cy);
-        draw.run();
-        gc.restore();
-    }
-
+    /** Render the entire game state by reading the model. */
     private void render() {
         GameSession session = controller.getSession();
         com.kurawler.model.Map map = session.getMap();
@@ -1346,58 +1089,60 @@ public class GameView {
 
                 StaticObject so = cell.getStaticObject();
                 boolean isPortal = so instanceof MapPortal;
-                int soRot = so != null ? so.getRotation() : 0;
-                withRotation(gc, sx, sy, isPortal ? 0 : soRot, () -> {
-                    if (isPortal) {
-                        MapPortal portal = (MapPortal) so;
-                        if (!portal.isPassable()) {
-                            renderer.drawWall(gc, sx, sy);
-                        } else {
-                            renderer.drawFloor(gc, sx, sy);
-                        }
-                    } else if (so != null && renderer.isFloorName(so.getName())) {
-                        renderer.drawFloorByName(gc, sx, sy, so.getName());
-                    } else if (so != null && renderer.isWallName(so.getName()) && !so.isSearchable()) {
-                        renderer.drawWallByName(gc, sx, sy, so.getName());
-                    } else if (so != null && so.isSearchable()) {
-                        renderer.drawFloor(gc, sx, sy);
-                    } else if (so != null && renderer.spriteForAsset(so.getName()) != null) {
-                        renderer.drawFloor(gc, sx, sy);
-                        renderer.drawStaticDecor(gc, sx, sy, so);
-                    } else if (so != null && !so.isPassable()) {
+                if (isPortal) {
+                    MapPortal portal = (MapPortal) so;
+                    if (!portal.isPassable()) {
                         renderer.drawWall(gc, sx, sy);
                     } else {
                         renderer.drawFloor(gc, sx, sy);
                     }
-
-                    if (so != null && so.isSearchable() && !isPortal) {
-                        renderer.drawSearchable(gc, sx, sy, so.getName());
+                } else if (so != null && so.isSearchable()) {
+                    // Searchable props (pool, column, bookshelf) — floor underneath, not wall tiles.
+                    renderer.drawFloor(gc, sx, sy);
+                } else if (so != null && !so.isPassable()) {
+                    if (renderer.isWallName(so.getName())) {
+                        renderer.drawWallByName(gc, sx, sy, so.getName());
+                    } else if (renderer.spriteForAsset(so.getName()) != null) {
+                        renderer.drawFloor(gc, sx, sy);
+                    } else {
+                        renderer.drawWall(gc, sx, sy);
                     }
-                });
+                } else if (so != null && renderer.isFloorName(so.getName())) {
+                    renderer.drawFloorByName(gc, sx, sy, so.getName());
+                } else {
+                    renderer.drawFloor(gc, sx, sy);
+                }
+
+                if (so != null && so.isSearchable() && !isPortal) {
+                    renderer.drawSearchable(gc, sx, sy, so.getName());
+                } else if (so != null && !isPortal
+                        && renderer.spriteForAsset(so.getName()) != null
+                        && !renderer.isWallName(so.getName())
+                        && !renderer.isFloorName(so.getName())) {
+                    renderer.drawStaticDecor(gc, sx, sy, so);
+                }
 
                 for (GameObject obj : cell.getObjects()) {
-                    withRotation(gc, sx, sy, obj.getRotation(), () -> {
-                        if (obj instanceof StaticContainer) {
-                            StaticContainer sc = (StaticContainer) obj;
-                            renderer.drawContainerByName(gc, sx, sy, sc.getSpriteName());
-                        } else if (obj instanceof Weapon) {
-                            renderer.drawWeaponByName(gc, sx, sy, obj.getName());
-                        } else if (obj instanceof Scroll) {
-                            renderer.drawItem(gc, sx, sy, "Scroll");
-                        } else if (obj instanceof Wearable) {
-                            renderer.drawItem(gc, sx, sy, "Wearable");
-                        } else if (obj instanceof Consumable) {
-                            Consumable cons = (Consumable) obj;
-                            String pt = cons.getManaAmount() > 0 ? "ManaPotion"
-                                      : cons.getEnergyAmount() > 0 ? "EnergyPotion"
-                                      : "HealthPotion";
-                            renderer.drawConsumable(gc, sx, sy, pt);
-                        } else if (obj instanceof Key) {
-                            renderer.drawItem(gc, sx, sy, "Key");
-                        } else if (obj instanceof Item) {
-                            renderer.drawItem(gc, sx, sy, "Item");
-                        }
-                    });
+                    if (obj instanceof StaticContainer) {
+                        StaticContainer sc = (StaticContainer) obj;
+                        renderer.drawContainerByName(gc, sx, sy, sc.getSpriteName());
+                    } else if (obj instanceof Weapon) {
+                        renderer.drawWeaponByName(gc, sx, sy, obj.getName());
+                    } else if (obj instanceof Scroll) {
+                        renderer.drawItem(gc, sx, sy, "Scroll");
+                    } else if (obj instanceof Wearable) {
+                        renderer.drawItemObject(gc, sx, sy, (Item) obj);
+                    } else if (obj instanceof Consumable) {
+                        Consumable cons = (Consumable) obj;
+                        String pt = cons.getManaAmount() > 0 ? "ManaPotion"
+                                  : cons.getEnergyAmount() > 0 ? "EnergyPotion"
+                                  : "HealthPotion";
+                        renderer.drawConsumable(gc, sx, sy, pt);
+                    } else if (obj instanceof Key) {
+                        renderer.drawItem(gc, sx, sy, "Key");
+                    } else if (obj instanceof Item) {
+                        renderer.drawItem(gc, sx, sy, "Item");
+                    }
                 }
 
                 if (isPortal) {
@@ -1478,9 +1223,11 @@ public class GameView {
             } catch (Exception ignored) {}
         }
 
+        // Dark background
         gc.setFill(Color.web("#0e0c0a"));
         gc.fillRect(0, 0, w, h);
 
+        // Gold border lines
         gc.setStroke(Color.web("#c8a840"));
         gc.setLineWidth(2);
         gc.strokeLine(0, 0, w, 0);
@@ -1492,12 +1239,14 @@ public class GameView {
 
         double pad = 6;
 
+        // ── SECTION 1: Hero portrait (pad, pad) ──
         double portraitSize = h - pad * 2;
         drawGoldPanel(gc, pad, pad, portraitSize, portraitSize);
         renderer.drawHeroFacing(gc, (int)(pad + (portraitSize - TILE_SIZE) / 2),
                 (int)(pad + (portraitSize - TILE_SIZE) / 2),
                 hero.getFacingRow(), hero.getFacingCol());
 
+        // ── SECTION 2: Stat bars ──
         double barStartX = pad + portraitSize + 8;
         double barW = 150;
         double barH = 18;
@@ -1511,8 +1260,10 @@ public class GameView {
         drawStatBar(gc, barStartX, barsTopY + (barH + barGap) * 2, barW, barH,
                 "EN", hero.getEnergy(), hero.getMaxEnergy(), "#4a3d00", "#f9a825", "#f4d03f");
 
+        // ── SECTION 3: Stats text ──
         double statsX = barStartX + barW + 14;
 
+        // Gold divider line
         gc.setStroke(Color.web("#c8a840", 0.4));
         gc.setLineWidth(1);
         gc.strokeLine(statsX - 7, pad + 4, statsX - 7, h - pad - 4);
@@ -1536,6 +1287,7 @@ public class GameView {
         gc.setFill(Color.web("#aa9870"));
         gc.fillText("Foes " + session.getActiveEnemyCount(), statsX2, barsTopY + 14 + 40);
 
+        // ── SECTION 4: Achievements (trophy icon) ──
         double achX = statsX2 + 110;
         gc.setStroke(Color.web("#c8a840", 0.4));
         gc.strokeLine(achX - 7, pad + 4, achX - 7, h - pad - 4);
@@ -1557,6 +1309,7 @@ public class GameView {
         gc.setFill(Color.web("#ffffff", 0.9));
         gc.fillText(achUnlocked + "/" + achTotal, achX + 14, pad + 58);
 
+        // ── SECTION 5: Bag button ──
         double bagBtnX = achX + 68;
         gc.setStroke(Color.web("#c8a840", 0.4));
         gc.strokeLine(bagBtnX - 7, pad + 4, bagBtnX - 7, h - pad - 4);
@@ -1570,6 +1323,7 @@ public class GameView {
         gc.setFill(Color.web("#e8c84a"));
         gc.fillText(inv.getItemCount() + "/8", bagBtnX + 16, h - pad - 4);
 
+        // ── SECTION 6: Pause & Menu buttons ──
         double btnX = bagBtnX + 68;
         double btnSize = (h - pad * 2 - 8) / 2 - 2;
 
@@ -1621,6 +1375,7 @@ public class GameView {
         gc.setFill(Color.web("#ffffff", 0.95));
         gc.fillText(label + " " + val + "/" + max, x + 4, y + h - 4);
     }
+
 
     private void showAchievementPopup(Achievement achievement) {
         achievementPopupLabel.setText("\uD83C\uDFC6 " + achievement.getName() + " unlocked!");
@@ -1693,6 +1448,9 @@ public class GameView {
         centerPopup(popup);
     }
 
+    private void updateSidebar(GameSession session) {
+    }
+
     private String formatTime(int totalSeconds) {
         int minutes = Math.max(0, totalSeconds) / 60;
         int seconds = Math.max(0, totalSeconds) % 60;
@@ -1718,35 +1476,61 @@ public class GameView {
         gc.strokeOval(sx + TILE_SIZE - 12, sy + 2, 9, 9);
     }
 
+    private String teamRoster(Team team) {
+        StringBuilder sb = new StringBuilder();
+        for (Character member : team.getMembers()) {
+            String icon = (member instanceof Hero) ? "  \u2694 "
+                    : (member instanceof Sorcerer) ? "  \u2728 " : "  \u2620 ";
+            if (member.isAlive()) {
+                sb.append(icon).append(member.getName())
+                  .append("  HP:").append(member.getHealth())
+                  .append("/").append(member.getMaxHealth()).append("\n");
+            } else {
+                sb.append(icon).append(member.getName())
+                  .append("  -- DEAD --\n");
+            }
+        }
+        return sb.toString();
+    }
+
+    private static final double INV_SLOT_W = 62;
+    private static final double INV_SLOT_H = 60;
+    private static final double[] INV_SLOT_X = { 48, 128, 208, 288, 48, 128, 208, 288 };
+    private static final double[] INV_SLOT_Y = { 223, 223, 223, 223, 302, 302, 302, 302 };
+
     private void showInventoryPopup() {
         if (animationTimer != null) animationTimer.stop();
         GameSession session = controller.getSession();
         Hero hero = session.getHero();
-        Inventory inv = hero.getInventory();
+
+        boolean wasPaused = paused;
+        if (!wasPaused) {
+            paused = true;
+            session.setCurrentMode("Paused");
+        }
 
         Stage popup = new Stage();
         popup.initOwner(stage);
         popup.initModality(Modality.APPLICATION_MODAL);
         popup.initStyle(StageStyle.UNDECORATED);
 
-        int popW = 380;
-        int popH = 420;
-
-        javafx.scene.image.Image bagImg = null;
-        try {
-            bagImg = new javafx.scene.image.Image(
-                    getClass().getResourceAsStream("/assets/bag - empty.png"));
-        } catch (Exception ignored) {}
+        int popW = 400;
+        int popH = 560;
 
         StackPane root = new StackPane();
         root.setStyle("-fx-background-color: transparent;");
 
+        javafx.scene.image.Image bagImg = null;
+        try {
+            bagImg = new javafx.scene.image.Image(
+                    getClass().getResourceAsStream("/assets/Inventory x4.png"));
+        } catch (Exception ignored) {}
         if (bagImg != null && !bagImg.isError()) {
-            javafx.scene.image.ImageView bagView =
-                    new javafx.scene.image.ImageView(bagImg);
+            javafx.scene.image.ImageView bagView = new javafx.scene.image.ImageView(bagImg);
             bagView.setFitWidth(popW);
             bagView.setFitHeight(popH);
             bagView.setPreserveRatio(false);
+            bagView.setSmooth(false);
             root.getChildren().add(bagView);
         } else {
             Canvas bg = new Canvas(popW, popH);
@@ -1754,74 +1538,41 @@ public class GameView {
             root.getChildren().add(bg);
         }
 
-        Label title = new Label("INVENTORY");
-        title.setFont(Font.font("Serif", FontWeight.BOLD, 18));
-        title.setTextFill(Color.web("#3a2a10"));
-        title.setEffect(new javafx.scene.effect.DropShadow(2, 0, 1, Color.web("#00000044")));
+        Pane overlay = new Pane();
+        overlay.setPrefSize(popW, popH);
+        overlay.setMaxSize(popW, popH);
 
-        GridPane grid = new GridPane();
-        grid.setHgap(8);
-        grid.setVgap(8);
-        grid.setAlignment(Pos.CENTER);
+        final double closeBtnY = 498;
+        final double closeBtnH = 32;
+        final double detailH = 108;
+        final double detailGap = 12;
+        final double detailY = closeBtnY - detailGap - detailH;
 
-        for (int r = 0; r < 2; r++) {
-            for (int c = 0; c < 4; c++) {
-                Item item = inv.getItem(r, c);
-                Button slot = new Button();
-                slot.setPrefSize(68, 68);
+        Label countLabel = new Label();
+        countLabel.setFont(Font.font("Serif", FontWeight.BOLD, 13));
+        countLabel.setTextFill(Color.web("#c8b880"));
+        countLabel.setAlignment(Pos.CENTER);
+        countLabel.setPrefWidth(120);
+        countLabel.setLayoutX((popW - 120) / 2.0);
+        countLabel.setLayoutY(158);
 
-                if (item != null) {
-                    boolean equippedWeapon = item instanceof Weapon && item == hero.getEquippedWeapon();
-                    boolean equippedWearable = item instanceof Wearable && item == hero.getEquippedWearable();
-                    boolean equipped = equippedWeapon || equippedWearable;
-
-                    String prefix = "";
-                    if (equippedWeapon) {
-                        prefix = "\u2694 ";
-                    } else if (equippedWearable) {
-                        prefix = "\u26E8 ";
-                    }
-                    String slotLabel = equipped ? "[E] " + prefix + item.getName() : prefix + item.getName();
-                    slot.setText(slotLabel);
-                    slot.setFont(Font.font("Serif", FontWeight.BOLD, equipped ? 11 : 10));
-                    slot.setWrapText(true);
-                    slot.setTextFill(Color.web(equipped ? "#1a1000" : "#2a1a00"));
-                    String slotBase = equipped
-                            ? "-fx-background-color: linear-gradient(to bottom, #f0e0a8, #d4b870); "
-                            + "-fx-border-color: #e8c84a; -fx-border-width: 3; -fx-cursor: hand; "
-                            + "-fx-background-radius: 3; -fx-border-radius: 3; "
-                            + "-fx-effect: dropshadow(gaussian, #e8c84a88, 8, 0, 0, 1);"
-                            : "-fx-background-color: linear-gradient(to bottom, #d4c090, #b8a470); "
-                            + "-fx-border-color: #8b7530; -fx-border-width: 2; -fx-cursor: hand; "
-                            + "-fx-background-radius: 3; -fx-border-radius: 3;";
-                    String slotHover = "-fx-background-color: linear-gradient(to bottom, #e8d4a0, #ccb480); "
-                            + "-fx-border-color: #e8c84a; -fx-border-width: 2; -fx-cursor: hand; "
-                            + "-fx-background-radius: 3; -fx-border-radius: 3; "
-                            + "-fx-effect: dropshadow(gaussian, #e8c84a44, 6, 0, 0, 0);";
-                    slot.setStyle(slotBase);
-                    slot.setOnMouseEntered(e -> slot.setStyle(slotHover));
-                    slot.setOnMouseExited(e -> slot.setStyle(slotBase));
-                    final Item fItem = item;
-                    slot.setOnAction(e -> {
-                        popup.close(); 
-                        Platform.runLater(() -> {
-                            showItemActionPopup(fItem, session);
-                        });
-                    });
-                } else {
-                    slot.setText("");
-                    slot.setStyle("-fx-background-color: #c0a86088; -fx-border-color: #8b753066; "
-                            + "-fx-border-width: 1; -fx-background-radius: 3; -fx-border-radius: 3;");
-                    slot.setDisable(true);
-                }
-                grid.add(slot, c, r);
-            }
-        }
+        VBox detailPane = new VBox(4);
+        detailPane.setAlignment(Pos.CENTER);
+        detailPane.setPrefSize(304, detailH);
+        detailPane.setMinSize(304, detailH);
+        detailPane.setMaxSize(304, detailH);
+        detailPane.setLayoutX(48);
+        detailPane.setLayoutY(detailY);
+        detailPane.setStyle("-fx-background-color: rgba(20,14,6,0.82); "
+                + "-fx-border-color: #8b7530; -fx-border-width: 1.5; -fx-border-radius: 5; "
+                + "-fx-background-radius: 5; -fx-padding: 8 14 8 14;");
 
         Button closeBtn = new Button("Close Bag");
         closeBtn.setFont(Font.font("Serif", FontWeight.BOLD, 13));
-        closeBtn.setPrefWidth(160);
-        closeBtn.setPrefHeight(32);
+        closeBtn.setPrefWidth(220);
+        closeBtn.setPrefHeight(closeBtnH);
+        closeBtn.setLayoutX((popW - 220) / 2.0);
+        closeBtn.setLayoutY(closeBtnY);
         String cBase = "-fx-background-color: linear-gradient(to bottom, #8b7530, #6a5520); "
                 + "-fx-text-fill: #f0e0b0; -fx-background-radius: 4; -fx-border-radius: 4; "
                 + "-fx-border-color: #3a2a10; -fx-border-width: 1.5; -fx-cursor: hand;";
@@ -1833,17 +1584,247 @@ public class GameView {
         closeBtn.setOnMouseExited(e -> closeBtn.setStyle(cBase));
         closeBtn.setOnAction(e -> popup.close());
 
-        VBox content = new VBox(14, title, grid, closeBtn);
-        content.setAlignment(Pos.CENTER);
-        content.setPadding(new Insets(60, 40, 40, 40));
+        overlay.getChildren().addAll(countLabel, detailPane, closeBtn);
 
-        root.getChildren().add(content);
+        Item[] selected = new Item[1];
+        StackPane[] slotPanes = new StackPane[8];
+        Runnable[] refresh = new Runnable[1];
+        refresh[0] = () -> {
+            Inventory inv = hero.getInventory();
+            countLabel.setText(inv.getItemCount() + " / 8");
+
+            for (int i = 0; i < 8; i++) {
+                if (slotPanes[i] != null) {
+                    overlay.getChildren().remove(slotPanes[i]);
+                }
+            }
+            int idx = 0;
+            for (int r = 0; r < 2; r++) {
+                for (int c = 0; c < 4; c++) {
+                    final Item item = inv.getItem(r, c);
+                    StackPane slot = buildInventorySlot(item, selected, hero, refresh, popup, session);
+                    slot.setLayoutX(INV_SLOT_X[idx]);
+                    slot.setLayoutY(INV_SLOT_Y[idx]);
+                    slotPanes[idx] = slot;
+                    overlay.getChildren().add(0, slot);
+                    idx++;
+                }
+            }
+
+            detailPane.getChildren().clear();
+            if (selected[0] != null && hero.getInventory().hasItem(selected[0])) {
+                buildItemDetailPane(detailPane, selected[0], hero, session, popup, refresh);
+            } else {
+                selected[0] = null;
+                Label hint = new Label("Select an item to see actions");
+                hint.setTextFill(Color.web("#8b7a40"));
+                hint.setFont(Font.font("Serif", FontWeight.BOLD, 12));
+                hint.setAlignment(Pos.CENTER);
+                hint.setMaxWidth(280);
+                hint.setWrapText(true);
+                hint.setStyle("-fx-text-alignment: center;");
+                detailPane.getChildren().add(hint);
+            }
+        };
+        refresh[0].run();
+
+        root.getChildren().add(overlay);
+
         Scene scene = new Scene(root, popW, popH);
         scene.setFill(Color.TRANSPARENT);
         popup.setScene(scene);
         popup.setOnShown(e -> centerPopup(popup));
-        popup.setOnHidden(e -> { if (animationTimer != null) animationTimer.start(); });
+        popup.setOnHidden(e -> {
+            if (!wasPaused) {
+                paused = false;
+                session.setCurrentMode(session instanceof TeamMatchSession ? "TeamMatch" : "Play");
+            }
+            if (animationTimer != null) animationTimer.start();
+            Platform.runLater(() -> canvas.requestFocus());
+        });
         popup.showAndWait();
+    }
+
+    private StackPane buildInventorySlot(Item item, Item[] selected, Hero hero,
+            Runnable[] refresh, Stage popup, GameSession session) {
+        double w = INV_SLOT_W;
+        double h = INV_SLOT_H;
+        StackPane slot = new StackPane();
+        slot.setPrefSize(w, h);
+        slot.setMinSize(w, h);
+        slot.setMaxSize(w, h);
+        slot.setAlignment(Pos.CENTER);
+
+        if (item == null) {
+            slot.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
+            return slot;
+        }
+
+        boolean isSelected = (item == selected[0]);
+        boolean isEquipped = (item instanceof Weapon && item == hero.getEquippedWeapon())
+                || (item instanceof Wearable && item == hero.getEquippedWearable());
+
+        String selBorder = "-fx-background-color: transparent; -fx-border-color: #e8c84a; -fx-border-width: 2.5; ";
+        String normBorder = "-fx-background-color: transparent; -fx-border-color: #6a502888; -fx-border-width: 1; ";
+        String radius = "-fx-background-radius: 4; -fx-border-radius: 4; -fx-cursor: hand;";
+
+        slot.setStyle((isSelected ? selBorder : normBorder) + radius);
+
+        javafx.scene.image.Image sprite = renderer.getSpriteForItem(item);
+        if (sprite != null) {
+            javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(sprite);
+            double icon = Math.min(w, h) - 12;
+            iv.setFitWidth(icon);
+            iv.setFitHeight(icon);
+            iv.setPreserveRatio(true);
+            iv.setSmooth(false);
+            StackPane iconWrap = new StackPane(iv);
+            iconWrap.setPrefSize(w, h);
+            iconWrap.setAlignment(Pos.CENTER);
+            slot.getChildren().add(iconWrap);
+        }
+
+        if (isEquipped) {
+            Label badge = new Label(item instanceof Weapon ? "\u2694" : "\u26E8");
+            badge.setFont(Font.font(9));
+            badge.setTextFill(Color.web("#60ff88"));
+            badge.setStyle("-fx-background-color: rgba(0,70,0,0.78); "
+                    + "-fx-padding: 0 2 0 2; -fx-background-radius: 2;");
+            StackPane.setAlignment(badge, Pos.TOP_RIGHT);
+            StackPane.setMargin(badge, new Insets(3, 3, 0, 0));
+            slot.getChildren().add(badge);
+        }
+
+        slot.setOnMouseEntered(e -> {
+            if (item != selected[0]) {
+                slot.setStyle("-fx-background-color: transparent; -fx-border-color: #e8c84a; "
+                        + "-fx-border-width: 2; " + radius);
+            }
+        });
+        slot.setOnMouseExited(e -> {
+            if (item != selected[0]) {
+                slot.setStyle(normBorder + radius);
+            }
+        });
+        slot.setOnMouseClicked(e -> {
+            selected[0] = item;
+            refresh[0].run();
+        });
+
+        return slot;
+    }
+
+    private void buildItemDetailPane(VBox pane, Item item, Hero hero,
+            GameSession session, Stage popup, Runnable[] refresh) {
+        Label nameLabel = new Label(item.getName());
+        nameLabel.setFont(Font.font("Serif", FontWeight.BOLD, 14));
+        nameLabel.setTextFill(Color.web("#e8c84a"));
+
+        Label typeLabel = new Label(item.getClass().getSimpleName());
+        typeLabel.setFont(Font.font("Serif", 11));
+        typeLabel.setTextFill(Color.web("#aaa090"));
+
+        Label descLabel = new Label(item.getDescription());
+        descLabel.setFont(Font.font("Serif", 11));
+        descLabel.setTextFill(Color.web("#c8b880"));
+        descLabel.setWrapText(true);
+        descLabel.setMaxWidth(290);
+        descLabel.setMaxHeight(32);
+
+        HBox actionRow = new HBox(8);
+        actionRow.setAlignment(Pos.CENTER);
+
+        if (item instanceof Weapon) {
+            Weapon weapon = (Weapon) item;
+            boolean equipped = weapon == hero.getEquippedWeapon();
+            Button btn = invActionButton(equipped ? "Unequip" : "\u2694 Equip", "#e8c84a");
+            btn.setOnAction(e -> {
+                controller.equipWeapon(weapon);
+                AudioManager.getInstance().play("interact");
+                render();
+                refresh[0].run();
+            });
+            actionRow.getChildren().add(btn);
+        }
+        if (item instanceof Wearable) {
+            Wearable wearable = (Wearable) item;
+            boolean worn = hero.isWearableEquipped(wearable);
+            Button btn = invActionButton(worn ? "Remove" : "\u26E8 Wear", "#5dade2");
+            btn.setOnAction(e -> {
+                if (worn) controller.unequipWearable(wearable);
+                else controller.wearItem(wearable);
+                AudioManager.getInstance().play("interact");
+                render();
+                refresh[0].run();
+            });
+            actionRow.getChildren().add(btn);
+        }
+        if (item instanceof Consumable) {
+            Consumable cons = (Consumable) item;
+            Button btn = invActionButton("Use", "#55efc4");
+            btn.setOnAction(e -> {
+                com.kurawler.action.Action action = new com.kurawler.action.EatAction(cons);
+                for (com.kurawler.effect.Effect eff : action.resolve(session)) {
+                    eff.apply(session);
+                }
+                AudioManager.getInstance().play("interact");
+                render();
+                refresh[0].run();
+            });
+            actionRow.getChildren().add(btn);
+        }
+        if (item instanceof Scroll) {
+            Scroll scroll = (Scroll) item;
+            Button btn = invActionButton("Read", "#a29bfe");
+            btn.setOnAction(e -> {
+                controller.readScroll(scroll);
+                AudioManager.getInstance().play("interact");
+                popup.close();
+                render();
+            });
+            actionRow.getChildren().add(btn);
+        }
+        if (item instanceof com.kurawler.model.object.PortableContainer) {
+            com.kurawler.model.object.PortableContainer bag =
+                    (com.kurawler.model.object.PortableContainer) item;
+            Button btn = invActionButton("Open", "#f39c12");
+            btn.setOnAction(e -> {
+                AudioManager.getInstance().play("interact");
+                popup.close();
+                Platform.runLater(() -> showContainerContentsPopup(bag, session));
+            });
+            actionRow.getChildren().add(btn);
+        }
+
+        Button discardBtn = invActionButton("Discard", "#e74c3c");
+        discardBtn.setOnAction(e -> {
+            com.kurawler.action.Action action = new com.kurawler.action.DiscardAction(item);
+            for (com.kurawler.effect.Effect eff : action.resolve(session)) {
+                eff.apply(session);
+            }
+            AudioManager.getInstance().play("interact");
+            render();
+            refresh[0].run();
+        });
+        actionRow.getChildren().add(discardBtn);
+
+        pane.getChildren().addAll(nameLabel, typeLabel, descLabel, actionRow);
+    }
+
+    private Button invActionButton(String text, String hexColor) {
+        Button btn = new Button(text);
+        btn.setFont(Font.font("Serif", FontWeight.BOLD, 11));
+        btn.setPrefHeight(26);
+        String base = "-fx-background-color: " + hexColor + "33; -fx-text-fill: " + hexColor + "; "
+                + "-fx-border-color: " + hexColor + "88; -fx-border-width: 1; "
+                + "-fx-background-radius: 3; -fx-border-radius: 3; -fx-cursor: hand;";
+        String hover = "-fx-background-color: " + hexColor + "66; -fx-text-fill: #ffffff; "
+                + "-fx-border-color: " + hexColor + "; -fx-border-width: 1; "
+                + "-fx-background-radius: 3; -fx-border-radius: 3; -fx-cursor: hand;";
+        btn.setStyle(base);
+        btn.setOnMouseEntered(e -> btn.setStyle(hover));
+        btn.setOnMouseExited(e -> btn.setStyle(base));
+        return btn;
     }
 
     private void showItemActionPopup(Item item, GameSession session) {
@@ -1886,10 +1867,10 @@ public class GameView {
         }
         if (item instanceof Wearable) {
             Wearable wearable = (Wearable) item;
-            boolean worn = wearable == hero.getEquippedWearable();
+            boolean worn = hero.isWearableEquipped(wearable);
             Button btn = popupButton(worn ? "Remove" : "Wear " + wearable.getName(), "#5dade2");
             btn.setOnAction(e -> {
-                if (worn) hero.unequipWearable();
+                if (worn) controller.unequipWearable(wearable);
                 else controller.wearItem(wearable);
                 AudioManager.getInstance().play("interact");
                 popup.close(); render();
@@ -1910,6 +1891,7 @@ public class GameView {
             Consumable cons = (Consumable) item;
             Button btn = popupButton("Eat " + cons.getName(), "#55efc4");
             btn.setOnAction(e -> {
+                // Use EatAction pipeline
                 com.kurawler.action.Action action = new com.kurawler.action.EatAction(cons);
                 for (com.kurawler.effect.Effect eff : action.resolve(session)) {
                     eff.apply(session);
@@ -1932,6 +1914,7 @@ public class GameView {
 
         Button discardBtn = popupButton("Discard", "#e74c3c");
         discardBtn.setOnAction(e -> {
+            // Use DiscardAction pipeline
             com.kurawler.action.Action action = new com.kurawler.action.DiscardAction(item);
             for (com.kurawler.effect.Effect eff : action.resolve(session)) {
                 eff.apply(session);
@@ -1948,6 +1931,8 @@ public class GameView {
         VBox content = new VBox(10, title, nameLabel, actions);
         content.setAlignment(Pos.CENTER);
         content.setPadding(new Insets(20));
+        // Solid CSS background so the popup is never blank even if the Canvas
+        // background fails to render on some platforms.
         content.setStyle("-fx-background-color: linear-gradient(to bottom, #2a2418, #15110c); "
                 + "-fx-border-color: #8b7940; -fx-border-width: 2; "
                 + "-fx-border-radius: 6; -fx-background-radius: 6;");
@@ -2098,6 +2083,25 @@ public class GameView {
         pane.setStyle("-fx-background-color: #1a1510; -fx-border-color: #8b7530; "
                 + "-fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4;");
         return pane;
+    }
+    private void showItemActions(Item item, GameSession session, MouseEvent event) {
+        showItemActionPopup(item, session);
+    }
+
+    private void updateAchievements(GameSession session) {
+        AchievementManager manager = session.getAchievementManager();
+        if (manager == null) {
+            achievementsLabel.setText("");
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (Achievement achievement : manager.getAchievements()) {
+            sb.append(achievement.isUnlocked() ? "  \u2605 " : "  \u2606 ")
+              .append(achievement.getName())
+              .append("\n");
+        }
+        achievementsLabel.setText(sb.toString());
     }
 
     private double[] lerpPosition(Object entity, double targetX, double targetY) {

@@ -237,48 +237,40 @@ public class RandomItemGenerator {
         return walkable.get(random.nextInt(walkable.size()));
     }
 
-    /** Floor spawn: items plus static containers (chest/crate/barrel). */
+    /** Floor spawn: items plus static containers (chest/crate). */
     private GameObject generateRandomFloorObject() {
-        int type = random.nextInt(14);
+        int type = random.nextInt(10);
         switch (type) {
             case 0:
                 return new Weapon("Random Sword", "A randomly forged blade", 3 + random.nextInt(5));
             case 1:
-                return new Weapon("Dagger", "A quick, light blade", 3 + random.nextInt(4));
-            case 2:
-                return new Weapon("Axe", "A heavy war axe", 6 + random.nextInt(5));
-            case 3:
                 return new Consumable("Health Potion", "Restores HP",
                         10 + random.nextInt(20), 0, 0);
-            case 4:
+            case 2:
                 return new Consumable("Mana Elixir", "Restores mana",
                         0, 15 + random.nextInt(15), 0);
-            case 5:
+            case 3:
                 return new Consumable("Energy Apple", "Restores energy",
                         0, 0, 15 + random.nextInt(15));
-            case 6:
+            case 4:
                 return new Wearable("Random Armor", "Protective gear", 1 + random.nextInt(3));
-            case 7:
-                return new Wearable("Shield", "A sturdy shield", 3);
-            case 8:
+            case 5:
                 return new Key("Random Key", "A mysterious key", "key_" + random.nextInt(100));
-            case 9:
+            case 6:
                 return new Scroll("Healing Scroll", "A parchment covered in glowing runes",
                         "Warm light restores your wounds.", 8 + random.nextInt(10));
-            case 10:
+            case 7:
                 return new StaticContainer("Chest", "A wooden chest");
-            case 11:
-                return new StaticContainer("Crate", "A wooden crate");
-            case 12:
-                return new StaticContainer("Barrel", "A wooden barrel");
-            default:
+            case 8:
                 return new PortableContainer("Pouch", "A small pouch", 3 + random.nextInt(3));
+            default:
+                return new StaticContainer("Crate", "A wooden crate");
         }
     }
 
     /** Pick-up loot only (never a static chest/crate). */
     private Item generateRandomLootItem() {
-        int type = random.nextInt(9);
+        int type = random.nextInt(7);
         switch (type) {
             case 0:
                 return new Weapon("Random Sword", "A randomly forged blade", 3 + random.nextInt(5));
@@ -291,12 +283,8 @@ public class RandomItemGenerator {
             case 3:
                 return new Wearable("Random Armor", "Protective gear", 1 + random.nextInt(3));
             case 4:
-                return new Wearable("Ring", "A magical ring (+1 DEF)", 1);
-            case 5:
-                return new Key("Gem", "A precious gem worth a fortune", "gem");
-            case 6:
                 return new Key("Random Key", "A mysterious key", "key_" + random.nextInt(100));
-            case 7:
+            case 5:
                 return new Scroll("Healing Scroll", "A parchment covered in glowing runes",
                         "Warm light restores your wounds.", 8 + random.nextInt(10));
             default:
