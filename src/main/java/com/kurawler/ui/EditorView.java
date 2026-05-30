@@ -38,6 +38,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.scene.transform.Scale;
 import javafx.stage.Stage;
 import java.util.HashMap;
 
@@ -56,6 +57,9 @@ public class EditorView {
     private static final int SIDEBAR_PAD = 4;
     private static final int SIDEBAR_BTN_WIDTH = SIDEBAR_WIDTH - SIDEBAR_PAD * 2;
     private static final int WINDOW_FRAME_PAD = 16;
+
+    private static final double MAX_WINDOW_W = ScreenManager.WINDOW_W;
+    private static final double MAX_WINDOW_H = ScreenManager.WINDOW_H;
 
     private static final String DRAG_OBJECT = "EDITOR_OBJ:";
     private static final String DRAG_CHARACTER = "EDITOR_CHAR:";
@@ -124,8 +128,13 @@ public class EditorView {
         root.setStyle("-fx-background-color: #0f0f23;");
 
         stage.setTitle("Dungeon KUrawler - Level Editor");
-        stage.setScene(new Scene(root, sceneWidth(mapPixelW), sceneHeight(canvas.getHeight())));
-        stage.setResizable(false);
+        int canvasW = (int) canvas.getWidth();
+        int canvasH = (int) canvas.getHeight();
+        double scale = computeEditorScale(canvasW, canvasH);
+        canvas.getTransforms().setAll(new javafx.scene.transform.Scale(scale, scale));
+
+        Scene scene = new Scene(root, ScreenManager.WINDOW_W, ScreenManager.WINDOW_H);
+        stage.setScene(scene);        stage.setResizable(false);
         stage.show();
 
         String pending = screenManager.consumeEditorStatusMessage();
@@ -344,6 +353,15 @@ public class EditorView {
         sidebar.setFillWidth(true);
     }
 
+
+    private double computeEditorScale(int canvasW, int canvasH) {
+        double maxCanvasW = MAX_WINDOW_W - SIDEBAR_WIDTH - WINDOW_FRAME_PAD;
+        double maxCanvasH = MAX_WINDOW_H - PALETTE_TOTAL_HEIGHT - WINDOW_FRAME_PAD;
+        double scaleX = maxCanvasW / canvasW;
+        double scaleY = maxCanvasH / canvasH;
+        return Math.min(1.5, Math.min(scaleX, scaleY));
+    }
+
     private double sceneWidth(double mapPixelW) {
         return mapPixelW + SIDEBAR_WIDTH + WINDOW_FRAME_PAD;
     }
@@ -441,20 +459,20 @@ public class EditorView {
 
     private void applyLoadedMap(Map map) {
         editor.setMap(map);
-        double w = map.getWidth() * TILE_SIZE;
-        double h = map.getHeight() * TILE_SIZE;
-        canvas.setWidth(w);
-        canvas.setHeight(h);
+        int canvasW = map.getWidth() * TILE_SIZE;
+        int canvasH = map.getHeight() * TILE_SIZE;
+        canvas.setWidth(canvasW);
+        canvas.setHeight(canvasH);
         if (stage != null && mapColumn != null) {
-            VBox newPaletteBar = buildPaletteBar(w);
+            VBox newPaletteBar = buildPaletteBar(canvasW);
             mapColumn.getChildren().set(0, newPaletteBar);
             paletteBar = newPaletteBar;
-            mapColumn.setPrefWidth(w);
-            mapColumn.setMinWidth(w);
-            mapColumn.setMaxWidth(w);
-            stage.setWidth(sceneWidth(w));
-            stage.setHeight(sceneHeight(h));
+            mapColumn.setPrefWidth(canvasW);
+            mapColumn.setMinWidth(canvasW);
+            mapColumn.setMaxWidth(canvasW);
         }
+        double scale = computeEditorScale(canvasW, canvasH);
+        canvas.getTransforms().setAll(new javafx.scene.transform.Scale(scale, scale));
         hoverRow = -1;
         hoverCol = -1;
         render();
