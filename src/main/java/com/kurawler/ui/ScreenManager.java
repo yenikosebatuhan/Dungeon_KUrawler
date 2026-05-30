@@ -2,27 +2,75 @@ package com.kurawler.ui;
 
 import com.kurawler.controller.GameController;
 import com.kurawler.model.GameSession;
+import com.kurawler.model.GridCell;
 import com.kurawler.model.MapFactory;
+import com.kurawler.model.TeamMatchSession;
+import com.kurawler.model.achievement.AchievementManager;
+import com.kurawler.model.character.Enemy;
+import com.kurawler.model.character.Hero;
+import com.kurawler.model.object.Consumable;
+import com.kurawler.model.object.GameObject;
+import com.kurawler.model.object.Item;
+import com.kurawler.model.object.StaticContainer;
 import com.kurawler.persistence.MapDeserializer;
 import com.kurawler.persistence.MapSerializer;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ChoiceDialog;
+import javafx.scene.control.TextInputDialog;
 import javafx.stage.Stage;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * Manages screen transitions. UI delegates here to switch between
  * Main Menu, Play Mode, and Build Mode.
  */
 public class ScreenManager {
+    private static final Path SAVES_DIR = Paths.get("saves");
+    private static final Path MAPS_DIR = Paths.get("maps");
+    private static final Path LEGACY_MAP_SAVE = Paths.get("map_save.json");
+    private static final DateTimeFormatter SAVE_TIME_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    public static final int WINDOW_W = 1280;
+    public static final int WINDOW_H = 720;
 
     private final Stage stage;
     private final MapSerializer serializer = new MapSerializer();
     private final MapDeserializer deserializer = new MapDeserializer();
     private GameSession currentSession;
+    private GameView activeGameView;
+    private String pendingEditorStatus;
+    private String lastGameType = "Default";
+    private String lastDifficulty = "Normal";
 
     public ScreenManager(Stage stage) {
         this.stage = stage;
     }
 
+    public void shutdownActiveGameView() {
+        if (activeGameView != null) {
+            activeGameView.shutdown();
+            activeGameView = null;
+        }
+    }
+
+    public String consumeEditorStatusMessage() {
+        String msg = pendingEditorStatus;
+        pendingEditorStatus = null;
+        return msg;
+    }
+
     public void showMainMenu() {
+        shutdownActiveGameView();
         MainMenuScreen menu = new MainMenuScreen(this);
         stage.setScene(menu.createScene());
         stage.setTitle("Dungeon KUrawler");
@@ -32,7 +80,23 @@ public class ScreenManager {
 
     public void startNewGame() {
         currentSession = null;
-        showPlayMode();
+        showDifficultyScreen("Default");
+    }
+
+    /** PBI-16: play a map JSON from maps/ with a win objective. */
+    public void startNewGameFromCustomMap() {
+        com.kurawler.model.Map map = showLoadMapDialog();
+        if (map == null) {
+            return;
+        }
+        GameSession session = new GameSession(map);
+        prepareSessionForPlay(session);
+        MapFactory.configureObjectiveForMap(map, session);
+        session.setAchievementManager(new AchievementManager());
+        session.wireObservers();
+        lastGameType = "Custom";
+        lastDifficulty = "Normal";
+        showPlayMode(session);
     }
 
     public void showPlayMode() {
@@ -43,9 +107,12 @@ public class ScreenManager {
     }
 
     public void showPlayMode(GameSession session) {
+        shutdownActiveGameView();
         currentSession = session;
+        session.wireObservers();
         GameController controller = new GameController(session);
         GameView view = new GameView(controller, this);
+        activeGameView = view;
         view.show(stage);
     }
 
@@ -54,6 +121,27 @@ public class ScreenManager {
             currentSession = MapFactory.createDefaultMap();
         }
         return serializer.saveMapToFile(currentSession.getMap(), filename);
+    }
+
+    public boolean saveCurrentGameAs(String saveName) {
+        if (currentSession == null) {
+            currentSession = MapFactory.createDefaultMap();
+        }
+        return serializer.saveGameState(currentSession, savePath(saveName).toString(), saveName);
+    }
+
+    public boolean showSaveDialog() {
+        TextInputDialog dialog = new TextInputDialog(defaultSaveName());
+        dialog.setTitle("Save Game");
+        dialog.setHeaderText("Save current game");
+        dialog.setContentText("Save name:");
+        dialog.initOwner(stage);
+
+        Optional<String> result = dialog.showAndWait();
+        if (!result.isPresent() || result.get().trim().isEmpty()) {
+            return false;
+        }
+        return saveCurrentGameAs(result.get().trim());
     }
 
     public boolean loadMap(String filename) {
@@ -65,26 +153,376 @@ public class ScreenManager {
         return false;
     }
 
-    public void showBuildMode() {
-        System.out.println("[ScreenManager] Build mode not yet implemented.");
-    }
-
-    /** Save current session to the default save file. */
-    public boolean showSaveDialog() {
-        if (currentSession == null) currentSession = MapFactory.createDefaultMap();
-        return serializer.saveMapToFile(currentSession.getMap(), "map_save.json");
-    }
-
-    /** Load from the default save file and immediately start play mode. Returns false if no save exists. */
     public boolean showLoadDialogAndStart() {
-        com.kurawler.model.Map loaded = deserializer.loadMapFromFile("map_save.json");
-        if (loaded == null) return false;
-        currentSession = new com.kurawler.model.GameSession(loaded);
+        List<SaveEntry> saves = listSaves();
+        if (saves.isEmpty()) {
+            showInfo("Load Game", "No saves found in the saves folder.");
+            return false;
+        }
+
+        ChoiceDialog<SaveEntry> dialog = new ChoiceDialog<>(saves.get(0), saves);
+        dialog.setTitle("Load Game");
+        dialog.setHeaderText("Choose a saved game");
+        dialog.setContentText("Save:");
+        dialog.initOwner(stage);
+
+        Optional<SaveEntry> result = dialog.showAndWait();
+        if (!result.isPresent()) {
+            return false;
+        }
+        return loadSavedGame(result.get().path);
+    }
+
+    public boolean loadSavedGame(Path path) {
+        GameSession loadedSession = new GameSession();
+        if (!deserializer.loadGameState(path.toString(), loadedSession)) {
+            showInfo("Load Game", "Could not load the selected save.");
+            return false;
+        }
+        currentSession = loadedSession;
+        lastGameType = loadedSession.getCurrentMode();
+        lastDifficulty = loadedSession.getDifficulty();
         showPlayMode(currentSession);
         return true;
     }
 
+    public void showHelp() {
+        HelpScreen helpScreen = new HelpScreen(this);
+        stage.setScene(helpScreen.createScene());
+        stage.setTitle("Dungeon KUrawler - Help");
+        stage.setResizable(false);
+        stage.show();
+    }
+
+    public void startRandomDungeon() {
+        showDifficultyScreen("Random");
+    }
+
+    public void playAgain() {
+        shutdownActiveGameView();
+        launchGameWithDifficulty(lastGameType, lastDifficulty);
+    }
+
+    public void startTeamMatch() {
+        com.kurawler.model.Map map;
+        if (currentSession != null && currentSession.getMap() != null) {
+            map = currentSession.getMap();
+        } else {
+            map = MapFactory.createDefaultMap().getMap();
+        }
+
+        TeamMatchSession tmSession = new TeamMatchSession(map);
+        if (!tmSession.validateMap()) {
+            Alert alert = new Alert(Alert.AlertType.ERROR,
+                    "Map does not have enough open space for Team Match.");
+            alert.setTitle("Team Match Error");
+            alert.initOwner(stage);
+            alert.showAndWait();
+            return;
+        }
+
+        showDifficultyScreen("TeamMatch");
+    }
+
+    public void showBuildMode() {
+        shutdownActiveGameView();
+        if (currentSession == null) {
+            currentSession = MapFactory.createDefaultMap();
+        }
+        EditorView editorView = new EditorView(this, currentSession);
+        editorView.show(stage);
+    }
+
+    public void returnToEditorAfterTest(com.kurawler.model.Map map, String statusMessage) {
+        shutdownActiveGameView();
+        restoreHeroForEditor(map);
+        currentSession = new GameSession(map);
+        pendingEditorStatus = statusMessage;
+        new EditorView(this, currentSession).show(stage);
+    }
+
+    public boolean saveEditedMap(com.kurawler.model.Map map, String filename) {
+        return map != null && serializer.saveMapToFile(map, filename);
+    }
+
+    public boolean showSaveMapDialog(com.kurawler.model.Map map) {
+        if (map == null) return false;
+        Optional<String> result = EditorStyledDialog.promptText(
+                stage, "Save Map", "Store your dungeon as JSON in the maps/ folder.", "my_dungeon");
+        if (!result.isPresent()) return false;
+        String name = result.get().replaceAll("[^a-zA-Z0-9._-]", "_");
+        if (!name.endsWith(".json")) name += ".json";
+        try {
+            Files.createDirectories(MAPS_DIR);
+        } catch (IOException e) {
+            showInfo("Save Map", "Could not create maps folder.");
+            return false;
+        }
+        return serializer.saveMapToFile(map, MAPS_DIR.resolve(name).toString());
+    }
+
+    public com.kurawler.model.Map showLoadMapDialog() {
+        List<MapFileEntry> maps = listMapFiles();
+        if (maps.isEmpty()) {
+            EditorStyledDialog.showMessage(stage, "Load Map",
+                    "No map files found.\nSave a map first — it goes in the maps/ folder.");
+            return null;
+        }
+        List<String> labels = new ArrayList<>();
+        for (MapFileEntry entry : maps) labels.add(entry.label);
+        Optional<Integer> picked = EditorStyledDialog.chooseIndex(
+                stage, "Load Map", "Pick a saved dungeon to open in the editor.", labels);
+        if (!picked.isPresent()) return null;
+        MapFileEntry chosen = maps.get(picked.get());
+        com.kurawler.model.Map loaded = deserializer.loadMapFromFile(chosen.path.toString());
+        if (loaded == null) EditorStyledDialog.showMessage(stage, "Load Map", "Could not load the selected map.");
+        return loaded;
+    }
+
+    private List<MapFileEntry> listMapFiles() {
+        List<MapFileEntry> entries = new ArrayList<>();
+        if (Files.isRegularFile(LEGACY_MAP_SAVE)) entries.add(new MapFileEntry(LEGACY_MAP_SAVE, "map_save.json (project root)"));
+        if (Files.isDirectory(MAPS_DIR)) {
+            try (Stream<Path> paths = Files.list(MAPS_DIR)) {
+                paths.filter(p -> p.getFileName().toString().endsWith(".json"))
+                        .sorted(Comparator.comparing(this::lastModifiedSafe).reversed())
+                        .forEach(p -> entries.add(new MapFileEntry(p, p.getFileName().toString())));
+            } catch (IOException ignored) {}
+        }
+        return entries;
+    }
+
+    public void playEditedMap(com.kurawler.model.Map map) {
+        if (map == null) return;
+        GameSession session = new GameSession(map);
+        session.setEditorTestPlay(true);
+        prepareSessionForPlay(session);
+        showPlayMode(session);
+    }
+
+    private void restoreHeroForEditor(com.kurawler.model.Map map) {
+        for (int row = 0; row < map.getHeight(); row++) {
+            for (int col = 0; col < map.getWidth(); col++) {
+                GridCell cell = map.getCell(row, col);
+                if (cell != null && cell.getOccupyingCharacter() instanceof Hero) {
+                    Hero hero = (Hero) cell.getOccupyingCharacter();
+                    hero.heal(hero.getMaxHealth());
+                    hero.restoreMana(hero.getMaxMana());
+                    hero.restoreEnergy(hero.getMaxEnergy());
+                }
+            }
+        }
+    }
+
+    private void prepareSessionForPlay(GameSession session) {
+        com.kurawler.model.Map map = session.getMap();
+        Hero hero = null;
+        for (int row = 0; row < map.getHeight(); row++) {
+            for (int col = 0; col < map.getWidth(); col++) {
+                GridCell cell = map.getCell(row, col);
+                if (cell.getOccupyingCharacter() instanceof Hero) {
+                    hero = (Hero) cell.getOccupyingCharacter();
+                    hero.setCurrentCell(cell);
+                    session.setHero(hero);
+                } else if (cell.getOccupyingCharacter() instanceof Enemy) {
+                    session.addEnemy((Enemy) cell.getOccupyingCharacter());
+                }
+            }
+        }
+        if (hero == null) {
+            hero = new Hero("Adventurer");
+            GridCell spawnCell = firstWalkableCell(map);
+            if (spawnCell != null) hero.moveToCell(spawnCell);
+            session.setHero(hero);
+        }
+        session.setAchievementManager(new AchievementManager());
+        session.wireObservers();
+    }
+
+    private GridCell firstWalkableCell(com.kurawler.model.Map map) {
+        for (int row = 0; row < map.getHeight(); row++) {
+            for (int col = 0; col < map.getWidth(); col++) {
+                GridCell cell = map.getCell(row, col);
+                if (cell != null && !cell.isBlocked()) return cell;
+            }
+        }
+        return null;
+    }
+
+    public void showDifficultyScreen(String gameType) {
+        shutdownActiveGameView();
+        DifficultySelectionScreen diffScreen = new DifficultySelectionScreen(this, gameType);
+        stage.setScene(diffScreen.createScene());
+        stage.setTitle("Select Difficulty");
+        stage.setResizable(false);
+        stage.show();
+    }
+
+    public void launchGameWithDifficulty(String gameType, String difficulty) {
+        lastGameType = gameType;
+        lastDifficulty = difficulty;
+        if ("Random".equals(gameType)) {
+            currentSession = new com.kurawler.model.ProceduralMapGenerator().generate();
+        } else if ("TeamMatch".equals(gameType)) {
+            com.kurawler.model.Map map = (currentSession != null && currentSession.getMap() != null)
+                    ? currentSession.getMap() : MapFactory.createDefaultMap().getMap();
+            TeamMatchSession tmSession = new TeamMatchSession(map);
+            tmSession.initializeMatch();
+            currentSession = tmSession;
+        } else {
+            currentSession = MapFactory.createDefaultMap();
+        }
+        applyDifficultyToSession(currentSession, difficulty);
+        showPlayMode(currentSession);
+    }
+
+    private void applyDifficultyToSession(GameSession session, String difficulty) {
+        session.setDifficulty(difficulty);
+        Hero hero = session.getHero();
+        if (hero != null) {
+            if ("Easy".equals(difficulty)) { hero.setMaxEnergy(150); hero.setEnergy(150); }
+            else if ("Hard".equals(difficulty)) { hero.setMaxEnergy(75); hero.setEnergy(75); }
+        }
+        List<com.kurawler.model.Map> mapsToCheck = new ArrayList<>();
+        mapsToCheck.add(session.getMap());
+        if (session.getWorldMaps() != null) mapsToCheck.addAll(session.getWorldMaps().values());
+        for (com.kurawler.model.Map m : mapsToCheck) {
+            if (m == null) continue;
+            for (int r = 0; r < m.getHeight(); r++) {
+                for (int c = 0; c < m.getWidth(); c++) {
+                    GridCell cell = m.getCell(r, c);
+                    if (cell == null) continue;
+                    if (cell.getOccupyingCharacter() instanceof Enemy) {
+                        Enemy enemy = (Enemy) cell.getOccupyingCharacter();
+                        if ("Easy".equals(difficulty)) {
+                            enemy.setMaxHealth((int)(enemy.getMaxHealth() * 0.7));
+                            enemy.setHealth((int)(enemy.getHealth() * 0.7));
+                            enemy.setStrength((int)(enemy.getStrength() * 0.7));
+                        } else if ("Hard".equals(difficulty)) {
+                            enemy.setMaxHealth((int)(enemy.getMaxHealth() * 1.3));
+                            enemy.setHealth((int)(enemy.getHealth() * 1.3));
+                            enemy.setStrength((int)(enemy.getStrength() * 1.3));
+                        }
+                    }
+                    if ("Hard".equals(difficulty)) {
+                        List<GameObject> toRemove = new ArrayList<>();
+                        for (GameObject obj : cell.getObjects()) {
+                            if (obj instanceof Consumable && "Health Potion".equals(obj.getName())) toRemove.add(obj);
+                            else if (obj instanceof StaticContainer) {
+                                StaticContainer sc = (StaticContainer) obj;
+                                List<Item> chestItems = new ArrayList<>(sc.getContents());
+                                sc.getContents().clear();
+                                for (Item item : chestItems) {
+                                    if (!(item instanceof Consumable && "Health Potion".equals(item.getName()))) sc.addItem(item);
+                                }
+                            }
+                        }
+                        for (GameObject obj : toRemove) cell.removeObject(obj);
+                    }
+                }
+            }
+        }
+    }
+
     public Stage getStage() {
         return stage;
+    }
+
+    private Path savePath(String saveName) {
+        String safeName = saveName.replaceAll("[^a-zA-Z0-9._-]", "_");
+        if (safeName.isEmpty()) {
+            safeName = defaultSaveName();
+        }
+        if (!safeName.endsWith(".json")) {
+            safeName += ".json";
+        }
+        return SAVES_DIR.resolve(safeName);
+    }
+
+    private String defaultSaveName() {
+        return "save_" + DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
+                .format(LocalDateTime.now());
+    }
+
+    private List<SaveEntry> listSaves() {
+        List<SaveEntry> saves = new ArrayList<>();
+        if (!Files.isDirectory(SAVES_DIR)) {
+            return saves;
+        }
+        try (Stream<Path> paths = Files.list(SAVES_DIR)) {
+            paths
+                    .filter(p -> p.getFileName().toString().endsWith(".json"))
+                    .sorted(Comparator.comparing(this::lastModifiedSafe).reversed())
+                    .forEach(p -> {
+                        String[] meta = deserializer.readSaveMetadata(p.toString());
+                        String saveName = meta[0] != null ? meta[0]
+                                : p.getFileName().toString().replaceFirst("\\.json$", "");
+                        String savedAt  = meta[1] != null ? formatSavedAt(meta[1])
+                                : SAVE_TIME_FORMAT.format(lastModifiedSafe(p));
+                        saves.add(new SaveEntry(p, saveName, savedAt));
+                    });
+        } catch (IOException e) {
+            showInfo("Load Game", "Could not read saves folder.");
+        }
+        return saves;
+    }
+
+    private String formatSavedAt(String isoInstant) {
+        try {
+            java.time.Instant instant = java.time.Instant.parse(isoInstant);
+            LocalDateTime ldt = LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault());
+            return SAVE_TIME_FORMAT.format(ldt);
+        } catch (Exception e) {
+            return isoInstant;
+        }
+    }
+
+    private LocalDateTime lastModifiedSafe(Path path) {
+        try {
+            return LocalDateTime.ofInstant(Files.getLastModifiedTime(path).toInstant(),
+                    java.time.ZoneId.systemDefault());
+        } catch (IOException e) {
+            return LocalDateTime.MIN;
+        }
+    }
+
+    private void showInfo(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION, message);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.initOwner(stage);
+        alert.showAndWait();
+    }
+
+    private static class MapFileEntry {
+        private final Path path;
+        private final String label;
+
+        private MapFileEntry(Path path, String label) {
+            this.path = path;
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    private static class SaveEntry {
+        private final Path path;
+        private final String saveName;
+        private final String savedAt;
+
+        private SaveEntry(Path path, String saveName, String savedAt) {
+            this.path = path;
+            this.saveName = saveName;
+            this.savedAt  = savedAt;
+        }
+
+        @Override
+        public String toString() {
+            return saveName + "  (" + savedAt + ")";
+        }
     }
 }

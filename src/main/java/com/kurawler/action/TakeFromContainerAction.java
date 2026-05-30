@@ -1,13 +1,16 @@
 package com.kurawler.action;
 
 import com.kurawler.effect.Effect;
+import com.kurawler.effect.TakeFromContainerEffect;
 import com.kurawler.model.GameSession;
+import com.kurawler.model.character.Hero;
 import com.kurawler.model.object.Item;
-import com.kurawler.model.object.PortableContainer;
-import com.kurawler.model.object.StaticContainer;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Action: Hero transfers an Item from a Container into their Inventory.
+ */
 public class TakeFromContainerAction implements Action {
 
     private final Object container;
@@ -20,16 +23,10 @@ public class TakeFromContainerAction implements Action {
 
     @Override
     public List<Effect> resolve(GameSession session) {
-        return Collections.singletonList(new Effect() {
-            @Override public void apply(GameSession s) {
-                boolean removed = false;
-                if (container instanceof StaticContainer)
-                    removed = ((StaticContainer) container).removeItem(item);
-                else if (container instanceof PortableContainer)
-                    removed = ((PortableContainer) container).removeItem(item);
-                if (removed) s.getHero().getInventory().addItem(item);
-            }
-            @Override public String describe() { return "Take " + item.getName(); }
-        });
+        Hero hero = session.getHero();
+        if (hero == null || hero.getInventory().isFull()) {
+            return Collections.emptyList();
+        }
+        return Collections.singletonList(new TakeFromContainerEffect(container, item));
     }
 }

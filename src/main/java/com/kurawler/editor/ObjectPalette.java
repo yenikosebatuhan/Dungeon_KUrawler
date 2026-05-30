@@ -1,6 +1,5 @@
 package com.kurawler.editor;
 
-import com.kurawler.model.*;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
@@ -9,6 +8,7 @@ import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Key;
 import com.kurawler.model.object.PortableContainer;
+import com.kurawler.model.object.Scroll;
 import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
@@ -29,7 +29,11 @@ public class ObjectPalette {
 
     private void initializePalette() {
         availableObjects.add(createObjectByName("Wall"));
+        availableObjects.add(createObjectByName("Floor"));
         availableObjects.add(createObjectByName("Gargoyle Pool"));
+        availableObjects.add(createObjectByName("Ancient Bookshelf"));
+        availableObjects.add(createObjectByName("Wall Shelf"));
+        availableObjects.add(createObjectByName("Stone Column"));
         availableObjects.add(createObjectByName("Sword"));
         availableObjects.add(createObjectByName("Spell Book"));
         availableObjects.add(createObjectByName("Health Potion"));
@@ -81,22 +85,31 @@ public class ObjectPalette {
         switch (name) {
             case "Wall":
                 return new StaticObject("Wall", "A solid wall that blocks movement", false, false);
+            case "Floor":
+                return new StaticObject("Floor", "Stone floor tile", true, false);
             case "Gargoyle Pool":
                 return new StaticObject("Gargoyle Pool", "A searchable stone pool", true, true);
+            case "Ancient Bookshelf":
+                return new StaticObject("Ancient Bookshelf", "Search the dusty tomes", true, true);
+            case "Wall Shelf":
+                return new StaticObject("Wall Shelf", "A ledge along the wall", true, true);
+            case "Stone Column":
+                return new StaticObject("Stone Column", "A stone pillar", false, true);
             case "Sword":
-                return new Weapon("Sword", 5, false);
+                return new Weapon("Sword", "A sharp blade", 5);
             case "Spell Book":
-                return new Weapon("Spell Book", 8, true);
+                return new Scroll("Spell Book", "A tome of arcane power",
+                        "The glyphs flare with restorative magic.", 12);
             case "Health Potion":
-                return new Consumable("Health Potion", 20, Consumable.STAT_HP);
+                return new Consumable("Health Potion", "Restores 20 HP", 20);
             case "Armor":
-                return new Wearable("Armor", 3, Wearable.MOD_DEF);
+                return new Wearable("Armor", "Protective armor (+5 DEF)", Wearable.ARMOR_DEFENSE_BONUS);
             case "Golden Key":
-                return new Key("Golden Key", "key_001");
+                return new Key("Golden Key", "Opens a golden lock", "gold");
             case "Chest":
-                return new StaticContainer("Chest", 5);
+                return new StaticContainer("Chest", "A wooden chest");
             case "Pouch":
-                return new PortableContainer("Pouch", 4);
+                return new PortableContainer("Pouch", "A small pouch", 4);
             default:
                 return null;
         }

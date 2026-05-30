@@ -1,17 +1,27 @@
 package com.kurawler.controller;
 
 import com.kurawler.action.Action;
+import com.kurawler.action.BreakAction;
+import com.kurawler.action.EquipAction;
+import com.kurawler.action.ReadAction;
+import com.kurawler.action.SearchAction;
+import com.kurawler.action.WearAction;
 import com.kurawler.action.MoveAction;
 import com.kurawler.action.TakeAction;
+import com.kurawler.effect.AddToInventoryEffect;
 import com.kurawler.effect.Effect;
+import com.kurawler.effect.RemoveFromCellEffect;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
+import com.kurawler.model.Inventory;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
+import com.kurawler.model.object.Projectile;
 import com.kurawler.model.object.Scroll;
 import com.kurawler.model.object.StaticObject;
+import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.Wearable;
 import com.kurawler.persistence.MapDeserializer;
 import com.kurawler.persistence.MapSerializer;
@@ -61,88 +71,140 @@ public class GameController {
         for (Effect effect : effects) {
             effect.apply(session);
         }
-        // Turn tracking removed — Caner's new GameSession no longer has advanceTurn()
+        session.advanceTurn();
     }
 
+    /**
+     * Called by the UI when the player presses a movement key.
+     * Creates a MoveAction and executes it.
+     *
+     * <p>PDF §1.2: items are NOT auto-collected by walking over them. The player
+     * must click an adjacent item and choose TAKE from the action menu. Therefore
+     * no auto-pickup is performed here.</p>
+     */
     public void moveHero(int deltaRow, int deltaCol) {
-        Hero hero = session.getHero();
-        if (hero != null) hero.setFacing(deltaRow, deltaCol);
-        executeAction(new MoveAction(deltaRow, deltaCol));
-        pickUpItemsOnHeroCell();
+        MoveAction moveAction = new MoveAction(deltaRow, deltaCol);
+        executeAction(moveAction);
     }
 
+    /**
+     * Auto-pickup: after hero moves, pick up all items on the current cell.
+     * Creates TakeAction for each Item found on the hero's cell.
+     */
     private void pickUpItemsOnHeroCell() {
         Hero hero = session.getHero();
         GridCell cell = session.getMap().getCell(hero.getRow(), hero.getCol());
         if (cell == null) return;
+
         for (GameObject obj : cell.getObjects()) {
             if (obj instanceof Item) {
                 TakeAction take = new TakeAction((Item) obj);
-                for (Effect effect : take.resolve(session)) effect.apply(session);
+                List<Effect> effects = take.resolve(session);
+                for (Effect effect : effects) {
+                    effect.apply(session);
+                }
             }
         }
     }
 
-    public GameSession getSession() {
-        return session;
+    /**
+     * Uses the first Consumable found in the hero's inventory.
+     * Heals the hero and removes the item from inventory.
+     */
+    public boolean useFirstConsumable() {
+        Hero hero = session.getHero();
+        Inventory inv = hero.getInventory();
+        for (Item item : inv.getItems()) {
+            if (item instanceof Consumable) {
+                Consumable c = (Consumable) item;
+                boolean used = hero.useConsumable(c);
+                if (used) {
+                    System.out.println("[Action] Used " + c.getName()
+                            + " → HP: " + hero.getHealth() + "/" + hero.getMaxHealth());
+                }
+                return used;
+            }
+        }
+        System.out.println("[Action] No consumable in inventory.");
+        return false;
     }
 
-    public boolean heroShoot() {
-        Hero hero = session.getHero();
-        if (hero == null || hero.getMana() < 10) return false;
-        hero.useMana(10);
+    public boolean wearItem(Wearable wearable) {
+        if (wearable == null || !session.getHero().getInventory().hasItem(wearable)) {
+            return false;
+        }
+        executeAction(new WearAction(wearable));
         return true;
     }
 
-    public boolean searchObject(StaticObject so, int row, int col) {
-        if (so == null || so.isSearched()) return false;
-        so.markSearched();
-        Item hidden = so.getHiddenItem();
-        if (hidden != null) {
-            GridCell cell = session.getMap().getCell(row, col);
-            if (cell != null) cell.addObject(hidden);
+    public boolean equipWeapon(Weapon weapon) {
+        if (weapon == null || !session.getHero().getInventory().hasItem(weapon)) {
+            return false;
         }
+        executeAction(new EquipAction(weapon));
+        return true;
+    }
+
+    public boolean unequipWearable(Wearable wearable) {
+        Hero hero = session.getHero();
+        if (wearable == null || !hero.isWearableEquipped(wearable)) {
+            return false;
+        }
+        hero.unequipWearable(wearable);
+        return true;
+    }
+
+    public boolean readScroll(Scroll scroll) {
+        if (scroll == null || !session.getHero().getInventory().hasItem(scroll)) {
+            return false;
+        }
+        executeAction(new ReadAction(scroll));
+        return true;
+    }
+
+    public boolean searchObject(StaticObject object) {
+        if (object == null || !object.isSearchable()) {
+            return false;
+        }
+        executeAction(new SearchAction(object));
         return true;
     }
 
     public boolean breakObject(int row, int col) {
         GridCell cell = session.getMap().getCell(row, col);
-        if (cell == null || cell.getStaticObject() == null) return false;
-        cell.setStaticObject(null);
+        if (cell == null || cell.getStaticObject() == null
+                || !cell.getStaticObject().isSearchable()) {
+            return false;
+        }
+        executeAction(new BreakAction(row, col));
         return true;
     }
 
-    public void interactWithObject(int row, int col, Item item) {
-        GridCell cell = session.getMap().getCell(row, col);
-        if (cell == null) return;
-        if (session.getHero().getInventory().addItem(item)) {
-            cell.removeObject(item);
+    /**
+     * Interact with a specific item on a cell (triggered by 3x3 click menu).
+     * Creates a TakeAction and runs it through the pipeline.
+     */
+    public boolean interactWithObject(int row, int col, Item item) {
+        if (session.getHero().getInventory().isFull()) {
+            return false;
         }
+        new RemoveFromCellEffect(row, col, item).apply(session);
+        new AddToInventoryEffect(item).apply(session);
+        session.advanceTurn();
+        return true;
     }
 
-    public void useFirstConsumable() {
+    public boolean heroShoot() {
         Hero hero = session.getHero();
-        for (Item item : hero.getInventory().getItems()) {
-            if (item instanceof Consumable) {
-                hero.useConsumable((Consumable) item);
-                return;
-            }
-        }
+        if (hero == null) return false;
+        Projectile p = hero.shootProjectile();
+        if (p == null) return false;
+        session.addProjectile(p);
+        session.advanceTurn();
+        return true;
     }
 
-    public void readScroll(Scroll sc) {
-        session.getHero().getInventory().removeItem(sc);
-    }
-
-    public void wearItem(Wearable wearable) {
-        session.getHero().equipWearable(wearable);
-    }
-
-    public void unequipWearable(Wearable wearable) {
-        Hero hero = session.getHero();
-        if (hero.isWearableEquipped(wearable)) {
-            hero.setDefensePower(hero.getDefensePower() - wearable.getDefenseBonus());
-            hero.equipWearable(null);
-        }
+    public GameSession getSession() {
+        return session;
     }
 }
