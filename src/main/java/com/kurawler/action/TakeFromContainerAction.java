@@ -17,11 +17,23 @@ public class TakeFromContainerAction implements Action {
     private final Object container; // Can be StaticContainer or PortableContainer
     private final Item item;
 
+    /**
+     * @requires container != null && item != null
+     * @modifies this.container, this.item
+     * @effects Stores the source container and item for use in resolve().
+     */
     public TakeFromContainerAction(Object container, Item item) {
         this.container = container;
         this.item = item;
     }
 
+    /**
+     * @requires session != null && session.getHero() != null
+     * @modifies none
+     * @effects Returns a singleton list with an inline Effect that removes item
+     *          from the container and adds it to the hero's inventory, if the
+     *          inventory is not full; otherwise returns an empty list.
+     */
     @Override
     public List<Effect> resolve(GameSession session) {
         Hero hero = session.getHero();

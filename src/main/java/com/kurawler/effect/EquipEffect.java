@@ -20,10 +20,21 @@ public class EquipEffect implements Effect {
 
     private final Weapon weapon;
 
+    /**
+     * @requires weapon != null
+     * @modifies this.weapon
+     * @effects Stores the weapon to equip/unequip for use in apply().
+     */
     public EquipEffect(Weapon weapon) {
         this.weapon = weapon;
     }
 
+    /**
+     * @requires session != null && session.getHero() != null
+     * @modifies hero.equippedWeapon
+     * @effects If weapon equals hero.equippedWeapon, unequips it (sets to null).
+     *          Otherwise equips weapon. Attack damage is recalculated on the next attack.
+     */
     @Override
     public void apply(GameSession session) {
         Hero hero = session.getHero();
