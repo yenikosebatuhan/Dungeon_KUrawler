@@ -11,6 +11,11 @@ import com.kurawler.model.object.Scroll;
 public class ReadScrollEffect implements Effect {
     private final Scroll scroll;
 
+    /**
+     * @requires scroll != null
+     * @modifies this.scroll
+     * @effects Stores the scroll to be consumed for use in apply().
+     */
     public ReadScrollEffect(Scroll scroll) {
         this.scroll = scroll;
     }
