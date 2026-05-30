@@ -12,4 +12,8 @@ public class Weapon extends Item {
     public int getDamage() {
         return damage;
     }
+
+    public Weapon(String name, int damage, boolean isMagical) {
+        this(name, name, damage);
+    }
 }

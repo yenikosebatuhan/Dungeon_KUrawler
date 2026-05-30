@@ -12,4 +12,11 @@ public class Wearable extends Item {
     public int getDefenseBonus() {
         return defenseBonus;
     }
+
+    public static final int MOD_DEF = 0;
+    public static final int MOD_ATK = 1;
+
+    public Wearable(String name, int bonus, int modType) {
+        this(name, name, bonus);
+    }
 }

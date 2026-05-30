@@ -1,6 +1,12 @@
 package com.kurawler.editor;
 
 import com.kurawler.model.*;
+import com.kurawler.model.object.Consumable;
+import com.kurawler.model.object.Item;
+import com.kurawler.model.object.Key;
+import com.kurawler.model.object.PortableContainer;
+import com.kurawler.model.object.Weapon;
+import com.kurawler.model.object.Wearable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;

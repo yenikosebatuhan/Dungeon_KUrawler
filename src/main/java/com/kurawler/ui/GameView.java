@@ -1,5 +1,7 @@
 package com.kurawler.ui;
 
+import java.util.List;
+
 import com.kurawler.controller.GameController;
 import com.kurawler.engine.AudioManager;
 import com.kurawler.engine.GameLoop;
@@ -27,39 +29,35 @@ import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.Wearable;
 
-import javafx.application.Platform;
 import javafx.animation.AnimationTimer;
 import javafx.animation.PauseTransition;
-import javafx.scene.Scene;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
-import javafx.scene.control.MenuItem;
+import javafx.scene.control.Label;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.control.Label;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.CycleMethod;
 import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.Stop;
-import javafx.scene.paint.CycleMethod;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import javafx.scene.text.TextAlignment;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
-import java.util.List;
 
 /**
  * JavaFX game view — renders the grid and handles key/mouse input.
@@ -920,8 +918,6 @@ public class GameView {
         drawHud(session);
     }
 
-    private javafx.scene.image.Image bagIconImg;
-
     private void drawHud(GameSession session) {
         Hero hero = session.getHero();
         GraphicsContext gc = hudCanvas.getGraphicsContext2D();
@@ -932,12 +928,6 @@ public class GameView {
             try {
                 hudBarImg = new javafx.scene.image.Image(
                         getClass().getResourceAsStream("/assets/hud_bar.png"));
-            } catch (Exception ignored) {}
-        }
-        if (bagIconImg == null) {
-            try {
-                bagIconImg = new javafx.scene.image.Image(
-                        getClass().getResourceAsStream("/assets/bag_icon.png"));
             } catch (Exception ignored) {}
         }
 
@@ -1036,30 +1026,30 @@ public class GameView {
         gc.fillText("🏆", achX + 16, pad + 32);
         gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
         gc.setFill(Color.web("#ffffff", 0.9));
-        gc.fillText(achUnlocked + "/" + achTotal, achX + 14, pad + 58);
+        gc.fillText(achUnlocked + "/" + achTotal, achX + 14, pad + 50);
 
         // SECTION 6: Bag button
         gc.setStroke(Color.web("#c8a840", 0.4));
         gc.strokeLine(bagBtnX - 7, pad + 4, bagBtnX - 7, h - pad - 4);
 
         drawGoldPanel(gc, bagBtnX, pad + 4, 60, h - pad * 2 - 8);
-        if (bagIconImg != null && !bagIconImg.isError()) {
-            gc.drawImage(bagIconImg, bagBtnX + 6, pad + 6, 48, 48);
-        }
+        gc.setFont(Font.font("Serif", FontWeight.BOLD, 26));
+        gc.setFill(Color.web("#e8c84a"));
+        gc.fillText("🎒", bagBtnX + 14, pad + 36);
         Inventory inv = hero.getInventory();
         gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
-        gc.setFill(Color.web("#e8c84a"));
-        gc.fillText(inv.getItemCount() + "/8", bagBtnX + 16, h - pad - 10);
-
+        gc.setFill(Color.web("#ffffff", 0.9));
+        gc.fillText(inv.getItemCount() + "/8", bagBtnX + 14, pad + 52);
+        
         // SECTION 7: Pause & Menu buttons (stacked)
 
         drawGoldPanel(gc, btnX, pad + 4, btnSize + 8, btnSize);
         gc.setFont(Font.font("Serif", FontWeight.BOLD, 18));
         gc.setFill(Color.web("#e8c84a"));
-        gc.fillText(paused ? "▶" : "⏸", btnX + 8, pad + 4 + btnSize - 8);
+        gc.fillText(paused ? "▶" : "⏸", btnX + (btnSize + 8) / 2.0 - 6, pad + 4 + btnSize - 8);
 
         drawGoldPanel(gc, btnX, pad + 4 + btnSize + 4, btnSize + 8, btnSize);
-        gc.fillText("☰", btnX + 8, h - pad - 10);
+        gc.fillText("☰", btnX + (btnSize + 8) / 2.0 - 6, h - pad - 10);
     }
 
     /** Show a floating toast above the map canvas; auto-hides after 2 s with fade-out. */
@@ -1250,7 +1240,7 @@ public class GameView {
         if (invBgImg == null) {
             try {
                 invBgImg = new javafx.scene.image.Image(
-                        getClass().getResourceAsStream("/assets/Inventory x4.png"));
+                        getClass().getResourceAsStream("/assets/Inventory.png"));
             } catch (Exception ignored) {}
         }
 
@@ -1259,19 +1249,19 @@ public class GameView {
         popup.initModality(Modality.APPLICATION_MODAL);
         popup.initStyle(StageStyle.UNDECORATED);
 
-        // Popup sized to fit Inventory x4.png (320x468) scaled 1.125x → 360x527
-        int popW = 360;
-        int popH = 527;
+        // Popup at 3.25× native (80×117) — fits 4 slots across while keeping the chest proportional
+        int popW = 260;
+        int popH = 380;
 
         StackPane root = new StackPane();
         root.setStyle("-fx-background-color: transparent;");
 
-        // Background: Inventory x4.png
+        // Background: Inventory.png scaled to match popup dimensions
         if (invBgImg != null && !invBgImg.isError()) {
             javafx.scene.image.ImageView bgView = new javafx.scene.image.ImageView(invBgImg);
             bgView.setFitWidth(popW);
             bgView.setFitHeight(popH);
-            bgView.setPreserveRatio(false);
+            bgView.setPreserveRatio(true);
             root.getChildren().add(bgView);
         } else {
             Canvas bg = new Canvas(popW, popH);
@@ -1290,22 +1280,22 @@ public class GameView {
         detailDesc.setFont(Font.font("Serif", 11));
         detailDesc.setTextFill(Color.web("#a09070"));
         detailDesc.setWrapText(true);
-        detailDesc.setMaxWidth(300);
+        detailDesc.setMaxWidth(220);
 
         HBox actionRow = new HBox(8);
         actionRow.setAlignment(Pos.CENTER);
 
         // ── Inventory grid (2 rows × 4 cols, aligned to blue area of Inventory x4.png) ──
         GridPane grid = new GridPane();
-        grid.setHgap(6);
-        grid.setVgap(6);
+        grid.setHgap(4);
+        grid.setVgap(4);
         grid.setAlignment(Pos.CENTER);
 
         for (int r = 0; r < 2; r++) {
             for (int c = 0; c < 4; c++) {
                 Item item = inv.getItem(r, c);
                 Button slot = new Button();
-                slot.setPrefSize(68, 68);
+                slot.setPrefSize(50, 50);
 
                 if (item != null) {
                     boolean isEquippedWpn  = item instanceof Weapon   && item == hero.getEquippedWeapon();
@@ -1331,6 +1321,7 @@ public class GameView {
                     slot.setOnAction(e -> {
                         // Update detail panel inline
                         detailName.setText(fItem.getName());
+                        VBox.setMargin(detailName, new Insets(0, 0, 0, 0));
                         String typeStr = fItem instanceof Weapon ? "Weapon"
                                 : fItem instanceof Wearable ? "Armor"
                                 : fItem instanceof Consumable ? "Consumable"
@@ -1415,12 +1406,16 @@ public class GameView {
 
         VBox detailBox = new VBox(4, detailName, detailType, detailDesc, actionRow);
         detailBox.setAlignment(Pos.CENTER_LEFT);
-        detailBox.setPadding(new Insets(8, 16, 0, 16));
+        detailBox.setPadding(new Insets(4, 12, 0, 12));
+        VBox.setMargin(detailName, new Insets(10, 0, 0, 0));
 
         VBox content = new VBox(0, grid, detailBox, closeBtn);
         content.setAlignment(Pos.CENTER);
-        // Padding aligns grid with the blue cell area of Inventory x4.png at 360x527
-        content.setPadding(new Insets(132, 28, 24, 28));
+        // Top padding aligns grid with the blue cell area of Inventory.png at 3.25× (260×380)
+        content.setPadding(new Insets(155, 14, 8, 14));
+        // Push detailBox below the blue cell zone into the lower brown panel
+        VBox.setMargin(detailBox, new Insets(50, 0, 0, 0));
+        VBox.setMargin(closeBtn, new Insets(6, 0, 0, 0));
 
         root.getChildren().add(content);
         Scene scene = new Scene(root, popW, popH);

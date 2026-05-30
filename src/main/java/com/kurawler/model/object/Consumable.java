@@ -12,4 +12,12 @@ public class Consumable extends Item {
     public int getHealAmount() {
         return healAmount;
     }
+
+    public static final int STAT_HP = 0;
+    public static final int STAT_MP = 1;
+    public static final int STAT_EN = 2;
+
+    public Consumable(String name, int amount, int statType) {
+        this(name, name, amount);
+    }
 }
