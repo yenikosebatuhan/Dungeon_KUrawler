@@ -8,21 +8,9 @@ import com.kurawler.model.GameSession;
  */
 public interface Effect {
 
-    /**
-     * Execute this effect, modifying the game session state.
-     *
-     * @requires session != null
-     * @modifies session (specific fields depend on the concrete implementation)
-     * @effects Applies this effect to the game session, mutating the relevant state.
-     */
+    /** Execute this effect, modifying the game session state. */
     void apply(GameSession session);
 
-    /**
-     * Human-readable description of what this effect does.
-     *
-     * @requires none
-     * @modifies none
-     * @effects Returns a non-null string describing this effect.
-     */
+    /** Human-readable description of what this effect does. */
     String describe();
 }

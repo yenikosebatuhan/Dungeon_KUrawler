@@ -35,39 +35,14 @@ public class TeamMatchGameLoop {
 
     private final List<Projectile> activeProjectiles = new ArrayList<>();
 
-    /**
-     * @requires session != null
-     * @modifies this.session, this.running, this.activeProjectiles
-     * @effects Stores the session and initialises running to false.
-     */
     public TeamMatchGameLoop(TeamMatchSession session) {
         this.session = session;
         this.running = false;
     }
 
-    /**
-     * @requires none
-     * @modifies this.running
-     * @effects Sets running to true.
-     */
     public void start() { this.running = true;  }
-
-    /**
-     * @requires none
-     * @modifies this.running
-     * @effects Sets running to false.
-     */
     public void stop()  { this.running = false; }
 
-    /**
-     * @requires deltaMs >= 0
-     * @modifies session.characters (health via attacks), this.activeProjectiles,
-     *           this.enemyTickCounter, this.projectileTickCounter
-     * @effects No-op if not running or session mode is not "TeamMatch". Otherwise
-     *          runs enemy AI every ENEMY_TICK_INTERVAL frames, moves projectiles
-     *          every PROJECTILE_TICK_INTERVAL frames, cleans up dead characters,
-     *          and stops the loop when win condition is met.
-     */
     public void update(long deltaMs) {
         if (!running) return;
         if (!"TeamMatch".equals(session.getCurrentMode())) return;
@@ -197,24 +172,7 @@ public class TeamMatchGameLoop {
         return all;
     }
 
-    /**
-     * @requires none
-     * @modifies none
-     * @effects Returns true if the loop is currently running.
-     */
     public boolean isRunning()                        { return running; }
-
-    /**
-     * @requires none
-     * @modifies none
-     * @effects Returns the live list of active projectiles (not a copy).
-     */
     public List<Projectile> getActiveProjectiles()    { return activeProjectiles; }
-
-    /**
-     * @requires none
-     * @modifies none
-     * @effects Returns the TeamMatchSession this loop is bound to.
-     */
     public TeamMatchSession getSession()              { return session; }
 }

@@ -29,22 +29,11 @@ public class Hero extends Character implements HeroSubject {
     private int facingRow = 0;
     private int facingCol = 1;
 
-    /**
-     * @requires name != null
-     * @modifies this (via Character constructor), this.inventory
-     * @effects Creates a Hero with 17 HP, 2 DEF, randomised STR in [8,15],
-     *          80 mana, 100 energy, and an empty inventory.
-     */
     public Hero(String name) {
         super(name, 17, 0, 2, 8 + RNG.nextInt(8), 80, 100);
         this.inventory = new Inventory();
     }
 
-    /**
-     * @requires observer != null
-     * @modifies this.observers
-     * @effects Adds observer to the list if not already present.
-     */
     @Override
     public void addObserver(HeroObserver observer) {
         if (observer != null && !observers.contains(observer)) {
@@ -52,41 +41,19 @@ public class Hero extends Character implements HeroSubject {
         }
     }
 
-    /**
-     * @requires true
-     * @modifies this.observers
-     * @effects Removes observer from the list if present.
-     */
     @Override
     public void removeObserver(HeroObserver observer) {
         observers.remove(observer);
     }
 
-    /**
-     * @requires none
-     * @modifies this.observers
-     * @effects Removes all registered observers.
-     */
     public void clearObservers() {
         observers.clear();
     }
 
-    /**
-     * @requires none
-     * @modifies none
-     * @effects Returns an unmodifiable view of the current observer list.
-     */
     public List<HeroObserver> getObservers() {
         return Collections.unmodifiableList(observers);
     }
 
-    /**
-     * @requires true
-     * @modifies this.row, this.col, this.currentCell, this.facingRow, this.facingCol,
-     *           old cell occupant, newCell occupant, all HeroObservers
-     * @effects Updates facing direction when newCell differs from the current cell,
-     *          delegates move to super.moveToCell(), then notifies observers of movement.
-     */
     @Override
     public void moveToCell(GridCell newCell) {
         if (newCell == null) {
@@ -104,12 +71,6 @@ public class Hero extends Character implements HeroSubject {
         notifyMoved(getRow(), getCol(), deltaRow, deltaCol);
     }
 
-    /**
-     * @requires amount >= 0
-     * @modifies this.health, all HeroObservers
-     * @effects Delegates to super.takeDamage(), then notifies observers of actual
-     *          damage taken (only if health changed).
-     */
     @Override
     public void takeDamage(int amount) {
         int before = getHealth();
@@ -125,10 +86,11 @@ public class Hero extends Character implements HeroSubject {
      *
      * @requires none
      * @modifies none
-     * @effects Returns strength + equippedWeapon.getDamage() (0 if no weapon equipped).
+     * @effects Returns calculated damage as strength + weapon damage.
      */
     @Override
     public int calculateDamage() {
+        // Logic: STR + Weapon ATK
         int weaponDmg = (equippedWeapon != null) ? equippedWeapon.getDamage() : 0;
         return getStrength() + weaponDmg;
     }
@@ -152,8 +114,17 @@ public class Hero extends Character implements HeroSubject {
      *           - Else if targetCell == null (out of bounds) or
      *             targetCell.isBlocked() (wall or occupied character):
      *             returns false, this unchanged.
-     *           - Else: moves hero to targetCell, updates facing direction,
-     *             notifies all HeroObservers; returns true.
+     *           - Else: moves hero to targetCell —
+     *               this.row     = targetCell.row,
+     *               this.col     = targetCell.col,
+     *               this.currentCell = targetCell,
+     *               this.facingRow/facingCol = (dRow, dCol),
+     *               previous cell's occupyingCharacter set to null,
+     *               targetCell.occupyingCharacter set to this,
+     *               all HeroObservers notified with new position and delta;
+     *             returns true.
+     *           Note: session is accepted for API consistency but is not
+     *           read or modified by this method.
      */
     public boolean move(String direction, Map map, GameSession session) {
         if (direction == null || map == null) return false;
@@ -177,14 +148,6 @@ public class Hero extends Character implements HeroSubject {
         return true;
     }
 
-    /**
-     * @requires target != null && target.isAlive()
-     * @modifies this.energy, target.health, all HeroObservers
-     * @effects Deducts ATTACK_ENERGY_COST energy. Calculates damage via
-     *          CombatResolver and applies it to target. Notifies observers
-     *          of the attack and whether the enemy was defeated.
-     *          Returns false if target is null/dead or hero lacks energy or range.
-     */
     public boolean attack(Enemy target) {
         if (target == null || !target.isAlive()) return false;
         if (getEnergy() < ATTACK_ENERGY_COST) return false;
@@ -194,22 +157,17 @@ public class Hero extends Character implements HeroSubject {
         if (dRow + dCol > MELEE_REACH) return false;
 
         useEnergy(ATTACK_ENERGY_COST);
-
+        
         boolean wasAlive = target.isAlive();
-
+        
+        // --- BUG-07 FIX: Route Hero attacks through centralized CombatResolver ---
         int damage = com.kurawler.engine.CombatResolver.calculateFinalDamage(this, target);
         target.takeDamage(damage);
-
+        
         notifyAttackResolved(damage, wasAlive && !target.isAlive());
         return true;
     }
 
-    /**
-     * @requires damage >= 0
-     * @modifies all HeroObservers
-     * @effects Notifies observers of the attack; also notifies enemy-defeated if
-     *          defeatedEnemy is true.
-     */
     public void notifyAttackResolved(int damage, boolean defeatedEnemy) {
         notifyAttacked(damage);
         if (defeatedEnemy) {
@@ -217,11 +175,6 @@ public class Hero extends Character implements HeroSubject {
         }
     }
 
-    /**
-     * @requires none
-     * @modifies all HeroObservers
-     * @effects Notifies all observers that an item was collected.
-     */
     public void notifyItemCollected() {
         for (HeroObserver observer : new ArrayList<>(observers)) {
             observer.onItemCollected();
@@ -252,13 +205,6 @@ public class Hero extends Character implements HeroSubject {
         }
     }
 
-    /**
-     * @requires wearable != null
-     * @modifies this.equippedWearable, this.defensePower
-     * @effects If a wearable is already equipped, removes its bonus first.
-     *          Then equips wearable and adds its defense bonus to defensePower.
-     *          No-op if wearable is already the equipped item.
-     */
     public void equipWearable(Wearable wearable) {
         if (wearable == null || wearable == equippedWearable) return;
         if (equippedWearable != null) {
@@ -268,25 +214,12 @@ public class Hero extends Character implements HeroSubject {
         setDefensePower(getDefensePower() + wearable.getDefenseBonus());
     }
 
-    /**
-     * @requires none
-     * @modifies this.equippedWearable, this.defensePower
-     * @effects Removes the equipped wearable's defense bonus and sets equippedWearable
-     *          to null. No-op if nothing is equipped.
-     */
     public void unequipWearable() {
         if (equippedWearable == null) return;
         setDefensePower(getDefensePower() - equippedWearable.getDefenseBonus());
         equippedWearable = null;
     }
 
-    /**
-     * @requires consumable != null
-     * @modifies this.inventory, this.health or this.mana or this.energy
-     * @effects Removes consumable from inventory and restores the appropriate
-     *          stat (HP, mana, or energy). Returns false if consumable is not
-     *          in inventory.
-     */
     public boolean useConsumable(Consumable consumable) {
         if (consumable == null || !inventory.removeItem(consumable)) return false;
         if (consumable.getHealAmount() > 0) heal(consumable.getHealAmount());
@@ -295,12 +228,6 @@ public class Hero extends Character implements HeroSubject {
         return true;
     }
 
-    /**
-     * @requires getMana() >= RANGED_MANA_COST
-     * @modifies this.mana, this.lastSpell (via Projectile constructor)
-     * @effects Deducts RANGED_MANA_COST mana. Creates a Projectile aimed in the
-     *          hero's facing direction. Returns null if mana is insufficient.
-     */
     public Projectile shootProjectile() {
         if (getMana() < RANGED_MANA_COST) return null;
         useMana(RANGED_MANA_COST);
@@ -311,47 +238,22 @@ public class Hero extends Character implements HeroSubject {
         return p;
     }
 
-    /**
-     * @requires none
-     * @modifies none
-     * @effects Returns the row component of the hero's current facing direction.
-     */
     public int getFacingRow() { return facingRow; }
-
-    /**
-     * @requires none
-     * @modifies none
-     * @effects Returns the column component of the hero's current facing direction.
-     */
     public int getFacingCol() { return facingCol; }
 
-    /**
-     * @requires none
-     * @modifies none
-     * @effects Returns the hero's inventory.
-     */
     public Inventory getInventory() { return inventory; }
-
-    /**
-     * @requires none
-     * @modifies none
-     * @effects Returns the currently equipped weapon, or null.
-     */
     public Weapon getEquippedWeapon() { return equippedWeapon; }
-
     /**
-     * @requires true
-     * @modifies this.equippedWeapon
-     * @effects Sets the equipped weapon (null to unequip).
+     * Equips a weapon and notifies all observers of the stat change.
+     *
+     * @requires weapon != null
+     * @modifies this.equippedWeapon, observers
+     * @effects Sets the equipped weapon and triggers a stats update notification for the UI.
      */
-    public void setEquippedWeapon(Weapon weapon) {
-        this.equippedWeapon = weapon;
+    public void setEquippedWeapon(Weapon weapon) { 
+        this.equippedWeapon = weapon; 
     }
 
-    /**
-     * @requires none
-     * @modifies none
-     * @effects Returns the currently equipped wearable, or null.
-     */
+
     public Wearable getEquippedWearable() { return equippedWearable; }
 }

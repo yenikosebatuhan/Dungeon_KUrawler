@@ -10,15 +10,7 @@ import com.kurawler.model.character.Sorcerer;
  */
 public class SpawnEngine {
 
-    /**
-     * Spawn an enemy at the given position.
-     *
-     * @requires session != null && type != null && row >= 0 && col >= 0
-     * @modifies enemy.row, enemy.col
-     * @effects Creates a Knight or Sorcerer based on type (case-insensitive),
-     *          sets its position to (row, col), and returns it. Defaults to Knight
-     *          for unrecognised types.
-     */
+    /** Spawn an enemy at the given position. Stub implementation. */
     public Enemy spawnEnemy(GameSession session, String type, int row, int col) {
         Enemy enemy;
         switch (type.toLowerCase()) {

@@ -19,21 +19,10 @@ public class EquipAction implements Action {
 
     private final Weapon weapon;
 
-    /**
-     * @requires weapon != null
-     * @modifies this.weapon
-     * @effects Stores the weapon to equip/unequip for use in resolve().
-     */
     public EquipAction(Weapon weapon) {
         this.weapon = weapon;
     }
 
-    /**
-     * @requires session != null && session.getHero() != null
-     * @modifies none
-     * @effects Returns a singleton list containing an EquipEffect if weapon is
-     *          in the hero's inventory; otherwise returns an empty list.
-     */
     @Override
     public List<Effect> resolve(GameSession session) {
         if (!session.getHero().getInventory().hasItem(weapon)) {
