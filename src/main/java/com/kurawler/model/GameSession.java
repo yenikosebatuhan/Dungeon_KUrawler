@@ -33,7 +33,6 @@ public class GameSession {
     private Item targetObjective;
   /** True when playing a map launched from the level editor (no game-over popup on editor). */
     private boolean editorTestPlay;
-    private String difficulty = "Normal";
 
     public GameSession() {
         this.turnCount = 0;
@@ -95,10 +94,6 @@ public class GameSession {
         return item.getClass().equals(target.getClass());
     }
 
-    public String getDifficulty() { return difficulty; }
-    public void setDifficulty(String difficulty) { this.difficulty = difficulty; }
-
-    public java.util.Map<String, Map> getWorldMaps() { return worldMaps; }
     public String getCurrentMode() { return currentMode; }
     public void setCurrentMode(String mode) { this.currentMode = mode; }
     public boolean isTeamMatch() { return "TeamMatch".equals(currentMode); }

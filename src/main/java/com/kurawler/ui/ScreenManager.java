@@ -8,8 +8,12 @@ import com.kurawler.model.TeamMatchSession;
 import com.kurawler.model.achievement.AchievementManager;
 import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.character.ShadowClone;
 import com.kurawler.persistence.MapDeserializer;
 import com.kurawler.persistence.MapSerializer;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ChoiceDialog;
+import javafx.scene.control.TextInputDialog;
 import javafx.stage.Stage;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,10 +44,6 @@ public class ScreenManager {
     private GameSession currentSession;
     private GameView activeGameView;
     private String pendingEditorStatus;
-    
-    // --- Added fields to support "Play Again" functionality ---
-    private String lastGameType = "Default";
-    private String lastDifficulty = "Normal";
 
     public ScreenManager(Stage stage) {
         this.stage = stage;
@@ -68,42 +68,12 @@ public class ScreenManager {
         stage.setScene(menu.createScene());
         stage.setTitle("Dungeon KUrawler");
         stage.setResizable(false);
-        stage.sizeToScene(); 
         stage.show();
-        stage.centerOnScreen();
     }
 
     public void startNewGame() {
         currentSession = null;
-        showDifficultyScreen("Default"); 
-    }
-
-    public void startRandomDungeon() {
-        showDifficultyScreen("Random"); 
-    }
-
-    public void startTeamMatch() {
-        com.kurawler.model.Map map;
-        if (currentSession != null && currentSession.getMap() != null) {
-            map = currentSession.getMap();
-        } else {
-            map = MapFactory.createDefaultMap().getMap();
-        }
-
-        TeamMatchSession tmSession = new TeamMatchSession(map);
-        if (!tmSession.validateMap()) {
-            EditorStyledDialog.showMessage(stage, "Team Match Error",
-                    "Map does not have enough open space for Team Match.");
-            return;
-        }
-
-        showDifficultyScreen("TeamMatch");
-    }
-    
-    // --- Added Play Again support ---
-    public void playAgain() {
-        shutdownActiveGameView();
-        launchGameWithDifficulty(lastGameType, lastDifficulty);
+        showPlayMode();
     }
 
     /** PBI-16: play a map JSON from maps/ with a win objective. */
@@ -117,9 +87,6 @@ public class ScreenManager {
         MapFactory.configureObjectiveForMap(map, session);
         session.setAchievementManager(new AchievementManager());
         session.wireObservers();
-        
-        lastGameType = "Custom";
-        lastDifficulty = "Normal";
         showPlayMode(session);
     }
 
@@ -133,19 +100,11 @@ public class ScreenManager {
     public void showPlayMode(GameSession session) {
         shutdownActiveGameView();
         currentSession = session;
-        // Ensure AchievementManager is always wired before observers are attached
-        if (session.getAchievementManager() == null) {
-            session.setAchievementManager(new AchievementManager());
-        }
         session.wireObservers();
         GameController controller = new GameController(session);
         GameView view = new GameView(controller, this);
         activeGameView = view;
         view.show(stage);
-    }
-    
-    public boolean hasActiveSession() {
-        return currentSession != null;
     }
 
     public boolean saveCurrentMap(String filename) {
@@ -163,11 +122,13 @@ public class ScreenManager {
     }
 
     public boolean showSaveDialog() {
-        Optional<String> result = EditorStyledDialog.promptText(
-                stage,
-                "Save Game",
-                "Enter a name for this save file:",
-                defaultSaveName());
+        TextInputDialog dialog = new TextInputDialog(defaultSaveName());
+        dialog.setTitle("Save Game");
+        dialog.setHeaderText("Save current game");
+        dialog.setContentText("Save name:");
+        dialog.initOwner(stage);
+
+        Optional<String> result = dialog.showAndWait();
         if (!result.isPresent() || result.get().trim().isEmpty()) {
             return false;
         }
@@ -186,24 +147,21 @@ public class ScreenManager {
     public boolean showLoadDialogAndStart() {
         List<SaveEntry> saves = listSaves();
         if (saves.isEmpty()) {
-            EditorStyledDialog.showMessage(stage, "Load Game",
-                    "No saves found in the saves folder.");
+            showInfo("Load Game", "No saves found in the saves folder.");
             return false;
         }
 
-        List<String> labels = new ArrayList<>();
-        for (SaveEntry s : saves) {
-            labels.add(s.saveName + "   —   " + s.savedAt);
-        }
-        Optional<Integer> picked = EditorStyledDialog.chooseIndex(
-                stage,
-                "Load Game",
-                "Choose a saved game to restore:",
-                labels);
-        if (!picked.isPresent()) {
+        ChoiceDialog<SaveEntry> dialog = new ChoiceDialog<>(saves.get(0), saves);
+        dialog.setTitle("Load Game");
+        dialog.setHeaderText("Choose a saved game");
+        dialog.setContentText("Save:");
+        dialog.initOwner(stage);
+
+        Optional<SaveEntry> result = dialog.showAndWait();
+        if (!result.isPresent()) {
             return false;
         }
-        return loadSavedGame(saves.get(picked.get()).path);
+        return loadSavedGame(result.get().path);
     }
 
     public boolean loadSavedGame(Path path) {
@@ -213,10 +171,6 @@ public class ScreenManager {
             return false;
         }
         currentSession = loadedSession;
-        
-        lastGameType = loadedSession.getCurrentMode();
-        lastDifficulty = loadedSession.getDifficulty();
-        
         showPlayMode(currentSession);
         return true;
     }
@@ -229,6 +183,39 @@ public class ScreenManager {
         stage.show();
     }
 
+    public void startRandomDungeon() {
+        com.kurawler.model.ProceduralMapGenerator generator =
+                new com.kurawler.model.ProceduralMapGenerator();
+        currentSession = generator.generate();
+        showPlayMode(currentSession);
+    }
+
+    public void startTeamMatch() {
+        com.kurawler.model.Map map;
+        if (currentSession != null && currentSession.getMap() != null) {
+            map = currentSession.getMap();
+        } else {
+            map = MapFactory.createDefaultMap().getMap();
+        }
+
+        TeamMatchSession tmSession = new TeamMatchSession(map);
+        if (!tmSession.validateMap()) {
+            Alert alert = new Alert(Alert.AlertType.ERROR,
+                    "Map does not have enough open space for Team Match.");
+            alert.setTitle("Team Match Error");
+            alert.initOwner(stage);
+            alert.showAndWait();
+            return;
+        }
+
+        tmSession.initializeMatch();
+        currentSession = tmSession;
+
+        GameController controller = new GameController(tmSession);
+        GameView view = new GameView(controller, this);
+        activeGameView = view;
+        view.show(stage);
+    }
 
     public void showBuildMode() {
         shutdownActiveGameView();
@@ -239,6 +226,7 @@ public class ScreenManager {
         editorView.show(stage);
     }
 
+    /** After Play This Map — return to editor without game-over overlay on editor UI. */
     public void returnToEditorAfterTest(com.kurawler.model.Map map, String statusMessage) {
         shutdownActiveGameView();
         restoreHeroForEditor(map);
@@ -251,6 +239,7 @@ public class ScreenManager {
         return map != null && serializer.saveMapToFile(map, filename);
     }
 
+    /** Save editor map to {@code maps/<name>.json} (PDF §4.2). */
     public boolean showSaveMapDialog(com.kurawler.model.Map map) {
         if (map == null) {
             return false;
@@ -276,6 +265,7 @@ public class ScreenManager {
         return serializer.saveMapToFile(map, MAPS_DIR.resolve(name).toString());
     }
 
+    /** Load a map JSON into the level editor (PDF §4.2). */
     public com.kurawler.model.Map showLoadMapDialog() {
         List<MapFileEntry> maps = listMapFiles();
         if (maps.isEmpty()) {
@@ -316,6 +306,7 @@ public class ScreenManager {
                         .sorted(Comparator.comparing(this::lastModifiedSafe).reversed())
                         .forEach(p -> entries.add(new MapFileEntry(p, p.getFileName().toString())));
             } catch (IOException ignored) {
+                // empty list
             }
         }
         return entries;
@@ -370,6 +361,8 @@ public class ScreenManager {
             session.setHero(hero);
         }
 
+        // PDF Phase II: Shadow Clone appears only after READing a Shadow Clone
+        // Scroll (auto-spawned every 15 s), not at game start.
         session.setAchievementManager(new AchievementManager());
         session.wireObservers();
     }
@@ -385,112 +378,7 @@ public class ScreenManager {
         }
         return null;
     }
-    
-    public void showDifficultyScreen(String gameType) {
-        shutdownActiveGameView();
-        DifficultySelectionScreen diffScreen = new DifficultySelectionScreen(this, gameType);
-        stage.setScene(diffScreen.createScene());
-        stage.setTitle("Select Difficulty");
-        stage.show();
-        stage.centerOnScreen();
-    }
 
-    public void launchGameWithDifficulty(String gameType, String difficulty) {
-        // Track the current selection for "Play Again" functionality
-        this.lastGameType = gameType;
-        this.lastDifficulty = difficulty;
-        
-        if ("Random".equals(gameType)) {
-            com.kurawler.model.ProceduralMapGenerator generator = new com.kurawler.model.ProceduralMapGenerator();
-            currentSession = generator.generate();
-            
-        } else if ("TeamMatch".equals(gameType)) {
-            com.kurawler.model.Map map;
-            if (currentSession != null && currentSession.getMap() != null) {
-                map = currentSession.getMap();
-            } else {
-                map = MapFactory.createDefaultMap().getMap();
-            }
-            TeamMatchSession tmSession = new TeamMatchSession(map);
-            tmSession.initializeMatch();
-            currentSession = tmSession;
-            
-        } else { // "Default"
-            currentSession = MapFactory.createDefaultMap();
-        }
-        
-        applyDifficultyToSession(currentSession, difficulty);
-        showPlayMode(currentSession);
-    }
-
-    private void applyDifficultyToSession(GameSession session, String difficulty) {
-        session.setDifficulty(difficulty);
-        Hero hero = session.getHero();
-        
-        // 1. Hero Energy Adjustment
-        if (hero != null) {
-            if ("Easy".equals(difficulty)) {
-                hero.setMaxEnergy(150);
-                hero.setEnergy(150);
-            } else if ("Hard".equals(difficulty)) {
-                hero.setMaxEnergy(75);
-                hero.setEnergy(75);
-            }
-        }
-
-        // 2. Adjust Initially Spawned Enemies & Remove Potions on Hard
-        List<com.kurawler.model.Map> mapsToCheck = new ArrayList<>();
-        mapsToCheck.add(session.getMap());
-        if (session.getWorldMaps() != null) {
-            mapsToCheck.addAll(session.getWorldMaps().values());
-        }
-
-        for (com.kurawler.model.Map m : mapsToCheck) {
-            if (m == null) continue;
-            for (int r = 0; r < m.getHeight(); r++) {
-                for (int c = 0; c < m.getWidth(); c++) {
-                    GridCell cell = m.getCell(r, c);
-                    if (cell == null) continue;
-
-                    com.kurawler.model.character.Character occupant = cell.getOccupyingCharacter();
-                    if (occupant instanceof Enemy) {
-                        Enemy enemy = (Enemy) occupant;
-                        if ("Easy".equals(difficulty)) {
-                            enemy.setMaxHealth((int)(enemy.getMaxHealth() * 0.7));
-                            enemy.setHealth((int)(enemy.getHealth() * 0.7));
-                            enemy.setStrength((int)(enemy.getStrength() * 0.7));
-                        } else if ("Hard".equals(difficulty)) {
-                            enemy.setMaxHealth((int)(enemy.getMaxHealth() * 1.3));
-                            enemy.setHealth((int)(enemy.getHealth() * 1.3));
-                            enemy.setStrength((int)(enemy.getStrength() * 1.3));
-                        }
-                    }
-
-                    if ("Hard".equals(difficulty)) {
-                        List<com.kurawler.model.object.GameObject> toRemove = new ArrayList<>();
-                        for (com.kurawler.model.object.GameObject obj : cell.getObjects()) {
-                            if (obj instanceof com.kurawler.model.object.Consumable && obj.getName().equals("Health Potion")) {
-                                toRemove.add(obj);
-                            } else if (obj instanceof com.kurawler.model.object.StaticContainer) {
-                                com.kurawler.model.object.StaticContainer sc = (com.kurawler.model.object.StaticContainer) obj;
-                                List<com.kurawler.model.object.Item> chestItems = new ArrayList<>(sc.getContents());
-                                sc.getContents().clear();
-                                for (com.kurawler.model.object.Item item : chestItems) {
-                                    if (!(item instanceof com.kurawler.model.object.Consumable && item.getName().equals("Health Potion"))) {
-                                        sc.addItem(item);
-                                    }
-                                }
-                            }
-                        }
-                        for (com.kurawler.model.object.GameObject obj : toRemove) {
-                            cell.removeObject(obj);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
     public Stage getStage() {
         return stage;
     }
@@ -554,7 +442,11 @@ public class ScreenManager {
     }
 
     private void showInfo(String title, String message) {
-        EditorStyledDialog.showMessage(stage, title, message);
+        Alert alert = new Alert(Alert.AlertType.INFORMATION, message);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.initOwner(stage);
+        alert.showAndWait();
     }
 
     private static class MapFileEntry {

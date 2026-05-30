@@ -85,4 +85,46 @@ public class SpriteAtlas {
         }
         return cache[row][col];
     }
+
+    /** Grid cell with transparent margins removed so neighbours do not bleed in. */
+    public Image getTileTrimmed(int col, int row) {
+        return trimOpaqueBounds(getTile(col, row));
+    }
+
+    /**
+     * Crops to the tight bounding box of opaque pixels (nearest-neighbour safe).
+     * Returns {@code src} unchanged when empty or already trimmed.
+     */
+    public static Image trimOpaqueBounds(Image src) {
+        if (src == null) {
+            return null;
+        }
+        PixelReader pr = src.getPixelReader();
+        if (pr == null) {
+            return src;
+        }
+        int w = (int) src.getWidth();
+        int h = (int) src.getHeight();
+        if (w <= 0 || h <= 0) {
+            return src;
+        }
+        int minX = w;
+        int minY = h;
+        int maxX = -1;
+        int maxY = -1;
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                if (pr.getColor(x, y).getOpacity() > 0.18) {
+                    minX = Math.min(minX, x);
+                    minY = Math.min(minY, y);
+                    maxX = Math.max(maxX, x);
+                    maxY = Math.max(maxY, y);
+                }
+            }
+        }
+        if (maxX < minX) {
+            return src;
+        }
+        return new WritableImage(pr, minX, minY, maxX - minX + 1, maxY - minY + 1);
+    }
 }

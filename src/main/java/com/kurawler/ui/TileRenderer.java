@@ -40,7 +40,6 @@ public class TileRenderer {
     }
 
     // Sliced sprite sheets — every usable tile is exposed in the editor
-    private SpriteAtlas weaponsAtlas;
     private SpriteAtlas itemsAtlas;
     private SpriteAtlas containersAtlas;
     private SpriteAtlas charactersAtlas;
@@ -140,7 +139,6 @@ public class TileRenderer {
      * palette, on the map, and after save/load.
      */
     private void buildEditorCatalog() {
-        weaponsAtlas = new SpriteAtlas("/assets/weapons_x3.png", SPRITE_SIZE);
         itemsAtlas = new SpriteAtlas("/assets/items_x3.png", SPRITE_SIZE);
         containersAtlas = new SpriteAtlas("/assets/containers_x3.png", SPRITE_SIZE);
         charactersAtlas = new SpriteAtlas("/assets/characters_x3.png", SPRITE_SIZE);
@@ -192,7 +190,10 @@ public class TileRenderer {
                 { "/assets/dc_pool.png", "Gargoyle Pool" },
                 { "/assets/dc_fountain_blue.png", "Stone Fountain" },
                 { "/assets/dc_fountain_sparkling.png", "Magic Fountain" },
-                { "/assets/dc_bookshelf_book.png", "Bookshelf" },
+                { "/assets/dc_bookshelf.png", "Bookshelf" },
+                { "/assets/dc_bookshelf.png", "Ancient Bookshelf" },
+                { "/assets/dc_bookshelf.png", "Wall Shelf" },
+                { "/assets/dc_bookshelf_book.png", "Book Stack" },
                 { "/assets/dc_book.png", "Reading Lectern" },
                 { "/assets/dc_pedestal.png", "Stone Pedestal" },
                 { "/assets/dc_statue.png", "Stone Statue" },
@@ -218,20 +219,37 @@ public class TileRenderer {
         //     wooden door, arches, window, carpets, barrels) so they are never sliced
         //     into half-wall fragments. Rendered aspect-preserved.
         if (wsSheet != null) {
-            addStructure(wsSheet, "Great Door", 176, 38, 48, 42);
-            addStructure(wsSheet, "Stone Archway", 64, 32, 48, 64);
-            addStructure(wsSheet, "Barred Window", 112, 32, 48, 64);
-            addStructure(wsSheet, "Red Carpet", 384, 48, 31, 44);
-            addStructure(wsSheet, "Tan Carpet", 416, 48, 31, 44);
-            addStructure(wsSheet, "Barrel Stack", 176, 80, 32, 46);
+            addStructure(wsSheet, "Great Door", 152, 14, 96, 90);
+            addStructure(wsSheet, "Stone Archway", 40, 11, 96, 109);
+            addStructure(wsSheet, "Barred Window", 88, 8, 96, 112);
+            addStructure(wsSheet, "Red Carpet", 360, 24, 79, 92);
+            addStructure(wsSheet, "Tan Carpet", 392, 24, 79, 92);
+            addStructure(wsSheet, "Barrel Stack", 152, 56, 80, 72);
         }
 
-        // --- Weapons: clean 1-per-tile grid, named by row/column position.
-        addSlicedSheet(weaponsAtlas, "Weapons", AssetKind.WEAPON, (c, r) -> gridName(WEAPON_GRID, c, r, "Old Blade"));
+        // --- Weapons: verified DCSS tiles (game + editor); sheet extras are trimmed per cell.
+        addNamedSprites("Weapons", AssetKind.WEAPON, new String[][] {
+                { "/assets/dc_sword.png", "Sword" },
+                { "/assets/dc_dagger.png", "Dagger" },
+                { "/assets/dc_axe.png", "Axe" },
+                { "/assets/dc_bow.png", "Bow" },
+                { "/assets/dc_staff.png", "Staff" },
+                { "/assets/dc_hammer.png", "Hammer" },
+        });
+        Image weaponsSheet = loadImg("/assets/weapons_x3.png");
+        if (weaponsSheet != null) {
+            addWeaponSheetCells(weaponsSheet);
+        }
         // --- Items: clean 6x4 grid, exact names per cell.
         addSlicedSheet(itemsAtlas, "Items", AssetKind.ITEM, (c, r) -> gridName(ITEM_GRID, c, r, "Relic"));
         // --- Containers: clean 4x6 grid of chests/crates/pouches.
         addSlicedSheet(containersAtlas, "Containers", AssetKind.CONTAINER, (c, r) -> gridName(CONTAINER_GRID, c, r, "Chest"));
+        // Gameplay wearables (Entry Hall etc.) — match MapFactory item names exactly.
+        addNamedSprites("Wearables", AssetKind.ITEM, new String[][] {
+                { "/assets/dc_armor.png", "Armor" },
+                { "/assets/dc_shield.png", "Shield" },
+                { "/assets/dc_ring.png", "Ring" },
+        });
 
         // --- Characters: functional placeables first, then NPC standees named by class/row.
         editorAssets.add(new EditorAsset("Hero", "Characters", AssetKind.HERO));
@@ -266,15 +284,69 @@ public class TileRenderer {
                     continue;
                 }
                 String name = registerUnique(namer.nameFor(c, r));
-                atlasRegistry.put(name, atlas.getTile(c, r));
+                atlasRegistry.put(name, atlas.getTileTrimmed(c, r));
                 editorAssets.add(new EditorAsset(name, category, kind));
             }
         }
     }
 
+
+    /**
+     * Registers each weapon using an expanded per-cell crop (±12px pad) on the x3 sheet so
+     * blades that extend past the 48px grid line are not clipped. Names follow WEAPON_GRID rows.
+     */
+    private void addWeaponSheetCells(Image sheet) {
+        if (sheet == null) {
+            return;
+        }
+        final int tile = SPRITE_SIZE;
+        final int pad = 12;
+        int cols = (int) (sheet.getWidth() / tile);
+        int rows = (int) (sheet.getHeight() / tile);
+        for (int r = 0; r < rows && r < WEAPON_GRID.length; r++) {
+            for (int c = 0; c < cols && c < WEAPON_GRID[r].length; c++) {
+                String label = WEAPON_GRID[r][c];
+                if (label == null || label.isEmpty()) {
+                    continue;
+                }
+                Image crop = cropWeaponCell(sheet, c, r, tile, pad);
+                if (crop == null || crop.getWidth() * crop.getHeight() < 120) {
+                    continue;
+                }
+                String name = registerUnique(label);
+                atlasRegistry.put(name, crop);
+                editorAssets.add(new EditorAsset(name, "Weapons", AssetKind.WEAPON));
+            }
+        }
+    }
+
+    /** Expanded crop for one weapons_x3 grid cell (sheet pixels, then trimmed). */
+    private Image cropWeaponCell(Image sheet, int col, int row, int tile, int pad) {
+        int x0 = Math.max(0, col * tile - pad);
+        int y0 = Math.max(0, row * tile - pad);
+        int x1 = Math.min((int) sheet.getWidth(), (col + 1) * tile + pad);
+        int y1 = Math.min((int) sheet.getHeight(), (row + 1) * tile + pad);
+        return trimTileCrop(cropSheetPx(sheet, x0, y0, x1 - x0, y1 - y0));
+    }
+
+    /** Direct pixel crop on an x3 sheet (no base-pixel scaling). */
+    private Image cropSheetPx(Image src, int x, int y, int w, int h) {
+        if (src == null || w <= 0 || h <= 0) {
+            return null;
+        }
+        PixelReader pr = src.getPixelReader();
+        if (pr == null) {
+            return null;
+        }
+        if (x < 0 || y < 0 || x + w > src.getWidth() || y + h > src.getHeight()) {
+            return null;
+        }
+        return new WritableImage(pr, x, y, w, h);
+    }
+
     /** Registers a single floor tile (passable) under the Walls/Floors category. */
     private void addFloorTile(Image sheet, String name, int col, int row) {
-        Image crop = cropPx(sheet, col * 16, row * 16, 16, 16);
+        Image crop = trimTileCrop(cropPx(sheet, col * 16, row * 16, 16, 16));
         if (crop == null) {
             return;
         }
@@ -285,7 +357,8 @@ public class TileRenderer {
 
     /** Registers a single decorated wall tile (solid) under the Walls/Floors category. */
     private void addWallVariant(Image sheet, String name, int col, int row) {
-        Image crop = cropPx(sheet, col * 16, row * 16, 16, 16);
+        // 1px inset avoids bleeding from neighbouring cells on the x3 sheet.
+        Image crop = trimTileCrop(cropPx(sheet, col * 16 + 1, row * 16 + 1, 14, 14));
         if (crop == null) {
             return;
         }
@@ -296,7 +369,7 @@ public class TileRenderer {
 
     /** Crops a multi-tile region (base-pixel coords) out of an x3 sheet and registers it. */
     private void addStructure(Image sheet, String name, int bx, int by, int bw, int bh) {
-        Image crop = cropPx(sheet, bx, by, bw, bh);
+        Image crop = trimTileCrop(cropPx(sheet, bx, by, bw, bh));
         if (crop == null) {
             return;
         }
@@ -322,6 +395,10 @@ public class TileRenderer {
         return new WritableImage(pr, x, y, w, h);
     }
 
+    private Image trimTileCrop(Image crop) {
+        return SpriteAtlas.trimOpaqueBounds(crop);
+    }
+
     /** Registers individual, pre-cropped sprite files under their real display names. */
     private void addNamedSprites(String category, AssetKind kind, String[][] fileNamePairs) {
         for (String[] pair : fileNamePairs) {
@@ -329,6 +406,7 @@ public class TileRenderer {
             if (img == null) {
                 continue;
             }
+            img = SpriteAtlas.trimOpaqueBounds(img);
             String name = registerUnique(pair[1]);
             atlasRegistry.put(name, img);
             editorAssets.add(new EditorAsset(name, category, kind));
@@ -377,16 +455,16 @@ public class TileRenderer {
 
     // weapons_x3.png (10 cols x 10 rows): predominantly blades with axes/maces/staves/bow mixed in
     private static final String[][] WEAPON_GRID = {
-            { "Iron Sword", "Steel Sword", "Soldier's Sword", "Gilded Sword", "Wooden Sword",
-              "Dark Sword", "Sapphire Sword", "Royal Sword", "Knight's Sword", "Longsword" },
-            { "War Hammer", "Iron Mace", "Wooden Staff", "Spiked Club", "Morning Star",
-              "Gilded Rapier", "Brass Sabre", "Steel Rapier", "Silver Sword", "Bronze Sword" },
-            { "Shortsword", "Cutlass", "Bone Cleaver", "Hand Axe", "Battle Axe",
-              "Dagger", "Dirk", "Stiletto", "Gold Dagger", "Jeweled Blade" },
-            { "Carving Knife", "Butcher's Cleaver", "Estoc", "Needle Sword", "Obsidian Sword",
-              "Jade Sword", "Crimson Sword", "War Pick", "Heavy Mace", "Iron Maul" },
-            { "Golden Sword", "Ornate Greatsword", "Quarterstaff", "Gem Staff", "Bone Staff",
-              "Hunter's Arrow", "Short Bow", "Throwing Dart", "War Spear", "Bomb" },
+            { "Short Sword", "Sabre", "Scimitar", "Falchion", "Cutlass", "Rapier", "Estoc", "Long Sword", "Bastard Sword", "Great Sword" },
+            { "Hand Axe", "Battle Axe", "Broad Axe", "War Axe", "Double Axe", "Pick Axe", "War Pick", "Mace", "Morningstar", "Flail" },
+            { "Dagger", "Knife", "Stiletto", "Rune Dagger", "Jeweled Dagger", "Spear", "Trident", "Halberd", "Glaive", "Bardiche" },
+            { "Quarterstaff", "Staff", "Elemental Staff", "Ice Staff", "Fire Staff", "Whip", "Club", "Giant Club", "Hammer", "Great Mace" },
+            { "Short Bow", "Longbow", "Crossbow", "Sling", "Blowgun", "Boomerang", "Javelin", "Throwing Net", "Tomahawk", "Boomerang" },
+            { "Katana", "Demon Blade", "Eudemon Blade", "Double Sword", "Triple Sword", "Elegant Sword", "Quick Blade", "Captain's Sword", "Falchion", "Rapier" },
+            { "Orcish Dagger", "Orcish Sword", "Orcish Great Sword", "Elven Dagger", "Elven Short Sword", "Elven Long Sword", "Dwarven Dagger", "Dwarven Sword", "Dwarven Great Sword", "Dwarven Axe" },
+            { "Blessed Blade", "Demon Trident", "Double Sword", "Elder Club", "Giant Spiked Club", "Giant Club", "Giant Flail", "Giant Hammer", "Giant Axe", "Giant Axe" },
+            { "Dagger", "Quick Blade", "Short Sword", "Great Sword", "Long Sword", "Bastard Sword", "Claymore", "Katana", "Double Sword", "Triple Sword" },
+            { "Lance", "Bardiche", "Trishula", "Partisan", "Glaive", "Halberd", "Scythe", "Poleaxe", "Quarterstaff", "Lajatang" },
     };
 
     /** All placeable editor assets, in display order (grouped by category). */
@@ -442,7 +520,7 @@ public class TileRenderer {
         // Statics / dungeon
         if ((img = loadImg("/assets/dc_pool.png"))        != null) poolSprite       = img;
         if ((img = loadImg("/assets/dc_column.png"))      != null) columnSprite     = img;
-        if ((img = loadImg("/assets/dc_book.png"))         != null) bookshelfSprite  = img;
+        if ((img = loadImg("/assets/dc_bookshelf.png"))    != null) bookshelfSprite  = SpriteAtlas.trimOpaqueBounds(img);
         if ((img = loadImg("/assets/dc_pedestal.png"))    != null) pedestalSprite   = img;
         if ((img = loadImg("/assets/dc_pedestal.png"))    != null) altarSprite      = img;
         if ((img = loadImg("/assets/dc_door_closed.png")) != null) doorSprite       = img;
@@ -586,7 +664,7 @@ public class TileRenderer {
         pedestalSprite = statics.getSprite(10, 5);
         altarSprite = statics.getSprite(12, 5);
         columnSprite = statics.getSprite(14, 5);
-        bookshelfSprite = statics.getSprite(12, 4);
+        // Bookshelf: use dc_bookshelf.png (loadDcssOverrides) — sheet (12,4) is a door plank.
         doorSprite = statics.getSprite(9, 4);
         doorOpenSprite = statics.getSprite(10, 4);
         if (poolSprite == null) poolSprite = statics.getSprite(6, 5);
@@ -765,6 +843,14 @@ public class TileRenderer {
     }
 
     public void drawWeaponByName(GraphicsContext gc, int screenX, int screenY, String weaponName) {
+        gc.setImageSmoothing(false);
+        if (weaponName != null) {
+            Image atlas = atlasRegistry.get(weaponName);
+            if (atlas != null) {
+                drawScaledFit(gc, atlas, screenX, screenY, tileSize, tileSize * 0.18);
+                return;
+            }
+        }
         Image sprite = swordSprite;
         if (weaponName != null) {
             String lower = weaponName.toLowerCase();
@@ -774,7 +860,7 @@ public class TileRenderer {
             else if (lower.contains("dagger") || lower.contains("knife")) sprite = daggerSprite;
             else if (lower.contains("hammer") || lower.contains("mace")) sprite = hammerSprite;
         }
-        drawSprite(gc, sprite, screenX, screenY, Color.web("#ff9800"));
+        drawScaledFit(gc, sprite, screenX, screenY, tileSize, tileSize * 0.18);
     }
 
     // ---------- CONTAINERS ----------
@@ -791,19 +877,31 @@ public class TileRenderer {
         drawSprite(gc, sprite, screenX, screenY, Color.web("#795548"));
     }
 
+
+    private boolean isShelfLikeName(String name) {
+        if (name == null) {
+            return false;
+        }
+        String n = name.toLowerCase();
+        return n.contains("bookshelf") || n.contains("wall shelf") || n.contains("shelf");
+    }
+
     // ---------- STATIC OBJECTS (searchable) ----------
 
     public void drawSearchable(GraphicsContext gc, int screenX, int screenY, String name) {
-        if (name != null) {
+        gc.setImageSmoothing(false);
+        Image sprite = spriteForAsset(name);
+        if (sprite != null) {
+            double pad = isShelfLikeName(name) ? 2 : tileSize * 0.08;
+            drawScaledFit(gc, sprite, screenX, screenY, tileSize, pad);
+        } else if (name != null) {
             String lower = name.toLowerCase();
-            if (lower.contains("bookshelf")) {
+            if (lower.contains("bookshelf") || lower.contains("shelf")) {
                 drawBookshelfProp(gc, screenX, screenY);
             } else if (lower.contains("pool") || lower.contains("gargoyle")) {
                 drawPoolProp(gc, screenX, screenY);
             } else if (lower.contains("column") || lower.contains("pillar")) {
                 drawColumnProp(gc, screenX, screenY);
-            } else if (lower.contains("shelf")) {
-                drawBookshelfProp(gc, screenX, screenY);
             } else {
                 drawSprite(gc, pedestalSprite, screenX, screenY, Color.web("#887744"));
             }
@@ -845,7 +943,8 @@ public class TileRenderer {
 
     private void drawBookshelfProp(GraphicsContext gc, int screenX, int screenY) {
         if (bookshelfSprite != null) {
-            gc.drawImage(bookshelfSprite, screenX, screenY, tileSize, tileSize);
+            gc.setImageSmoothing(false);
+            drawScaledFit(gc, bookshelfSprite, screenX, screenY, tileSize, 2);
             return;
         }
         double x = screenX + 8;
@@ -989,10 +1088,9 @@ public class TileRenderer {
             if (n.contains("hammer") || n.contains("mace")) return hammerSprite;
             return swordSprite;
         }
-        if (item instanceof Wearable) {
-            String n = item.getName().toLowerCase();
-            if (n.contains("shield")) return shieldSprite;
-            if (n.contains("ring") || n.contains("amulet")) return ringSprite;
+        if (item instanceof Wearable wearable) {
+            if (wearable.isShield()) return shieldSprite;
+            if (wearable.isRing()) return ringSprite;
             return armorSprite;
         }
         if (item instanceof Consumable) {
@@ -1169,7 +1267,7 @@ public class TileRenderer {
         if (n.contains("fountain")) return fountainSprite;
         if (n.contains("lantern") || n.contains("lamp") || n.contains("torch") || n.contains("sconce")) return lanternSprite;
         if (n.contains("pool") || n.contains("gargoyle")) return poolSprite;
-        if (n.contains("bookshelf") || n.contains("shelf")) return bookshelfSprite;
+        if (n.contains("bookshelf") || n.contains("wall shelf") || n.contains("shelf")) return bookshelfSprite;
         if (n.contains("column") || n.contains("pillar")) return columnSprite;
 
         // --- Misc keys / loot ---
@@ -1181,6 +1279,10 @@ public class TileRenderer {
     private Image wallSpriteFor(String name) {
         if (name == null) {
             return null;
+        }
+        Image reg = atlasRegistry.get(name);
+        if (reg != null) {
+            return reg;
         }
         String n = name.toLowerCase();
         if (n.contains("brown wall")) return wallBrownSprite;
@@ -1232,9 +1334,14 @@ public class TileRenderer {
     public void drawWallByName(GraphicsContext gc, int screenX, int screenY, String name) {
         Image w = wallSpriteFor(name);
         if (w != null) {
+            gc.setImageSmoothing(false);
             gc.setFill(Color.web("#1a1a2e"));
             gc.fillRect(screenX, screenY, tileSize, tileSize);
-            gc.drawImage(w, screenX, screenY, tileSize, tileSize);
+            if (atlasRegistry.containsKey(name)) {
+                drawScaledFit(gc, w, screenX, screenY, tileSize, 1);
+            } else {
+                gc.drawImage(w, screenX, screenY, tileSize, tileSize);
+            }
         } else {
             drawWall(gc, screenX, screenY);
         }
@@ -1272,12 +1379,17 @@ public class TileRenderer {
         Image sprite = spriteForAsset(so.getName());
         if (sprite != null) {
             gc.setImageSmoothing(false);
+            double oldAlpha = gc.getGlobalAlpha();
+            if (so.wasSearched()) {
+                gc.setGlobalAlpha(0.62);
+            }
             // Non-square structures (big door, arch, carpet...) keep their aspect ratio.
             if (Math.abs(sprite.getWidth() - sprite.getHeight()) > 1) {
                 drawScaledFit(gc, sprite, screenX, screenY, tileSize, 0);
             } else {
                 gc.drawImage(sprite, screenX, screenY, tileSize, tileSize);
             }
+            gc.setGlobalAlpha(oldAlpha);
         } else if (!so.isPassable()) {
             // Unknown solid prop — fall back to a column-like pillar.
             drawColumnProp(gc, screenX, screenY);
@@ -1293,7 +1405,9 @@ public class TileRenderer {
             return false;
         }
         String n = name.toLowerCase();
-        return n.equals("wall") || n.contains("dark wall") || n.contains("brown wall");
+        return n.equals("wall") || n.contains("dark wall") || n.contains("brown wall")
+                || n.contains("vine wall") || n.contains("grate") || n.contains("caged wall")
+                || n.contains("ring wall") || n.contains("torch wall");
     }
 
     /** True when a static is just plain dungeon floor terrain. */
