@@ -19,10 +19,22 @@ public class TakeAction implements Action {
 
     private final Item targetItem;
 
+    /**
+     * @requires targetItem != null
+     * @modifies this.targetItem
+     * @effects Stores the item to be picked up for use in resolve().
+     */
     public TakeAction(Item targetItem) {
         this.targetItem = targetItem;
     }
 
+    /**
+     * @requires session != null && session.getHero() != null && session.getMap() != null
+     * @modifies none
+     * @effects Returns [RemoveFromCellEffect, AddToInventoryEffect] if targetItem
+     *          is on the hero's current cell and inventory is not full;
+     *          otherwise returns an empty list.
+     */
     @Override
     public List<Effect> resolve(GameSession session) {
         List<Effect> effects = new ArrayList<>();

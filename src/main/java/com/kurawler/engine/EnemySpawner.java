@@ -37,6 +37,9 @@ public class EnemySpawner {
     /**
      * Creates a spawner for the given session.
      *
+     * @requires session != null
+     * @modifies this.session, this.timeSinceLastSpawn, this.random
+     * @effects Initialises the spawner; throws IllegalArgumentException if session is null.
      * @param session the active game session; must not be null
      */
     public EnemySpawner(GameSession session) {
@@ -51,6 +54,10 @@ public class EnemySpawner {
     /**
      * Accumulates elapsed time and attempts a spawn when the interval is reached.
      *
+     * @requires deltaTime >= 0
+     * @modifies this.timeSinceLastSpawn, session.enemies (if spawn occurs)
+     * @effects Adds deltaTime to the accumulator. If accumulator >= SPAWN_INTERVAL,
+     *          attempts to spawn one enemy and resets the accumulator to 0.
      * @param deltaTime milliseconds elapsed since the last call
      */
     public void update(long deltaTime) {
@@ -168,6 +175,9 @@ public class EnemySpawner {
     /**
      * Returns the time accumulated since the last spawn attempt.
      *
+     * @requires none
+     * @modifies none
+     * @effects Returns timeSinceLastSpawn in milliseconds.
      * @return elapsed time in milliseconds
      */
     public long getTimeSinceLastSpawn() {
@@ -176,6 +186,10 @@ public class EnemySpawner {
 
     /**
      * Resets the spawn timer to zero.
+     *
+     * @requires none
+     * @modifies this.timeSinceLastSpawn
+     * @effects Sets timeSinceLastSpawn to 0.
      */
     public void resetTimer() {
         this.timeSinceLastSpawn = 0;

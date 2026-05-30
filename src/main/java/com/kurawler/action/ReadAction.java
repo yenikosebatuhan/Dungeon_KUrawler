@@ -13,6 +13,11 @@ import java.util.List;
 public class ReadAction implements Action {
     private final Scroll scroll;
 
+    /**
+     * @requires scroll != null
+     * @modifies this.scroll
+     * @effects Stores the scroll to be read for use in resolve().
+     */
     public ReadAction(Scroll scroll) {
         this.scroll = scroll;
     }
