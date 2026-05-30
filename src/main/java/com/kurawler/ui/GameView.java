@@ -346,183 +346,215 @@ public class GameView {
     }
 
     private void showGameOver() {
-        if (endScreenShown || !isPlaySceneActive()) {
-            return;
-        }
+        if (endScreenShown || !isPlaySceneActive()) return;
         endScreenShown = true;
         AudioManager.getInstance().play("gameOver");
         GameSession session = controller.getSession();
-        Hero hero = session.getHero();
-        
-        String stats = String.format("Cause of Death: Slain in battle\nHP at Death: %d / %d\nTime Played: %s\nFloors Cleared: %d\nEnemies Defeated: %d",
-                Math.max(0, hero.getHealth()), hero.getMaxHealth(),
+
+        // HP at death removed \u2014 irrelevant; time, items, floors matter
+        com.kurawler.model.achievement.AchievementManager am = session.getAchievementManager();
+        int itemsCollected  = am != null ? am.getItemsCollected()  : session.getItemsCollectedCount();
+        int enemiesDefeated = am != null ? am.getEnemiesKilled()   : session.getEnemiesDefeatedCount();
+        String stats = String.format(
+                "Time Survived: %s\nFloors Cleared: %d\nItems Collected: %d\nEnemies Defeated: %d",
                 formatTime(session.getPlayDurationTimer()),
                 session.getFloorsClearedCount(),
-                session.getEnemiesDefeatedCount()
-        );
+                itemsCollected,
+                enemiesDefeated);
 
         Platform.runLater(() -> {
             if (!isPlaySceneActive()) return;
-            showEndScreen(
-                    "\u2620 YOU DIED \u2620",
+            showEndScreen(false, false,
+                    "\u2620  YOU DIED  \u2620",
                     "Your hero has fallen in the dungeon.\nThe darkness claims another soul...",
-                    stats,
-                    "#ff4444", "#3a0a0a" 
-            );
+                    stats);
         });
     }
 
     private void showVictory() {
-        if (endScreenShown || !isPlaySceneActive()) {
-            return;
-        }
+        if (endScreenShown || !isPlaySceneActive()) return;
         endScreenShown = true;
         AudioManager.getInstance().play("victory");
         GameSession session = controller.getSession();
         String itemName = session.getTargetObjective() != null
                 ? session.getTargetObjective().getName() : "the artifact";
-                
-        String stats = String.format("Time Taken: %s\nTotal Turns: %d\nItems Collected: %d\nEnemies Defeated: %d",
+
+        // Use AchievementManager for real counters
+        com.kurawler.model.achievement.AchievementManager am = session.getAchievementManager();
+        int itemsCollected  = am != null ? am.getItemsCollected()  : session.getItemsCollectedCount();
+        int enemiesDefeated = am != null ? am.getEnemiesKilled()   : session.getEnemiesDefeatedCount();
+
+        String stats = String.format(
+                "Time Taken: %s\nTotal Turns: %d\nItems Collected: %d\nEnemies Defeated: %d",
                 formatTime(session.getPlayDurationTimer()),
                 session.getTurnCount(),
-                session.getItemsCollectedCount(),
-                session.getEnemiesDefeatedCount()
-        );
+                itemsCollected,
+                enemiesDefeated);
 
         Platform.runLater(() -> {
             if (!isPlaySceneActive()) return;
-            showEndScreen(
-                    "\u2605 VICTORY \u2605",
-                    "You found the " + itemName + "!\nCongratulations, brave adventurer!",
-                    stats,
-                    "#e8c84a", "#2a2510" 
-            );
+            showEndScreen(true, false,
+                    "\u2605  VICTORY  \u2605",
+                    "You retrieved the " + itemName + "!\nCongratulations, brave adventurer!",
+                    stats);
         });
     }
 
     private void showTeamMatchResult(String result) {
         GameSession session = controller.getSession();
-        String stats = String.format("Result: %s\nTime Played: %s\nTurns: %d",
-                result, formatTime(session.getPlayDurationTimer()), session.getTurnCount());
-                
-        Platform.runLater(() -> showEndScreen(
-                "\u2694 MATCH OVER \u2694", result, stats, "#6fc3df", "#1a2a3a"));
+        boolean won = result != null && result.toLowerCase().contains("win");
+
+        // Use AchievementManager for real counters
+        com.kurawler.model.achievement.AchievementManager am = session.getAchievementManager();
+        int itemsCollected = am != null ? am.getItemsCollected() : session.getItemsCollectedCount();
+
+        String stats = String.format(
+                "Outcome: %s\nTime Played: %s\nTotal Turns: %d\nItems Collected: %d",
+                result,
+                formatTime(session.getPlayDurationTimer()),
+                session.getTurnCount(),
+                itemsCollected);
+
+        Platform.runLater(() -> showEndScreen(won, true,
+                won ? "\u2694  MATCH WON  \u2694" : "\u2694  MATCH OVER  \u2694",
+                result,
+                stats));
     }
 
-    private void showEndScreen(String title, String message, String statsText, String accent, String bgTint) {
-        if (!isPlaySceneActive()) {
-            return;
-        }
+    /**
+     * Dungeon-themed end screen.
+     * @param won   true = gold/victory palette; false = red/death palette
+     * @param isTeam true for team-match variant
+     */
+    private void showEndScreen(boolean won, boolean isTeam,
+                               String title, String message, String statsText) {
+        if (!isPlaySceneActive()) return;
+
+        final String GOLD   = "#e8c84a";
+        final String RED    = "#cc4444";
+        final String accent = won ? GOLD : RED;
+        final String dimTxt = "#a09070";
+
         Stage popup = new Stage();
         popup.initOwner(stage);
         popup.initModality(Modality.APPLICATION_MODAL);
         popup.initStyle(StageStyle.UNDECORATED);
 
-        int popW = 500;
-        int popH = 450; 
+        final int PW = 540, PH = 500;
 
-        Canvas bg = new Canvas(popW, popH);
-        GraphicsContext gc = bg.getGraphicsContext2D();
-        SpriteSheet wallSheet = new SpriteSheet("/assets/walls_x3.png", 48);
-        
-        gc.setFill(Color.web("#0a0a10"));
-        gc.fillRect(0, 0, popW, popH);
-        if (wallSheet.isLoaded()) {
-            for (int y = 0; y < popH; y += 48) {
-                for (int x = 0; x < popW; x += 48) {
-                    int hash = Math.abs((x * 73856093) ^ (y * 19349663));
-                    javafx.scene.image.Image tile = wallSheet.getSprite(hash % 5, 1);
-                    if (tile != null) gc.drawImage(tile, x, y, 48, 48);
-                }
-            }
+        // \u2500\u2500 Background: dungeon tiles + themed vignette \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        Canvas bgCanvas = new Canvas(PW, PH);
+        drawDungeonBg(bgCanvas, PW, PH);
+
+        // Subtle edge vignette \u2014 lets tiles breathe in the center
+        javafx.scene.layout.Pane vignette = new javafx.scene.layout.Pane();
+        vignette.setPrefSize(PW, PH);
+        String vigColor = won
+                ? "radial-gradient(center 50% 40%, radius 55%, rgba(0,0,0,0.0), rgba(0,0,0,0.72))"
+                : "radial-gradient(center 50% 40%, radius 55%, rgba(40,0,0,0.25), rgba(0,0,0,0.80))";
+        vignette.setStyle("-fx-background-color: " + vigColor + ";");
+
+        // \u2500\u2500 Title \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        Label titleLbl = new Label(title);
+        titleLbl.setFont(Font.font("Serif", FontWeight.BOLD, won ? 38 : 40));
+        titleLbl.setTextFill(Color.web(accent));
+        titleLbl.setAlignment(Pos.CENTER);
+        {
+            javafx.scene.effect.InnerShadow eng =
+                    new javafx.scene.effect.InnerShadow(4, 1, 2, Color.web("#000000", 0.9));
+            javafx.scene.effect.DropShadow glow =
+                    new javafx.scene.effect.DropShadow(won ? 28 : 24,
+                            Color.web(accent, won ? 0.55 : 0.70));
+            glow.setInput(eng);
+            javafx.scene.effect.DropShadow deep =
+                    new javafx.scene.effect.DropShadow(8, 2, 3, Color.web("#000000", 0.85));
+            deep.setInput(glow);
+            titleLbl.setEffect(deep);
         }
-        gc.setFill(Color.web(bgTint, 0.85)); 
-        gc.fillRect(0, 0, popW, popH);
 
-        Label titleLabel = new Label(title);
-        titleLabel.setFont(Font.font("Serif", FontWeight.BOLD, 36));
-        titleLabel.setTextFill(Color.web(accent));
-        javafx.scene.effect.InnerShadow engrave = new javafx.scene.effect.InnerShadow(3, 1, 2, Color.web("#000000", 0.8));
-        javafx.scene.effect.DropShadow glow = new javafx.scene.effect.DropShadow(25, Color.web(accent, 0.6));
-        glow.setInput(engrave);
-        titleLabel.setEffect(glow);
+        // \u2500\u2500 Ornament \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        Label orn = new Label("\u2501\u2501\u2501\u2501 \u2726 \u2726 \u2726 \u2501\u2501\u2501\u2501");
+        orn.setFont(Font.font("Monospaced", 14));
+        orn.setTextFill(Color.web("#8b6914", 0.75));
+        orn.setEffect(new javafx.scene.effect.DropShadow(4, 0, 1, Color.BLACK));
 
-        Label msgLabel = new Label(message);
-        msgLabel.setFont(Font.font("Serif", 16));
-        msgLabel.setTextFill(Color.web("#d0c0a0"));
-        msgLabel.setWrapText(true);
-        msgLabel.setTextAlignment(TextAlignment.CENTER);
-        msgLabel.setMaxWidth(400);
+        // \u2500\u2500 Flavour message \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        Label msgLbl = new Label(message);
+        msgLbl.setFont(Font.font("Serif", javafx.scene.text.FontPosture.ITALIC, 15));
+        msgLbl.setTextFill(Color.web("#c8b890"));
+        msgLbl.setWrapText(true);
+        msgLbl.setTextAlignment(TextAlignment.CENTER);
+        msgLbl.setAlignment(Pos.CENTER);
+        msgLbl.setMinWidth(PW - 80);
+        msgLbl.setPrefWidth(PW - 80);
+        msgLbl.setMaxWidth(PW - 80);
+        msgLbl.setEffect(new javafx.scene.effect.DropShadow(3, 0, 1, Color.BLACK));
 
-        // --- Stats Grid UI Polish ---
+        // \u2500\u2500 Stats panel \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
         GridPane statsGrid = new GridPane();
         statsGrid.setAlignment(Pos.CENTER);
-        statsGrid.setHgap(20);
-        statsGrid.setVgap(8);
-        statsGrid.setPadding(new Insets(15));
-        statsGrid.setStyle("-fx-background-color: rgba(0,0,0,0.5); -fx-background-radius: 8; -fx-border-color: " + accent + "44; -fx-border-radius: 8; -fx-border-width: 1;");
+        statsGrid.setHgap(24);
+        statsGrid.setVgap(10);
+        statsGrid.setPadding(new Insets(16, 28, 16, 28));
+        statsGrid.setStyle("-fx-background-color: rgba(0,0,0,0.55); "
+                + "-fx-background-radius: 6; "
+                + "-fx-border-color: " + accent + "55; "
+                + "-fx-border-radius: 6; -fx-border-width: 1;");
 
-        String[] statLines = statsText.split("\n");
-        for (int i = 0; i < statLines.length; i++) {
-            String[] parts = statLines[i].split(":");
-            if (parts.length == 2) {
-                Label lblKey = new Label(parts[0].trim());
-                lblKey.setFont(Font.font("Serif", FontWeight.NORMAL, 14));
-                lblKey.setTextFill(Color.web("#a09070"));
-                
-                Label lblVal = new Label(parts[1].trim());
-                lblVal.setFont(Font.font("Monospaced", FontWeight.BOLD, 15));
-                lblVal.setTextFill(Color.web(accent));
-                
-                statsGrid.add(lblKey, 0, i);
-                statsGrid.add(lblVal, 1, i);
+        String[] lines = statsText.split("\n");
+        for (int i = 0; i < lines.length; i++) {
+            int colon = lines[i].indexOf(':');
+            if (colon > 0) {
+                Label k = new Label(lines[i].substring(0, colon).trim());
+                k.setFont(Font.font("Serif", 14));
+                k.setTextFill(Color.web(dimTxt));
+                k.setAlignment(Pos.CENTER_RIGHT);
+
+                Label v = new Label(lines[i].substring(colon + 1).trim());
+                v.setFont(Font.font("Monospaced", FontWeight.BOLD, 15));
+                v.setTextFill(Color.web(accent));
+                v.setAlignment(Pos.CENTER);
+
+                statsGrid.add(k, 0, i);
+                statsGrid.add(v, 1, i);
+                javafx.scene.layout.GridPane.setHalignment(k, javafx.geometry.HPos.RIGHT);
+                javafx.scene.layout.GridPane.setHalignment(v, javafx.geometry.HPos.CENTER);
             } else {
-                Label lblSingle = new Label(statLines[i]);
-                lblSingle.setTextFill(Color.web("#a09070"));
-                statsGrid.add(lblSingle, 0, i, 2, 1);
+                Label single = new Label(lines[i]);
+                single.setFont(Font.font("Serif", 13));
+                single.setTextFill(Color.web(dimTxt));
+                single.setAlignment(Pos.CENTER);
+                statsGrid.add(single, 0, i, 2, 1);
+                javafx.scene.layout.GridPane.setHalignment(single, javafx.geometry.HPos.CENTER);
             }
         }
 
-        // --- Action Buttons ---
-        HBox buttonBox = new HBox(15);
-        buttonBox.setAlignment(Pos.CENTER);
-
-        Button menuBtn = popupButton("Return to Menu", "#a09070");
-        menuBtn.setPrefWidth(180);
-        menuBtn.setOnAction(e -> {
-            popup.close();
-            playActive = false;
-            shutdown();
-            screenManager.showMainMenu();
-        });
-
-        Button playAgainBtn = popupButton("Play Again", accent);
-        playAgainBtn.setPrefWidth(180);
+        // \u2500\u2500 Buttons \u2014 stone style matching pause menu \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        Button playAgainBtn = pauseMenuBtn(won ? "\u25b6  Play Again" : "\u27f3  Try Again", false);
         playAgainBtn.setOnAction(e -> {
-            popup.close();
-            playActive = false;
-            shutdown();
-            screenManager.playAgain(); // Calls our newly created method
+            popup.close(); playActive = false; shutdown(); screenManager.playAgain();
         });
 
-        buttonBox.getChildren().addAll(menuBtn, playAgainBtn);
+        Button menuBtn = pauseMenuBtn("\u2694  Main Menu", true);
+        menuBtn.setOnAction(e -> {
+            popup.close(); playActive = false; shutdown(); screenManager.showMainMenu();
+        });
 
-        VBox content = new VBox(20, titleLabel, msgLabel, statsGrid, buttonBox);
+        HBox btns = new HBox(16, playAgainBtn, menuBtn);
+        btns.setAlignment(Pos.CENTER);
+
+        // \u2500\u2500 Layout \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        VBox content = new VBox(14, titleLbl, orn, msgLbl, statsGrid, btns);
         content.setAlignment(Pos.CENTER);
-        content.setPadding(new Insets(30));
-        content.setStyle("-fx-border-color: " + accent + "88; -fx-border-width: 3; -fx-border-radius: 4; -fx-background-radius: 4;");
+        content.setPadding(new Insets(32, 36, 28, 36));
 
-        StackPane root = new StackPane(bg, content);
-        
-        // --- Animated Fade-In ---
+        StackPane root = new StackPane(bgCanvas, vignette, content);
         root.setOpacity(0);
-        FadeTransition fadeIn = new FadeTransition(Duration.seconds(0.8), root);
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(700), root);
         fadeIn.setToValue(1.0);
         fadeIn.play();
 
-        popup.setScene(new Scene(root, popW, popH));
-        popup.setTitle("Game Over");
-
+        popup.setScene(new Scene(root, PW, PH));
         popup.setOnShown(e -> centerPopup(popup));
         popup.showAndWait();
     }
@@ -1017,45 +1049,207 @@ public class GameView {
         render();
     }
 
+    // ── Pause-menu helpers (style mirrors MainMenuScreen) ──────────────
+
+    private void drawPauseMenuBackground(javafx.scene.canvas.Canvas canvas, int w, int h) {
+        javafx.scene.canvas.GraphicsContext gc = canvas.getGraphicsContext2D();
+        SpriteSheet wallSheet = new SpriteSheet("/assets/walls_x3.png", 48);
+        gc.setFill(javafx.scene.paint.Color.web("#0a0a14"));
+        gc.fillRect(0, 0, w, h);
+        if (!wallSheet.isLoaded()) return;
+        javafx.scene.image.Image[] wt = {
+            wallSheet.getSprite(0,1), wallSheet.getSprite(1,1),
+            wallSheet.getSprite(2,1), wallSheet.getSprite(3,1)
+        };
+        javafx.scene.image.Image[] ft = {
+            wallSheet.getSprite(0,3), wallSheet.getSprite(1,3),
+            wallSheet.getSprite(2,3), wallSheet.getSprite(3,3)
+        };
+        for (int y = 0; y <= h; y += 48) {
+            for (int x = 0; x <= w; x += 48) {
+                int hash = Math.abs((x * 73856093) ^ (y * 19349663));
+                boolean isWall = (y < 48) || (y >= h - 48) || (x < 48) || (x >= w - 48);
+                javafx.scene.image.Image tile = isWall
+                    ? (wt[hash % wt.length]) : (ft[hash % ft.length]);
+                if (tile != null) gc.drawImage(tile, x, y, 48, 48);
+            }
+        }
+        gc.setFill(javafx.scene.paint.Color.web("#0a0a14", 0.60));
+        gc.fillRect(0, 0, w, h);
+    }
+
+    private javafx.scene.control.Button pauseMenuBtn(String text, boolean destructive) {
+        javafx.scene.control.Button btn = new javafx.scene.control.Button(text);
+        btn.setFont(Font.font("Serif", javafx.scene.text.FontWeight.BOLD, 20));
+        btn.setPrefWidth(320);
+        btn.setPrefHeight(52);
+        btn.setAlignment(javafx.geometry.Pos.CENTER);
+
+        if (destructive) {
+            String base = "-fx-background-color: linear-gradient(to bottom,#5a2020,#381414,#281010,#381414);"
+                + "-fx-text-fill:#e08080;-fx-background-radius:6;-fx-border-radius:6;"
+                + "-fx-border-color:#8b4040 #5a2020 #3a1818 #8b4040;-fx-border-width:2;"
+                + "-fx-cursor:hand;-fx-effect:innershadow(gaussian,rgba(0,0,0,0.5),6,0,0,3);";
+            String hover = "-fx-background-color: linear-gradient(to bottom,#6a2828,#4a1c1c,#381414,#4a1c1c);"
+                + "-fx-text-fill:#ffaaaa;-fx-background-radius:6;-fx-border-radius:6;"
+                + "-fx-border-color:#cc6060 #8b4040 #5a2020 #cc6060;-fx-border-width:2;"
+                + "-fx-cursor:hand;-fx-effect:dropshadow(gaussian,rgba(200,80,80,0.3),12,0,0,0);";
+            String pressed = "-fx-background-color: linear-gradient(to bottom,#1c0e0e,#241212,#2a1414);"
+                + "-fx-text-fill:#a07070;-fx-background-radius:6;-fx-border-radius:6;"
+                + "-fx-border-color:#5a2020 #8b4040 #8b4040 #5a2020;-fx-border-width:2;"
+                + "-fx-cursor:hand;";
+            btn.setStyle(base);
+            btn.setOnMouseEntered(e -> btn.setStyle(hover));
+            btn.setOnMouseExited(e  -> btn.setStyle(base));
+            btn.setOnMousePressed(e  -> btn.setStyle(pressed));
+            btn.setOnMouseReleased(e -> btn.setStyle(btn.isHover() ? hover : base));
+        } else {
+            String base = "-fx-background-color: linear-gradient(to bottom,#4a4438,#2e2a22,#1e1b16,#2a2720,#3a362e);"
+                + "-fx-text-fill:#c8b880;-fx-background-radius:6;-fx-border-radius:6;"
+                + "-fx-border-color:#8b7940 #5a4e30 #3a3220 #8b7940;-fx-border-width:2;"
+                + "-fx-cursor:hand;-fx-effect:innershadow(gaussian,rgba(0,0,0,0.5),6,0,0,3);";
+            String hover = "-fx-background-color: linear-gradient(to bottom,#5a5448,#3e3a30,#2a2720,#353028,#4a4638);"
+                + "-fx-text-fill:#f0e0a0;-fx-background-radius:6;-fx-border-radius:6;"
+                + "-fx-border-color:#c8a850 #8b7940 #5a4e30 #c8a850;-fx-border-width:2;"
+                + "-fx-cursor:hand;-fx-effect:dropshadow(gaussian,rgba(200,168,80,0.3),12,0,0,0);";
+            String pressed = "-fx-background-color: linear-gradient(to bottom,#1e1b16,#252018,#2e2a22);"
+                + "-fx-text-fill:#a89860;-fx-background-radius:6;-fx-border-radius:6;"
+                + "-fx-border-color:#5a4e30 #8b7940 #8b7940 #5a4e30;-fx-border-width:2;"
+                + "-fx-cursor:hand;";
+            btn.setStyle(base);
+            btn.setOnMouseEntered(e -> btn.setStyle(hover));
+            btn.setOnMouseExited(e  -> btn.setStyle(base));
+            btn.setOnMousePressed(e  -> btn.setStyle(pressed));
+            btn.setOnMouseReleased(e -> btn.setStyle(btn.isHover() ? hover : base));
+        }
+        return btn;
+    }
+
     private void showInGameMenu() {
         if (animationTimer != null) animationTimer.stop();
 
-        ButtonType save    = new ButtonType("Save");
-        ButtonType load    = new ButtonType("Load");
-        ButtonType mainMenu = new ButtonType("Main Menu");
-        ButtonType resume  = new ButtonType("Resume");
+        javafx.stage.Stage dialog = new javafx.stage.Stage();
+        dialog.initOwner(stage);
+        dialog.initModality(javafx.stage.Modality.WINDOW_MODAL);
+        dialog.initStyle(javafx.stage.StageStyle.UNDECORATED);
+        dialog.setResizable(false);
 
-        Alert alert = new Alert(Alert.AlertType.NONE,
-                "Press Save to save your progress,\nLoad to restore a save, or\nMain Menu to quit.",
-                save, load, mainMenu, resume);
-        alert.setTitle("Dungeon KUrawler");
-        alert.setHeaderText("Game Menu");
-        alert.initOwner(stage);
+        final int DW = 460, DH = 430;
 
-        alert.showAndWait().ifPresent(choice -> {
-            if (choice == save) {
-                boolean saved = screenManager.showSaveDialog();
-                messageLabel.setText(saved ? "Game saved." : "Save cancelled.");
-            } else if (choice == load) {
-                boolean loaded = screenManager.showLoadDialogAndStart();
-                if (loaded) {
-                    animationTimer = null;
-                    return;
-                } else {
-                    messageLabel.setText("No save file found.");
-                }
-            } else if (choice == mainMenu) {
-                GameSession s = controller.getSession();
-                if (s.isEditorTestPlay()) {
-                    shutdown();
-                    screenManager.returnToEditorAfterTest(
-                            s.getMap(), "Returned to level editor.");
-                } else {
-                    screenManager.showMainMenu();
-                }
-                return;
+        // Dungeon tile background — same as main menu
+        javafx.scene.canvas.Canvas bg = new javafx.scene.canvas.Canvas(DW, DH);
+        drawPauseMenuBackground(bg, DW, DH);
+
+        // Radial dark overlay so the central content reads clearly
+        javafx.scene.layout.Pane overlay = new javafx.scene.layout.Pane();
+        overlay.setPrefSize(DW, DH);
+        overlay.setStyle("-fx-background-color: radial-gradient("
+                + "center 50% 40%, radius 60%, rgba(0,0,0,0.1), rgba(0,0,0,0.72));");
+
+        // Title — Serif Bold gold with glow, matching main menu
+        javafx.scene.control.Label title = new javafx.scene.control.Label("GAME MENU");
+        title.setFont(Font.font("Serif", javafx.scene.text.FontWeight.BOLD, 36));
+        title.setTextFill(javafx.scene.paint.Color.web("#e8c84a"));
+        title.setAlignment(javafx.geometry.Pos.CENTER);
+        javafx.scene.effect.InnerShadow engrave =
+                new javafx.scene.effect.InnerShadow(4, 1, 2,
+                        javafx.scene.paint.Color.web("#5a4210"));
+        javafx.scene.effect.DropShadow outerGlow =
+                new javafx.scene.effect.DropShadow(22,
+                        javafx.scene.paint.Color.web("#ff9500", 0.45));
+        outerGlow.setInput(engrave);
+        javafx.scene.effect.DropShadow deepShadow =
+                new javafx.scene.effect.DropShadow(8, 2, 3,
+                        javafx.scene.paint.Color.web("#000000", 0.85));
+        deepShadow.setInput(outerGlow);
+        title.setEffect(deepShadow);
+
+        // Ornament — same style as main menu
+        javafx.scene.control.Label ornament1 =
+                new javafx.scene.control.Label("━━━━ ✦ ✦ ✦ ━━━━");
+        ornament1.setFont(Font.font("Monospaced", 16));
+        ornament1.setTextFill(javafx.scene.paint.Color.web("#8b6914", 0.75));
+        ornament1.setEffect(new javafx.scene.effect.DropShadow(4, 0, 1,
+                javafx.scene.paint.Color.web("#000000", 0.5)));
+
+        // Stone buttons — identical factory to main menu's stoneButton()
+        javafx.scene.control.Button resumeBtn = pauseMenuBtn("▶  Resume", false);
+        javafx.scene.control.Button saveBtn   = pauseMenuBtn("Save Game",    false);
+        javafx.scene.control.Button loadBtn   = pauseMenuBtn("Load Game",    false);
+        javafx.scene.control.Button menuBtn   = pauseMenuBtn("⚔  Main Menu", true);
+
+        final String[] choice = {null};
+        resumeBtn.setOnAction(e -> { choice[0] = "resume"; dialog.close(); });
+        saveBtn.setOnAction(e   -> { choice[0] = "save";   dialog.close(); });
+        loadBtn.setOnAction(e   -> { choice[0] = "load";   dialog.close(); });
+        menuBtn.setOnAction(e   -> { choice[0] = "menu";   dialog.close(); });
+
+        javafx.scene.control.Label ornament2 =
+                new javafx.scene.control.Label("━━━━ ✦ ✦ ✦ ━━━━");
+        ornament2.setFont(Font.font("Monospaced", 16));
+        ornament2.setTextFill(javafx.scene.paint.Color.web("#8b6914", 0.75));
+        ornament2.setEffect(new javafx.scene.effect.DropShadow(4, 0, 1,
+                javafx.scene.paint.Color.web("#000000", 0.5)));
+
+        javafx.scene.control.Label hint =
+                new javafx.scene.control.Label("Press ESC to return to the dungeon");
+        hint.setFont(Font.font("Serif", 12));
+        hint.setTextFill(javafx.scene.paint.Color.web("#5a5a66"));
+        hint.setEffect(new javafx.scene.effect.DropShadow(2, 0, 1,
+                javafx.scene.paint.Color.BLACK));
+
+        javafx.scene.layout.VBox menu = new javafx.scene.layout.VBox(12,
+                title, ornament1,
+                resumeBtn, saveBtn, loadBtn, menuBtn,
+                ornament2, hint);
+        menu.setAlignment(javafx.geometry.Pos.CENTER);
+        menu.setPadding(new javafx.geometry.Insets(32, 40, 24, 40));
+
+        javafx.scene.layout.StackPane root =
+                new javafx.scene.layout.StackPane(bg, overlay, menu);
+
+        // ESC while dialog is open → close and resume
+        root.setOnKeyPressed(ke -> {
+            if (ke.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                choice[0] = "resume";
+                dialog.close();
             }
         });
+
+        javafx.scene.Scene dialogScene = new javafx.scene.Scene(root, DW, DH);
+        dialog.setScene(dialogScene);
+
+        // Centre relative to the game window, not the OS screen
+        dialog.setOnShown(ev -> {
+            dialog.setX(stage.getX() + (stage.getWidth()  - DW) / 2.0);
+            dialog.setY(stage.getY() + (stage.getHeight() - DH) / 2.0);
+            root.requestFocus();
+        });
+
+        dialog.showAndWait();
+
+        // Handle choice
+        if ("save".equals(choice[0])) {
+            boolean saved = screenManager.showSaveDialog();
+            messageLabel.setText(saved ? "Game saved." : "Save cancelled.");
+        } else if ("load".equals(choice[0])) {
+            boolean loaded = screenManager.showLoadDialogAndStart();
+            if (loaded) {
+                animationTimer = null;
+                return;
+            } else {
+                messageLabel.setText("No save file found.");
+            }
+        } else if ("menu".equals(choice[0])) {
+            GameSession s = controller.getSession();
+            if (s.isEditorTestPlay()) {
+                shutdown();
+                screenManager.returnToEditorAfterTest(s.getMap(), "Returned to level editor.");
+            } else {
+                screenManager.showMainMenu();
+            }
+            return;
+        }
 
         if (animationTimer != null) animationTimer.start();
     }
