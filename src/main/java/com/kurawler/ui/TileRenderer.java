@@ -191,8 +191,6 @@ public class TileRenderer {
                 { "/assets/dc_fountain_blue.png", "Stone Fountain" },
                 { "/assets/dc_fountain_sparkling.png", "Magic Fountain" },
                 { "/assets/dc_bookshelf.png", "Bookshelf" },
-                { "/assets/dc_bookshelf.png", "Ancient Bookshelf" },
-                { "/assets/dc_bookshelf.png", "Wall Shelf" },
                 { "/assets/dc_bookshelf_book.png", "Book Stack" },
                 { "/assets/dc_book.png", "Reading Lectern" },
                 { "/assets/dc_pedestal.png", "Stone Pedestal" },
@@ -292,15 +290,14 @@ public class TileRenderer {
 
 
     /**
-     * Registers each weapon using an expanded per-cell crop (±12px pad) on the x3 sheet so
-     * blades that extend past the 48px grid line are not clipped. Names follow WEAPON_GRID rows.
+     * Registers each weapon with row-aware expanded crops on weapons_x3.png so blades that
+     * bleed past the 48px grid are fully captured without neighbouring-cell fragments.
      */
     private void addWeaponSheetCells(Image sheet) {
         if (sheet == null) {
             return;
         }
         final int tile = SPRITE_SIZE;
-        final int pad = 12;
         int cols = (int) (sheet.getWidth() / tile);
         int rows = (int) (sheet.getHeight() / tile);
         for (int r = 0; r < rows && r < WEAPON_GRID.length; r++) {
@@ -309,7 +306,7 @@ public class TileRenderer {
                 if (label == null || label.isEmpty()) {
                     continue;
                 }
-                Image crop = cropWeaponCell(sheet, c, r, tile, pad);
+                Image crop = cropWeaponCell(sheet, c, r, tile);
                 if (crop == null || crop.getWidth() * crop.getHeight() < 120) {
                     continue;
                 }
@@ -320,13 +317,45 @@ public class TileRenderer {
         }
     }
 
-    /** Expanded crop for one weapons_x3 grid cell (sheet pixels, then trimmed). */
-    private Image cropWeaponCell(Image sheet, int col, int row, int tile, int pad) {
-        int x0 = Math.max(0, col * tile - pad);
-        int y0 = Math.max(0, row * tile - pad);
-        int x1 = Math.min((int) sheet.getWidth(), (col + 1) * tile + pad);
-        int y1 = Math.min((int) sheet.getHeight(), (row + 1) * tile + pad);
+    /**
+     * Per-cell crop on weapons_x3: measure art inside the 48px cell, then expand only
+     * toward edges where pixels touch the cell boundary (avoids neighbour bleed).
+     */
+    private Image cropWeaponCell(Image sheet, int col, int row, int tile) {
+        int cx = col * tile;
+        int cy = row * tile;
+        int[] bb = SpriteAtlas.opaqueBounds(cropSheetPx(sheet, cx, cy, tile, tile));
+        if (bb == null) {
+            return null;
+        }
+        boolean touchLeft = bb[0] <= 1;
+        boolean touchTop = bb[1] <= 1;
+        boolean touchRight = bb[2] >= tile - 2;
+        boolean touchBottom = bb[3] >= tile - 2;
+
+        int pl = touchLeft && col > 0 ? 14 : 4;
+        int pr = touchRight && col < 9 ? 14 : 4;
+        int pt = touchTop ? (row > 0 ? 14 : 6) : 4;
+        int pb = touchBottom ? bottomPadForWeaponRow(row) : (row >= 3 ? 12 : 4);
+
+        int x0 = Math.max(0, cx - pl);
+        int y0 = Math.max(0, cy - pt);
+        int x1 = Math.min((int) sheet.getWidth(), cx + tile + pr);
+        int y1 = Math.min((int) sheet.getHeight(), cy + tile + pb);
         return trimTileCrop(cropSheetPx(sheet, x0, y0, x1 - x0, y1 - y0));
+    }
+
+    private static int bottomPadForWeaponRow(int row) {
+        if (row == 0) {
+            return 22;
+        }
+        if (row == 1) {
+            return 18;
+        }
+        if (row <= 4) {
+            return 20;
+        }
+        return 24;
     }
 
     /** Direct pixel crop on an x3 sheet (no base-pixel scaling). */
@@ -364,7 +393,7 @@ public class TileRenderer {
         }
         String unique = registerUnique(name);
         atlasRegistry.put(unique, crop);
-        editorAssets.add(new EditorAsset(unique, "Walls/Floors", AssetKind.STATIC));
+        editorAssets.add(new EditorAsset(unique, "Walls/Floors", AssetKind.TERRAIN_WALL));
     }
 
     /** Crops a multi-tile region (base-pixel coords) out of an x3 sheet and registers it. */
@@ -459,11 +488,11 @@ public class TileRenderer {
             { "Hand Axe", "Battle Axe", "Broad Axe", "War Axe", "Double Axe", "Pick Axe", "War Pick", "Mace", "Morningstar", "Flail" },
             { "Dagger", "Knife", "Stiletto", "Rune Dagger", "Jeweled Dagger", "Spear", "Trident", "Halberd", "Glaive", "Bardiche" },
             { "Quarterstaff", "Staff", "Elemental Staff", "Ice Staff", "Fire Staff", "Whip", "Club", "Giant Club", "Hammer", "Great Mace" },
-            { "Short Bow", "Longbow", "Crossbow", "Sling", "Blowgun", "Boomerang", "Javelin", "Throwing Net", "Tomahawk", "Boomerang" },
+            { "Short Bow", "Longbow", "Crossbow", "Sling", "Blowgun", "Boomerang", "Javelin", "Throwing Net", "Tomahawk", "Returning Boomerang" },
             { "Katana", "Demon Blade", "Eudemon Blade", "Double Sword", "Triple Sword", "Elegant Sword", "Quick Blade", "Captain's Sword", "Falchion", "Rapier" },
             { "Orcish Dagger", "Orcish Sword", "Orcish Great Sword", "Elven Dagger", "Elven Short Sword", "Elven Long Sword", "Dwarven Dagger", "Dwarven Sword", "Dwarven Great Sword", "Dwarven Axe" },
-            { "Blessed Blade", "Demon Trident", "Double Sword", "Elder Club", "Giant Spiked Club", "Giant Club", "Giant Flail", "Giant Hammer", "Giant Axe", "Giant Axe" },
-            { "Dagger", "Quick Blade", "Short Sword", "Great Sword", "Long Sword", "Bastard Sword", "Claymore", "Katana", "Double Sword", "Triple Sword" },
+            { "Blessed Blade", "Demon Trident", "Twin Blade", "Elder Club", "Giant Spiked Club", "Giant Club", "Giant Flail", "Giant Hammer", "Giant Axe", "Giant Greataxe" },
+            { "Curved Dagger", "Swift Blade", "Broad Sword", "Champion Great Sword", "Knight Long Sword", "Heavy Bastard Sword", "Claymore", "Samurai Katana", "Dual Blade", "Triple Blade" },
             { "Lance", "Bardiche", "Trishula", "Partisan", "Glaive", "Halberd", "Scythe", "Poleaxe", "Quarterstaff", "Lajatang" },
     };
 
@@ -629,13 +658,25 @@ public class TileRenderer {
     }
 
     private void loadWeapons() {
-        if (!weapons.isLoaded()) return;
-        swordSprite = weapons.getSprite(0, 0);
-        axeSprite = weapons.getSprite(1, 0);
-        bowSprite = weapons.getSprite(2, 0);
-        staffSprite = weapons.getSprite(3, 0);
-        daggerSprite = weapons.getSprite(4, 0);
-        hammerSprite = weapons.getSprite(5, 0);
+        if (!weapons.isLoaded()) {
+            return;
+        }
+        Image sheet = loadImg("/assets/weapons_x3.png");
+        if (sheet != null) {
+            int tile = SPRITE_SIZE;
+            swordSprite = cropWeaponCell(sheet, 0, 0, tile);
+            axeSprite = cropWeaponCell(sheet, 0, 1, tile);
+            daggerSprite = cropWeaponCell(sheet, 0, 2, tile);
+            staffSprite = cropWeaponCell(sheet, 2, 3, tile);
+            hammerSprite = cropWeaponCell(sheet, 8, 3, tile);
+            bowSprite = cropWeaponCell(sheet, 0, 4, tile);
+        }
+        if (swordSprite == null) swordSprite = weapons.getSprite(0, 0);
+        if (axeSprite == null) axeSprite = weapons.getSprite(0, 1);
+        if (bowSprite == null) bowSprite = weapons.getSprite(0, 4);
+        if (staffSprite == null) staffSprite = weapons.getSprite(2, 3);
+        if (daggerSprite == null) daggerSprite = weapons.getSprite(0, 2);
+        if (hammerSprite == null) hammerSprite = weapons.getSprite(8, 3);
         armorSprite = weapons.getSprite(4, 3);
         shieldSprite = weapons.getSprite(6, 3);
         if (axeSprite == null) axeSprite = swordSprite;
@@ -838,8 +879,13 @@ public class TileRenderer {
             drawConsumable(gc, screenX, screenY, pt);
             return;
         }
-        // Name-aware sprite (handles shield, ring, gem, all weapon kinds).
-        drawSprite(gc, getSpriteForItem(item), screenX, screenY, Color.web("#9c27b0"));
+        Image sprite = getSpriteForItem(item);
+        if (sprite != null) {
+            drawScaledFit(gc, sprite, screenX, screenY, tileSize, tileSize * 0.18);
+        } else {
+            gc.setFill(Color.web("#9c27b0"));
+            gc.fillRoundRect(screenX + 6, screenY + 4, tileSize - 12, tileSize - 8, 6, 6);
+        }
     }
 
     public void drawWeaponByName(GraphicsContext gc, int screenX, int screenY, String weaponName) {
@@ -870,11 +916,16 @@ public class TileRenderer {
     }
 
     public void drawContainerByName(GraphicsContext gc, int screenX, int screenY, String name) {
+        gc.setImageSmoothing(false);
         Image sprite = spriteForAsset(name);
         if (sprite == null) {
             sprite = chestSprite;
         }
-        drawSprite(gc, sprite, screenX, screenY, Color.web("#795548"));
+        if (sprite != null && atlasRegistry.containsKey(name)) {
+            drawScaledFit(gc, sprite, screenX, screenY, tileSize, tileSize * 0.10);
+        } else {
+            drawSprite(gc, sprite, screenX, screenY, Color.web("#795548"));
+        }
     }
 
 
@@ -886,13 +937,28 @@ public class TileRenderer {
         return n.contains("bookshelf") || n.contains("wall shelf") || n.contains("shelf");
     }
 
+    /** Padding for catalog sprites so large structures and small items both fit cleanly. */
+    private double catalogDrawPadding(String name, Image sprite) {
+        if (isShelfLikeName(name)) {
+            return 2;
+        }
+        if (name != null && atlasRegistry.containsKey(name) && sprite != null) {
+            double aspect = sprite.getWidth() / Math.max(1.0, sprite.getHeight());
+            if (aspect > 1.35 || aspect < 0.72) {
+                return 4;
+            }
+            return tileSize * 0.10;
+        }
+        return tileSize * 0.08;
+    }
+
     // ---------- STATIC OBJECTS (searchable) ----------
 
     public void drawSearchable(GraphicsContext gc, int screenX, int screenY, String name) {
         gc.setImageSmoothing(false);
         Image sprite = spriteForAsset(name);
         if (sprite != null) {
-            double pad = isShelfLikeName(name) ? 2 : tileSize * 0.08;
+            double pad = catalogDrawPadding(name, sprite);
             drawScaledFit(gc, sprite, screenX, screenY, tileSize, pad);
         } else if (name != null) {
             String lower = name.toLowerCase();
@@ -914,7 +980,8 @@ public class TileRenderer {
 
     private void drawColumnProp(GraphicsContext gc, int screenX, int screenY) {
         if (columnSprite != null) {
-            gc.drawImage(columnSprite, screenX, screenY, tileSize, tileSize);
+            gc.setImageSmoothing(false);
+            drawScaledFit(gc, columnSprite, screenX, screenY, tileSize, tileSize * 0.06);
             return;
         }
         double cx = screenX + tileSize / 2.0 - 6;
@@ -930,7 +997,8 @@ public class TileRenderer {
 
     private void drawPoolProp(GraphicsContext gc, int screenX, int screenY) {
         if (poolSprite != null) {
-            gc.drawImage(poolSprite, screenX, screenY, tileSize, tileSize);
+            gc.setImageSmoothing(false);
+            drawScaledFit(gc, poolSprite, screenX, screenY, tileSize, tileSize * 0.06);
             return;
         }
         double cx = screenX + tileSize / 2.0;
@@ -1161,12 +1229,12 @@ public class TileRenderer {
 
         Image wall = wallSpriteFor(objectName);
         if (wall != null) {
-            gc.drawImage(wall, 1, 1, s - 2, s - 2);
+            drawScaledFit(gc, wall, 0, 0, s, atlasRegistry.containsKey(objectName) ? 2 : 1);
             return;
         }
         Image floor = floorSpriteFor(objectName);
         if (floor != null) {
-            gc.drawImage(floor, 1, 1, s - 2, s - 2);
+            drawScaledFit(gc, floor, 0, 0, s, atlasRegistry.containsKey(objectName) ? 2 : 1);
             return;
         }
 
@@ -1316,6 +1384,7 @@ public class TileRenderer {
         if (img == null) {
             return;
         }
+        gc.setImageSmoothing(false);
         double avail = box - pad * 2;
         double iw = img.getWidth();
         double ih = img.getHeight();
@@ -1360,7 +1429,12 @@ public class TileRenderer {
         if (f != null) {
             gc.setFill(Color.web("#1a1a2e"));
             gc.fillRect(screenX, screenY, tileSize, tileSize);
-            gc.drawImage(f, screenX, screenY, tileSize, tileSize);
+            gc.setImageSmoothing(false);
+            if (atlasRegistry.containsKey(name)) {
+                drawScaledFit(gc, f, screenX, screenY, tileSize, 1);
+            } else {
+                gc.drawImage(f, screenX, screenY, tileSize, tileSize);
+            }
         } else {
             drawFloor(gc, screenX, screenY);
         }
@@ -1383,9 +1457,11 @@ public class TileRenderer {
             if (so.wasSearched()) {
                 gc.setGlobalAlpha(0.62);
             }
-            // Non-square structures (big door, arch, carpet...) keep their aspect ratio.
-            if (Math.abs(sprite.getWidth() - sprite.getHeight()) > 1) {
-                drawScaledFit(gc, sprite, screenX, screenY, tileSize, 0);
+            String propName = so.getName();
+            double pad = catalogDrawPadding(propName, sprite);
+            boolean wide = Math.abs(sprite.getWidth() - sprite.getHeight()) > 1;
+            if (wide || atlasRegistry.containsKey(propName)) {
+                drawScaledFit(gc, sprite, screenX, screenY, tileSize, pad);
             } else {
                 gc.drawImage(sprite, screenX, screenY, tileSize, tileSize);
             }

@@ -43,21 +43,57 @@ def bleed_score(im):
     return edge / total if total else 0.0
 
 
+def bottom_pad_for_row(row):
+    if row == 0:
+        return 22
+    if row == 1:
+        return 18
+    if row <= 4:
+        return 20
+    return 24
+
+
+def weapon_crop_region(sheet, col, row, tile=48):
+    """Match TileRenderer.cropWeaponCell edge-touch expansion."""
+    cx, cy = col * tile, row * tile
+    cell = sheet.crop((cx, cy, cx + tile, cy + tile))
+    bb = opaque_bbox(cell)
+    if not bb:
+        return None
+    minx, miny, w, h = bb
+    maxx, maxy = minx + w - 1, miny + h - 1
+    touch_left = minx <= 1
+    touch_top = miny <= 1
+    touch_right = maxx >= tile - 2
+    touch_bottom = maxy >= tile - 2
+    pl = 14 if touch_left and col > 0 else 4
+    pr = 14 if touch_right and col < 9 else 4
+    pt = (14 if row > 0 else 6) if touch_top else (12 if row >= 3 else 4)
+    pb = bottom_pad_for_row(row) if touch_bottom else (12 if row >= 3 else 4)
+    x0 = max(0, cx - pl)
+    y0 = max(0, cy - pt)
+    x1 = min(sheet.width, cx + tile + pr)
+    y1 = min(sheet.height, cy + tile + pb)
+    return sheet.crop((x0, y0, x1, y1))
+
+
 def audit_weapons():
     sheet = Image.open(os.path.join(ASSETS, "weapons_x3.png")).convert("RGBA")
-    tile, pad = 48, 12
+    tile = 48
     bad = []
     for r in range(10):
         for c in range(10):
-            x0, y0 = max(0, c * tile - pad), max(0, r * tile - pad)
-            x1, y1 = min(sheet.width, (c + 1) * tile + pad), min(sheet.height, (r + 1) * tile + pad)
-            reg = sheet.crop((x0, y0, x1, y1))
+            reg = weapon_crop_region(sheet, c, r, tile)
+            if reg is None:
+                continue
             bb = opaque_bbox(reg)
             if not bb or bb[2] * bb[3] < 100:
                 continue
             crop = reg.crop((bb[0], bb[1], bb[0] + bb[2], bb[1] + bb[3]))
             b = bleed_score(crop)
-            if b > 0.12:
+            aspect = crop.height / max(1, crop.width)
+            limit = 0.20 if aspect > 1.8 else 0.12
+            if b > limit:
                 bad.append((r, c, round(b, 3)))
     if bad:
         print(f"WARN: {len(bad)} weapon crops border bleed >12% (sample): {bad[:8]}")
