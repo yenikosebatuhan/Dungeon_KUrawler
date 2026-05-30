@@ -1673,6 +1673,16 @@ public class GameView {
         return pos;
     }
 
+    public void shutdown() {
+        if (animationTimer != null) {
+            animationTimer.stop();
+            animationTimer = null;
+        }
+        if (toastTimer != null) {
+            toastTimer.stop();
+        }
+    }
+
     private Button popupButton(String text, String accentColor) {
         Button btn = new Button(text);
         btn.setFont(Font.font("Serif", FontWeight.BOLD, 13));

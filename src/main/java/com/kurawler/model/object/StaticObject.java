@@ -4,6 +4,8 @@ public class StaticObject extends GameObject {
 
     private boolean isPassable;
     private boolean isSearchable;
+    private boolean searched;
+    private Item hiddenItem;
 
     public StaticObject(String name, String description) {
         this(name, description, false, false);
@@ -16,13 +18,18 @@ public class StaticObject extends GameObject {
     }
 
     public boolean isPassable() { return isPassable; }
-    public boolean isSearchable() { return isSearchable; }
-
-    private Item hiddenItem;
-    private boolean searched;
+    protected void setPassable(boolean passable) { this.isPassable = passable; }
+    public boolean isSearchable() { return isSearchable && !searched; }
+    public boolean isSearched() { return searched; }
+    public boolean wasSearched() { return searched; }
+    public void markSearched() { this.searched = true; }
 
     public Item getHiddenItem() { return hiddenItem; }
     public void setHiddenItem(Item item) { this.hiddenItem = item; }
-    public boolean isSearched() { return searched; }
-    public void markSearched() { this.searched = true; }
+
+    public Item revealHiddenItem() {
+        Item item = hiddenItem;
+        hiddenItem = null;
+        return item;
+    }
 }

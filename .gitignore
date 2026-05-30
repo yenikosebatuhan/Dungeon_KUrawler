@@ -1,6 +1,9 @@
 # Build output
 out/
 
+# Generated sprite audit previews (scripts/audit_catalog_assets.py)
+src/main/resources/assets/_audit/
+
 # JavaFX SDK (downloaded dependency)
 lib/
 

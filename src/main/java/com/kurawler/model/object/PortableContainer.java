@@ -30,6 +30,18 @@ public class PortableContainer extends Item {
         return new ArrayList<>(contents);
     }
 
+    public List<Item> getContentsMutable() {
+        return contents;
+    }
+
+    public boolean removeItem(Item item) {
+        return contents.remove(item);
+    }
+
+    public boolean isEmpty() {
+        return contents.isEmpty();
+    }
+
     public int getCapacity() {
         return capacity;
     }

@@ -28,7 +28,7 @@ public class EnemySpawner {
     private long timeSinceLastSpawn;
     private Random random;
 
-    /** Time between spawn attempts in milliseconds. */
+    /** Time between spawn attempts in milliseconds (9 seconds per spec). */
     public static final long SPAWN_INTERVAL = 9000;
 
     /** Maximum number of living enemies allowed on the map. */
@@ -37,6 +37,9 @@ public class EnemySpawner {
     /**
      * Creates a spawner for the given session.
      *
+     * @requires session != null
+     * @modifies this.session, this.timeSinceLastSpawn, this.random
+     * @effects Initialises the spawner; throws IllegalArgumentException if session is null.
      * @param session the active game session; must not be null
      */
     public EnemySpawner(GameSession session) {
@@ -51,6 +54,10 @@ public class EnemySpawner {
     /**
      * Accumulates elapsed time and attempts a spawn when the interval is reached.
      *
+     * @requires deltaTime >= 0
+     * @modifies this.timeSinceLastSpawn, session.enemies (if spawn occurs)
+     * @effects Adds deltaTime to the accumulator. If accumulator >= SPAWN_INTERVAL,
+     *          attempts to spawn one enemy and resets the accumulator to 0.
      * @param deltaTime milliseconds elapsed since the last call
      */
     public void update(long deltaTime) {
@@ -83,39 +90,70 @@ public class EnemySpawner {
         }
 
         if (enemy != null) {
-            GridCell spawnCell = findEdgeSpawnLocation();
+            String diff = session.getDifficulty();
+            if ("Easy".equals(diff)) {
+                enemy.setMaxHealth((int)(enemy.getMaxHealth() * 0.7));
+                enemy.setHealth((int)(enemy.getHealth() * 0.7));
+                enemy.setStrength((int)(enemy.getStrength() * 0.7));
+            } else if ("Hard".equals(diff)) {
+                enemy.setMaxHealth((int)(enemy.getMaxHealth() * 1.3));
+                enemy.setHealth((int)(enemy.getHealth() * 1.3));
+                enemy.setStrength((int)(enemy.getStrength() * 1.3));
+            }
+
+            GridCell spawnCell = findSpawnLocation();
             if (spawnCell != null) {
-                enemy.setPosition(spawnCell.getRow(), spawnCell.getCol());
-                spawnCell.setOccupyingCharacter(enemy);
-                session.incrementEnemyCount();
+                enemy.moveToCell(spawnCell);
+                session.addEnemy(enemy);
             }
         }
     }
-
     /**
-     * Finds a random walkable, unoccupied cell along the map edges
-     * (top or bottom row).
+     * Finds a random walkable, unoccupied cell for spawning.
+     * Prefers edge cells (top/bottom row); falls back to any walkable cell
+     * far from the hero if edges are all walls.
      *
-     * @return a valid edge GridCell for spawning, or null if none available
+     * @return a valid GridCell for spawning, or null if none available
      */
-    private GridCell findEdgeSpawnLocation() {
+    private GridCell findSpawnLocation() {
         Map map = session.getMap();
         if (map == null) {
             return null;
         }
 
-        List<GridCell> candidates = new ArrayList<>();
-        int lastY = map.getGridHeight() - 1;
-
-        for (int x = 0; x < map.getGridWidth(); x++) {
-            addIfValidSpawn(map.getCellAt(x, 0), candidates);
-            addIfValidSpawn(map.getCellAt(x, lastY), candidates);
+        List<GridCell> edgeCandidates = new ArrayList<>();
+        int lastRow = map.getHeight() - 1;
+        int lastCol = map.getWidth() - 1;
+        for (int c = 0; c < map.getWidth(); c++) {
+            addIfValidSpawn(map.getCell(0, c), edgeCandidates);
+            addIfValidSpawn(map.getCell(lastRow, c), edgeCandidates);
+        }
+        for (int r = 1; r < lastRow; r++) {
+            addIfValidSpawn(map.getCell(r, 0), edgeCandidates);
+            addIfValidSpawn(map.getCell(r, lastCol), edgeCandidates);
         }
 
-        if (candidates.isEmpty()) {
-            return null;
+        if (!edgeCandidates.isEmpty()) {
+            return edgeCandidates.get(random.nextInt(edgeCandidates.size()));
         }
-        return candidates.get(random.nextInt(candidates.size()));
+
+        // Fallback: any walkable cell at least 5 tiles from hero
+        List<GridCell> fallback = new ArrayList<>();
+        com.kurawler.model.character.Hero hero = session.getHero();
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int c = 0; c < map.getWidth(); c++) {
+                GridCell cell = map.getCell(r, c);
+                if (cell == null || cell.isBlocked()) continue;
+                if (cell.getOccupyingCharacter() != null) continue;
+                if (hero != null) {
+                    int dist = Math.abs(r - hero.getRow()) + Math.abs(c - hero.getCol());
+                    if (dist < 5) continue;
+                }
+                fallback.add(cell);
+            }
+        }
+        if (fallback.isEmpty()) return null;
+        return fallback.get(random.nextInt(fallback.size()));
     }
 
     /**
@@ -128,12 +166,18 @@ public class EnemySpawner {
         if (cell == null || cell.isBlocked()) {
             return;
         }
+        if (cell.getOccupyingCharacter() != null) {
+            return;
+        }
         candidates.add(cell);
     }
 
     /**
      * Returns the time accumulated since the last spawn attempt.
      *
+     * @requires none
+     * @modifies none
+     * @effects Returns timeSinceLastSpawn in milliseconds.
      * @return elapsed time in milliseconds
      */
     public long getTimeSinceLastSpawn() {
@@ -142,6 +186,10 @@ public class EnemySpawner {
 
     /**
      * Resets the spawn timer to zero.
+     *
+     * @requires none
+     * @modifies this.timeSinceLastSpawn
+     * @effects Sets timeSinceLastSpawn to 0.
      */
     public void resetTimer() {
         this.timeSinceLastSpawn = 0;

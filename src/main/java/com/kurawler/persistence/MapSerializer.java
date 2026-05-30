@@ -4,23 +4,43 @@ import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Inventory;
 import com.kurawler.model.Map;
+import com.kurawler.model.achievement.Achievement;
+import com.kurawler.model.achievement.AchievementManager;
+import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.character.Knight;
+import com.kurawler.model.character.ShadowClone;
+import com.kurawler.model.character.Sorcerer;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Key;
+import com.kurawler.model.object.PortableContainer;
+import com.kurawler.model.object.Scroll;
+import com.kurawler.model.object.StaticContainer;
+import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
+import com.kurawler.model.object.Wearable;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MapSerializer {
 
     public boolean saveGameState(GameSession session, String filename) {
+        String saveName = deriveSaveName(filename);
+        return saveGameState(session, filename, saveName);
+    }
+
+    public boolean saveGameState(GameSession session, String filename, String saveName) {
         try {
+            ensureParentDirectory(filename);
             try (FileWriter writer = new FileWriter(filename)) {
-                writer.write(buildStateJson(session));
+                writer.write(buildStateJson(session, saveName));
             }
             System.out.println("[Persistence] Saved game state to " + filename);
             return true;
@@ -30,20 +50,36 @@ public class MapSerializer {
         }
     }
 
-    private String buildStateJson(GameSession session) {
+    private String deriveSaveName(String filename) {
+        String base = Paths.get(filename).getFileName().toString();
+        return base.endsWith(".json") ? base.substring(0, base.length() - 5) : base;
+    }
+
+    private String buildStateJson(GameSession session, String saveName) {
         Map map = session.getMap();
         StringBuilder sb = new StringBuilder();
         sb.append("{\n");
+        sb.append("  \"saveName\": \"").append(escape(saveName)).append("\",\n");
+        sb.append("  \"savedAt\": \"").append(Instant.now()).append("\",\n");
         sb.append("  \"width\": ").append(map.getWidth()).append(",\n");
         sb.append("  \"height\": ").append(map.getHeight()).append(",\n");
+        sb.append("  \"playDurationTimer\": ").append(session.getPlayDurationTimer()).append(",\n");
+        sb.append("  \"currentMode\": \"").append(escape(session.getCurrentMode())).append("\",\n");
+        sb.append("  \"targetObjective\": ").append(session.getTargetObjective() != null
+                ? buildObjectJson(session.getTargetObjective()) : "null").append(",\n");
         sb.append("  \"hero\": ").append(buildHeroJson(session.getHero())).append(",\n");
+        sb.append("  \"shadowClone\": ").append(buildShadowCloneJson(session.getShadowClone())).append(",\n");
+        sb.append("  \"achievements\": ").append(buildAchievementsJson(session.getAchievementManager())).append(",\n");
+        sb.append("  \"enemies\": ").append(buildEnemiesJson(session)).append(",\n");
         sb.append("  \"cells\": [");
 
         List<String> entries = new ArrayList<>();
         for (int row = 0; row < map.getHeight(); row++) {
             for (int col = 0; col < map.getWidth(); col++) {
                 GridCell cell = map.getCell(row, col);
-                if (!cell.isWalkable() || cell.hasObjects()) {
+                StaticObject so = cell.getStaticObject();
+                boolean hasSpecialStatic = so != null && (!so.isPassable() || so.isSearchable());
+                if (hasSpecialStatic || cell.hasObjects()) {
                     entries.add(buildCellJson(cell, row, col));
                 }
             }
@@ -53,6 +89,88 @@ public class MapSerializer {
             sb.append("\n    ").append(String.join(",\n    ", entries)).append("\n  ");
         }
         sb.append("]\n}");
+        return sb.toString();
+    }
+
+    private void ensureParentDirectory(String filename) throws IOException {
+        Path parent = Paths.get(filename).toAbsolutePath().getParent();
+        if (parent != null) {
+            java.nio.file.Files.createDirectories(parent);
+        }
+    }
+
+    private String buildEnemiesJson(GameSession session) {
+        List<String> entries = new ArrayList<>();
+        List<Enemy> enemies = new ArrayList<>(session.getEnemies());
+        collectMapEnemies(session.getMap(), enemies);
+        for (Enemy enemy : enemies) {
+            if (enemy != null && enemy.isAlive()) {
+                entries.add(buildEnemyJson(enemy));
+            }
+        }
+        return "[" + String.join(", ", entries) + "]";
+    }
+
+    private void collectMapEnemies(Map map, List<Enemy> enemies) {
+        if (map == null) return;
+        for (int row = 0; row < map.getHeight(); row++) {
+            for (int col = 0; col < map.getWidth(); col++) {
+                GridCell cell = map.getCell(row, col);
+                if (cell != null && cell.getOccupyingCharacter() instanceof Enemy) {
+                    Enemy enemy = (Enemy) cell.getOccupyingCharacter();
+                    if (!enemies.contains(enemy)) {
+                        enemies.add(enemy);
+                    }
+                }
+            }
+        }
+    }
+
+    private String buildEnemyJson(Enemy enemy) {
+        String type = enemy instanceof Sorcerer ? "Sorcerer"
+                : enemy instanceof Knight ? "Knight" : enemy.getClass().getSimpleName();
+        return "{ \"type\": \"" + type + "\""
+                + ", \"row\": " + enemy.getRow()
+                + ", \"col\": " + enemy.getCol()
+                + ", \"hp\": " + enemy.getHealth()
+                + ", \"mana\": " + enemy.getMana()
+                + ", \"energy\": " + enemy.getEnergy()
+                + ", \"str\": " + enemy.getStrength()
+                + ", \"def\": " + enemy.getDefensePower()
+                + " }";
+    }
+
+    private String buildShadowCloneJson(ShadowClone shadowClone) {
+        if (shadowClone == null) {
+            return "null";
+        }
+
+        return "{ \"row\": " + shadowClone.getRow()
+                + ", \"col\": " + shadowClone.getCol()
+                + ", \"hp\": " + shadowClone.getHealth()
+                + " }";
+    }
+
+    private String buildAchievementsJson(AchievementManager manager) {
+        if (manager == null) {
+            return "null";
+        }
+
+        List<String> unlocked = new ArrayList<>();
+        for (Achievement achievement : manager.getAchievements()) {
+            if (achievement.isUnlocked()) {
+                unlocked.add("\"" + escape(achievement.getName()) + "\"");
+            }
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("{ ");
+        sb.append("\"totalMoves\": ").append(manager.getTotalMoves());
+        sb.append(", \"enemiesKilled\": ").append(manager.getEnemiesKilled());
+        sb.append(", \"itemsCollected\": ").append(manager.getItemsCollected());
+        sb.append(", \"damageTaken\": ").append(manager.getDamageTaken());
+        sb.append(", \"unlocked\": [").append(String.join(", ", unlocked)).append("]");
+        sb.append(" }");
         return sb.toString();
     }
 
@@ -70,6 +188,12 @@ public class MapSerializer {
 
         String wpnName = hero.getEquippedWeapon() != null ? hero.getEquippedWeapon().getName() : "";
         sb.append(", \"equippedWeapon\": \"").append(escape(wpnName)).append("\"");
+        String armorName = hero.getEquippedArmor() != null ? hero.getEquippedArmor().getName() : "";
+        String shieldName = hero.getEquippedShield() != null ? hero.getEquippedShield().getName() : "";
+        String ringName = hero.getEquippedRing() != null ? hero.getEquippedRing().getName() : "";
+        sb.append(", \"equippedWearable\": \"").append(escape(armorName)).append("\"");
+        sb.append(", \"equippedShield\": \"").append(escape(shieldName)).append("\"");
+        sb.append(", \"equippedRing\": \"").append(escape(ringName)).append("\"");
 
         // Inventory — collect all non-null items
         Inventory inv = hero.getInventory();
@@ -94,6 +218,7 @@ public class MapSerializer {
     // kept for callers that only need map serialization (no hero)
     public boolean saveMapToFile(Map map, String filename) {
         try {
+            ensureParentDirectory(filename);
             try (FileWriter writer = new FileWriter(filename)) {
                 writer.write(buildMapJson(map));
             }
@@ -103,6 +228,11 @@ public class MapSerializer {
             e.printStackTrace();
             return false;
         }
+    }
+
+    /** JSON snapshot for editor undo / in-memory round-trip. */
+    public String mapToJson(Map map) {
+        return buildMapJson(map);
     }
 
     private String buildMapJson(Map map) {
@@ -116,7 +246,9 @@ public class MapSerializer {
         for (int row = 0; row < map.getHeight(); row++) {
             for (int col = 0; col < map.getWidth(); col++) {
                 GridCell cell = map.getCell(row, col);
-                if (!cell.isWalkable() || cell.hasObjects()) {
+                StaticObject so = cell.getStaticObject();
+                boolean hasSpecialStatic = so != null && (!so.isPassable() || so.isSearchable());
+                if (hasSpecialStatic || cell.hasObjects()) {
                     entries.add(buildCellJson(cell, row, col));
                 }
             }
@@ -134,6 +266,19 @@ public class MapSerializer {
         sb.append("{ \"row\": ").append(row);
         sb.append(", \"col\": ").append(col);
         sb.append(", \"walkable\": ").append(cell.isWalkable());
+
+        StaticObject so = cell.getStaticObject();
+        if (so != null && (!so.isPassable() || so.isSearchable())) {
+            sb.append(", \"staticObject\": {");
+            sb.append(" \"name\": \"").append(escape(so.getName())).append("\"");
+            sb.append(", \"description\": \"").append(escape(so.getDescription())).append("\"");
+            sb.append(", \"passable\": ").append(so.isPassable());
+            sb.append(", \"searchable\": ").append(so.isSearchable());
+            if (so.getHiddenItem() != null) {
+                sb.append(", \"hiddenItem\": ").append(buildObjectJson(so.getHiddenItem()));
+            }
+            sb.append(" }");
+        }
 
         List<GameObject> objects = cell.getObjects();
         if (!objects.isEmpty()) {
@@ -159,9 +304,30 @@ public class MapSerializer {
             sb.append(", \"healAmount\": ").append(((Consumable) obj).getHealAmount());
         } else if (obj instanceof Key) {
             sb.append(", \"keyId\": \"").append(escape(((Key) obj).getKeyId())).append("\"");
+        } else if (obj instanceof Wearable) {
+            sb.append(", \"defenseBonus\": ").append(((Wearable) obj).getDefenseBonus());
+        } else if (obj instanceof Scroll) {
+            Scroll scroll = (Scroll) obj;
+            sb.append(", \"text\": \"").append(escape(scroll.getText())).append("\"");
+            sb.append(", \"healAmount\": ").append(scroll.getHealAmount());
+        } else if (obj instanceof PortableContainer) {
+            PortableContainer container = (PortableContainer) obj;
+            sb.append(", \"capacity\": ").append(container.getCapacity());
+            sb.append(", \"contents\": ").append(buildItemListJson(container.getContents()));
+        } else if (obj instanceof StaticContainer) {
+            StaticContainer container = (StaticContainer) obj;
+            sb.append(", \"contents\": ").append(buildItemListJson(container.getContents()));
         }
         sb.append(" }");
         return sb.toString();
+    }
+
+    private String buildItemListJson(List<Item> items) {
+        List<String> entries = new ArrayList<>();
+        for (Item item : items) {
+            entries.add(buildObjectJson(item));
+        }
+        return "[" + String.join(", ", entries) + "]";
     }
 
     private String escape(String s) {
