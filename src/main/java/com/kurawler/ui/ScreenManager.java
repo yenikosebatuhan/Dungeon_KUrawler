@@ -33,6 +33,8 @@ public class ScreenManager {
     private static final Path LEGACY_MAP_SAVE = Paths.get("map_save.json");
     private static final DateTimeFormatter SAVE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    public static final int WINDOW_W = 1280;
+    public static final int WINDOW_H = 720;
 
     private final Stage stage;
     private final MapSerializer serializer = new MapSerializer();
@@ -68,7 +70,6 @@ public class ScreenManager {
         stage.setScene(menu.createScene());
         stage.setTitle("Dungeon KUrawler");
         stage.setResizable(false);
-        stage.sizeToScene(); 
         stage.show();
         stage.centerOnScreen();
     }

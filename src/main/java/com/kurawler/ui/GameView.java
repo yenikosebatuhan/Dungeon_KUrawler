@@ -117,10 +117,12 @@ public class GameView {
         int canvasW = mapWidth * TILE_SIZE;
         int canvasH = mapHeight * TILE_SIZE;
 
+        // The game canvas size is based on the map
         canvas = new Canvas(canvasW, canvasH);
         canvas.setOnMouseClicked(this::handleMouseClick);
 
-        hudCanvas = new Canvas(canvasW, HUD_HEIGHT);
+        // The HUD spans the entire fixed window width, not the map width
+        hudCanvas = new Canvas(ScreenManager.WINDOW_W, HUD_HEIGHT);
         hudCanvas.setOnMouseClicked(this::handleHudClick);
 
         achievementsLabel = new Label();
@@ -164,9 +166,31 @@ public class GameView {
             }
         });
 
-        StackPane canvasStack = new StackPane(canvas, messageLabel);
+        // --- FIXED VIEWPORT & AUTO-SCALING LOGIC ---
+        // Calculate available space for the map
+        double availableW = ScreenManager.WINDOW_W;
+        double availableH = ScreenManager.WINDOW_H - HUD_HEIGHT;
+
+        // Calculate scales to fit the map exactly into the available space
+        double scaleX = availableW / canvasW;
+        double scaleY = availableH / canvasH;
+        double scale = Math.min(scaleX, scaleY);
+        
+        // Prevent extremely tiny maps (e.g. 5x5) from zooming in to the point of being pixelated
+        scale = Math.min(scale, 1.5); 
+
+        canvas.getTransforms().clear();
+        canvas.getTransforms().add(new javafx.scene.transform.Scale(scale, scale));
+
+        // Group is required in JavaFX so the parent StackPane respects the new scaled bounds
+        javafx.scene.Group canvasGroup = new javafx.scene.Group(canvas);
+        StackPane mapContainer = new StackPane(canvasGroup);
+        mapContainer.setStyle("-fx-background-color: #0a0a10;"); 
+        
+        StackPane canvasStack = new StackPane(mapContainer, messageLabel);
         StackPane.setAlignment(messageLabel, Pos.BOTTOM_CENTER);
         StackPane.setMargin(messageLabel, new Insets(0, 0, 24, 0));
+        // -------------------------------------------
 
         StackPane hudStack = new StackPane(hudCanvas, achievementPopupLabel);
         hudStack.setPrefHeight(HUD_HEIGHT);
@@ -183,7 +207,8 @@ public class GameView {
         root.setCenter(canvasStack);
         root.setStyle("-fx-background-color: #0a0a10;");
 
-        Scene scene = new Scene(root, canvasW, canvasH + HUD_HEIGHT);
+        // Lock the Scene to the global fixed size
+        Scene scene = new Scene(root, ScreenManager.WINDOW_W, ScreenManager.WINDOW_H);
         scene.getRoot().setStyle(
                 "-fx-font-family: 'Serif'; "
                 + "-fx-base: #1e1b16; "
@@ -195,6 +220,7 @@ public class GameView {
         stage.setTitle("Dungeon KUrawler");
         stage.setScene(scene);
         stage.setResizable(false);
+        // NO stage.sizeToScene() here!
         stage.show();
 
         playScene = scene;
