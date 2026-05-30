@@ -95,11 +95,6 @@ public class GameView {
     private Region dimOverlay;
     private StackPane inGameMenuOverlay;
 
-    private static final double HUD_PANEL_W   = 66;
-    private static final double HUD_PANEL_GAP = 5;
-    private static final double HUD_PAD       = 8;
-    private double hudBagX, hudPauseX, hudMenuX;
-
     public GameView(GameController controller, ScreenManager screenManager) {
         this.controller = controller;
         this.screenManager = screenManager;
@@ -214,27 +209,35 @@ public class GameView {
     private void handleHudClick(MouseEvent event) {
         double x = event.getX();
         double y = event.getY();
-        double pad = HUD_PAD;
+        double pad = 6;
         double portraitSize = HUD_HEIGHT - pad * 2;
 
-        // Portrait (left panel) → character sheet
-        if (x >= pad && x < pad + portraitSize && y >= pad && y < HUD_HEIGHT - pad) {
+        if (x >= pad && x < pad + portraitSize && y >= pad && y < pad + portraitSize) {
             AudioManager.getInstance().play("button");
             showCharacterSheetPopup(controller.getSession());
             return;
         }
+        double barStartX = pad + portraitSize + 8;
+        double barW = 150;
+        double statsX = barStartX + barW + 14;
+        double w = hudCanvas.getWidth();
+        double btnSize  = (HUD_HEIGHT - pad * 2 - 8) / 2.0 - 2;
+        double btnX     = w - pad - (btnSize + 8);
+        double bagBtnX  = btnX - 8 - 60;
+        double achX     = bagBtnX - 8 - 60;
+        double midLeft  = statsX + 120 + 14;
+        double midRight = achX - 8;
+        double statsX2  = midLeft + Math.max(0, (midRight - midLeft - 100) / 2.0);
 
-        // Right-aligned panels — use positions calculated in the last drawHud call.
-        // hudBagX / hudPauseX / hudMenuX are 0 until the first render; guard accordingly.
-        if (hudBagX > 0) {
-            if (x >= hudBagX && x < hudBagX + HUD_PANEL_W) {
-                showInventoryPopup();
-            } else if (x >= hudPauseX && x < hudPauseX + HUD_PANEL_W) {
-                togglePause();
-            } else if (x >= hudMenuX && x < hudMenuX + HUD_PANEL_W) {
-                AudioManager.getInstance().play("button");
-                showInGameMenu();
-            }
+        if (x >= achX && x < achX + 60 && y >= pad && y < HUD_HEIGHT - pad) {
+            showAchievementsPopup();
+        } else if (x >= bagBtnX && x < bagBtnX + 60 && y >= pad && y < HUD_HEIGHT - pad) {
+            showInventoryPopup();
+        } else if (x >= btnX && x < btnX + btnSize + 8 && y >= pad + 4 && y < pad + 4 + btnSize) {
+            togglePause();
+        } else if (x >= btnX && x < btnX + btnSize + 8 && y >= pad + 4 + btnSize + 4 && y < HUD_HEIGHT - pad) {
+            AudioManager.getInstance().play("button");
+            showInGameMenu();
         }
     }
 
@@ -938,7 +941,6 @@ public class GameView {
             } catch (Exception ignored) {}
         }
 
-        // Background: hud_bar.png scaled to full HUD canvas width x height
         gc.setFill(Color.web("#0e0c0a"));
         gc.fillRect(0, 0, w, h);
         if (hudBarImg != null && !hudBarImg.isError()) {
@@ -948,26 +950,24 @@ public class GameView {
             gc.setLineWidth(2);
             gc.strokeLine(0, 0, w, 0);
             gc.strokeLine(0, h - 1, w, h - 1);
+            gc.setStroke(Color.web("#8b7530", 0.6));
+            gc.setLineWidth(1);
+            gc.strokeLine(0, 2, w, 2);
+            gc.strokeLine(0, h - 3, w, h - 3);
         }
 
-        // Right-aligned panel x positions (recalculated so they always hug the right edge)
-        hudMenuX  = w - HUD_PAD - HUD_PANEL_W;
-        hudPauseX = hudMenuX  - HUD_PANEL_GAP - HUD_PANEL_W;
-        hudBagX   = hudPauseX - HUD_PANEL_GAP - HUD_PANEL_W;
+        double pad = 6;
 
-        double pad     = HUD_PAD;
-        double panelY  = pad;
-        double panelH  = h - pad * 2;
-
-        // SECTION 1: Hero portrait inside left panel of hud_bar.png
+        // SECTION 1: Portrait
         double portraitSize = h - pad * 2;
+        drawGoldPanel(gc, pad, pad, portraitSize, portraitSize);
         renderer.drawHeroFacing(gc,
                 (int)(pad + (portraitSize - TILE_SIZE) / 2),
                 (int)(pad + (portraitSize - TILE_SIZE) / 2),
                 hero.getFacingRow(), hero.getFacingCol());
 
-        // SECTION 2: HP / MP / EN bars inside centre dark panel
-        double barStartX = pad + portraitSize + 10;
+        // SECTION 2: HP / MP / EN bars
+        double barStartX = pad + portraitSize + 8;
         double barW      = 150;
         double barH      = 18;
         double barGap    = 4;
@@ -980,37 +980,86 @@ public class GameView {
         drawStatBar(gc, barStartX, barsTopY + (barH + barGap) * 2, barW, barH,
                 "EN", hero.getEnergy(),  hero.getMaxEnergy(),  "#4a3d00", "#f9a825", "#f4d03f");
 
-        // SECTION 3: ATK / DEF / Wpn text
+        // SECTION 3: STR / ATK / DEF / Wpn text
         double statsX = barStartX + barW + 14;
+
+        // Right-anchored sections — stretch with canvas width
+        double btnSize  = (h - pad * 2 - 8) / 2.0 - 2;
+        double btnX     = w - pad - (btnSize + 8);
+        double bagBtnX  = btnX - 8 - 60;
+        double achX     = bagBtnX - 8 - 60;
+        // Timer section centred in the gap between stats and achievement panels
+        double midLeft  = statsX + 120 + 14;
+        double midRight = achX - 8;
+        double statsX2  = midLeft + Math.max(0, (midRight - midLeft - 100) / 2.0);
+
+        gc.setStroke(Color.web("#c8a840", 0.4));
+        gc.setLineWidth(1);
+        gc.strokeLine(statsX - 7, pad + 4, statsX - 7, h - pad - 4);
+
         gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
         gc.setFill(Color.web("#e8c84a"));
         gc.fillText("⚔ STR " + hero.getStrength(),    statsX, barsTopY + 14);
-        gc.fillText("⛨ DEF " + hero.getDefensePower(), statsX, barsTopY + 34);
+        gc.setFill(hero.getEquippedWeapon() != null ? Color.web("#ffd54f") : Color.web("#e8c84a"));
+        gc.fillText("⚔ ATK " + hero.calculateDamage(), statsX, barsTopY + 28);
+        gc.setFill(Color.web("#e8c84a"));
+        gc.fillText("⛨ DEF " + hero.getDefensePower(), statsX, barsTopY + 42);
         String wpn = hero.getEquippedWeapon() != null ? hero.getEquippedWeapon().getName() : "None";
         gc.setFill(Color.web("#aa9870"));
-        gc.fillText("Wpn: " + wpn, statsX, barsTopY + 54);
+        gc.fillText("Wpn: " + wpn, statsX, barsTopY + 56);
 
-        double statsX2 = statsX + 120;
+        // SECTION 4: Timer / Turn / Foes
+        gc.setStroke(Color.web("#c8a840", 0.4));
+        gc.setLineWidth(1);
+        gc.strokeLine(statsX2 - 7, pad + 4, statsX2 - 7, h - pad - 4);
         gc.setFill(Color.web("#c8b880"));
         gc.fillText("⏱ " + formatTime(session.getPlayDurationTimer()), statsX2, barsTopY + 14);
-        gc.fillText("Turn " + session.getTurnCount(),         statsX2, barsTopY + 34);
+        gc.fillText("Turn " + session.getTurnCount(),         statsX2, barsTopY + 14 + 20);
         gc.setFill(Color.web("#aa9870"));
-        gc.fillText("Foes " + session.getActiveEnemyCount(),  statsX2, barsTopY + 54);
+        gc.fillText("Foes " + session.getActiveEnemyCount(),  statsX2, barsTopY + 14 + 40);
 
-        // SECTION 4: Bag button (right-aligned, over satchel area of hud_bar.png)
-        if (bagIconImg != null && !bagIconImg.isError()) {
-            gc.drawImage(bagIconImg, hudBagX + 9, panelY + 4, 48, 48);
+        // SECTION 5: Achievement panel
+        gc.setStroke(Color.web("#c8a840", 0.4));
+        gc.strokeLine(achX - 7, pad + 4, achX - 7, h - pad - 4);
+
+        AchievementManager am = session.getAchievementManager();
+        int achUnlocked = 0, achTotal = 0;
+        if (am != null) {
+            for (com.kurawler.model.achievement.Achievement a : am.getAchievements()) {
+                achTotal++;
+                if (a.isUnlocked()) achUnlocked++;
+            }
         }
-        Inventory inv = hero.getInventory();
-        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 11));
-        gc.setFill(Color.web("#e8c84a"));
-        gc.fillText(inv.getItemCount() + "/8", hudBagX + 16, panelY + panelH - 4);
-
-        // SECTION 5: Pause & Menu buttons (right-aligned, over button panels of hud_bar.png)
+        drawGoldPanel(gc, achX, pad + 4, 60, h - pad * 2 - 8);
         gc.setFont(Font.font("Serif", FontWeight.BOLD, 20));
         gc.setFill(Color.web("#e8c84a"));
-        gc.fillText(paused ? "▶" : "⏸", hudPauseX + 18, panelY + panelH * 0.65);
-        gc.fillText("☰",                      hudMenuX  + 20, panelY + panelH * 0.65);
+        gc.fillText("🏆", achX + 16, pad + 32);
+        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
+        gc.setFill(Color.web("#ffffff", 0.9));
+        gc.fillText(achUnlocked + "/" + achTotal, achX + 14, pad + 58);
+
+        // SECTION 6: Bag button
+        gc.setStroke(Color.web("#c8a840", 0.4));
+        gc.strokeLine(bagBtnX - 7, pad + 4, bagBtnX - 7, h - pad - 4);
+
+        drawGoldPanel(gc, bagBtnX, pad + 4, 60, h - pad * 2 - 8);
+        if (bagIconImg != null && !bagIconImg.isError()) {
+            gc.drawImage(bagIconImg, bagBtnX + 6, pad + 6, 48, 48);
+        }
+        Inventory inv = hero.getInventory();
+        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
+        gc.setFill(Color.web("#e8c84a"));
+        gc.fillText(inv.getItemCount() + "/8", bagBtnX + 16, h - pad - 10);
+
+        // SECTION 7: Pause & Menu buttons (stacked)
+
+        drawGoldPanel(gc, btnX, pad + 4, btnSize + 8, btnSize);
+        gc.setFont(Font.font("Serif", FontWeight.BOLD, 18));
+        gc.setFill(Color.web("#e8c84a"));
+        gc.fillText(paused ? "▶" : "⏸", btnX + 8, pad + 4 + btnSize - 8);
+
+        drawGoldPanel(gc, btnX, pad + 4 + btnSize + 4, btnSize + 8, btnSize);
+        gc.fillText("☰", btnX + 8, h - pad - 10);
     }
 
     /** Show a floating toast above the map canvas; auto-hides after 2 s with fade-out. */

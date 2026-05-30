@@ -37,7 +37,7 @@ public class TakeAction implements Action {
 
         // Check that the item is actually on this cell
         boolean found = false;
-        for (GameObject obj : cell.getGameObjects()) {
+        for (GameObject obj : cell.getObjects()) {
             if (obj == targetItem) {
                 found = true;
                 break;

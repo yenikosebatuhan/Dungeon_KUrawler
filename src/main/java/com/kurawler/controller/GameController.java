@@ -7,8 +7,12 @@ import com.kurawler.effect.Effect;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
+import com.kurawler.model.object.Scroll;
+import com.kurawler.model.object.StaticObject;
+import com.kurawler.model.object.Wearable;
 import com.kurawler.persistence.MapDeserializer;
 import com.kurawler.persistence.MapSerializer;
 import java.util.List;
@@ -60,37 +64,85 @@ public class GameController {
         // Turn tracking removed — Caner's new GameSession no longer has advanceTurn()
     }
 
-    /**
-     * Called by the UI when the player presses a movement key.
-     * Creates a MoveAction, executes it, then auto-picks up any items on the new cell.
-     */
     public void moveHero(int deltaRow, int deltaCol) {
-        MoveAction moveAction = new MoveAction(deltaRow, deltaCol);
-        executeAction(moveAction);
+        Hero hero = session.getHero();
+        if (hero != null) hero.setFacing(deltaRow, deltaCol);
+        executeAction(new MoveAction(deltaRow, deltaCol));
         pickUpItemsOnHeroCell();
     }
 
-    /**
-     * Auto-pickup: after hero moves, pick up all items on the current cell.
-     * Creates TakeAction for each Item found on the hero's cell.
-     */
     private void pickUpItemsOnHeroCell() {
         Hero hero = session.getHero();
         GridCell cell = session.getMap().getCell(hero.getRow(), hero.getCol());
         if (cell == null) return;
-
-        for (GameObject obj : cell.getGameObjects()) {
+        for (GameObject obj : cell.getObjects()) {
             if (obj instanceof Item) {
                 TakeAction take = new TakeAction((Item) obj);
-                List<Effect> effects = take.resolve(session);
-                for (Effect effect : effects) {
-                    effect.apply(session);
-                }
+                for (Effect effect : take.resolve(session)) effect.apply(session);
             }
         }
     }
 
     public GameSession getSession() {
         return session;
+    }
+
+    public boolean heroShoot() {
+        Hero hero = session.getHero();
+        if (hero == null || hero.getMana() < 10) return false;
+        hero.useMana(10);
+        return true;
+    }
+
+    public boolean searchObject(StaticObject so, int row, int col) {
+        if (so == null || so.isSearched()) return false;
+        so.markSearched();
+        Item hidden = so.getHiddenItem();
+        if (hidden != null) {
+            GridCell cell = session.getMap().getCell(row, col);
+            if (cell != null) cell.addObject(hidden);
+        }
+        return true;
+    }
+
+    public boolean breakObject(int row, int col) {
+        GridCell cell = session.getMap().getCell(row, col);
+        if (cell == null || cell.getStaticObject() == null) return false;
+        cell.setStaticObject(null);
+        return true;
+    }
+
+    public void interactWithObject(int row, int col, Item item) {
+        GridCell cell = session.getMap().getCell(row, col);
+        if (cell == null) return;
+        if (session.getHero().getInventory().addItem(item)) {
+            cell.removeObject(item);
+        }
+    }
+
+    public void useFirstConsumable() {
+        Hero hero = session.getHero();
+        for (Item item : hero.getInventory().getItems()) {
+            if (item instanceof Consumable) {
+                hero.useConsumable((Consumable) item);
+                return;
+            }
+        }
+    }
+
+    public void readScroll(Scroll sc) {
+        session.getHero().getInventory().removeItem(sc);
+    }
+
+    public void wearItem(Wearable wearable) {
+        session.getHero().equipWearable(wearable);
+    }
+
+    public void unequipWearable(Wearable wearable) {
+        Hero hero = session.getHero();
+        if (hero.isWearableEquipped(wearable)) {
+            hero.setDefensePower(hero.getDefensePower() - wearable.getDefenseBonus());
+            hero.equipWearable(null);
+        }
     }
 }
