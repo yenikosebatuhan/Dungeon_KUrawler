@@ -10,9 +10,6 @@ import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
 import com.kurawler.persistence.MapDeserializer;
 import com.kurawler.persistence.MapSerializer;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ChoiceDialog;
-import javafx.scene.control.TextInputDialog;
 import javafx.stage.Stage;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -95,11 +92,8 @@ public class ScreenManager {
 
         TeamMatchSession tmSession = new TeamMatchSession(map);
         if (!tmSession.validateMap()) {
-            Alert alert = new Alert(Alert.AlertType.ERROR,
+            EditorStyledDialog.showMessage(stage, "Team Match Error",
                     "Map does not have enough open space for Team Match.");
-            alert.setTitle("Team Match Error");
-            alert.initOwner(stage);
-            alert.showAndWait();
             return;
         }
 
@@ -139,6 +133,10 @@ public class ScreenManager {
     public void showPlayMode(GameSession session) {
         shutdownActiveGameView();
         currentSession = session;
+        // Ensure AchievementManager is always wired before observers are attached
+        if (session.getAchievementManager() == null) {
+            session.setAchievementManager(new AchievementManager());
+        }
         session.wireObservers();
         GameController controller = new GameController(session);
         GameView view = new GameView(controller, this);
@@ -165,13 +163,11 @@ public class ScreenManager {
     }
 
     public boolean showSaveDialog() {
-        TextInputDialog dialog = new TextInputDialog(defaultSaveName());
-        dialog.setTitle("Save Game");
-        dialog.setHeaderText("Save current game");
-        dialog.setContentText("Save name:");
-        dialog.initOwner(stage);
-
-        Optional<String> result = dialog.showAndWait();
+        Optional<String> result = EditorStyledDialog.promptText(
+                stage,
+                "Save Game",
+                "Enter a name for this save file:",
+                defaultSaveName());
         if (!result.isPresent() || result.get().trim().isEmpty()) {
             return false;
         }
@@ -190,21 +186,24 @@ public class ScreenManager {
     public boolean showLoadDialogAndStart() {
         List<SaveEntry> saves = listSaves();
         if (saves.isEmpty()) {
-            showInfo("Load Game", "No saves found in the saves folder.");
+            EditorStyledDialog.showMessage(stage, "Load Game",
+                    "No saves found in the saves folder.");
             return false;
         }
 
-        ChoiceDialog<SaveEntry> dialog = new ChoiceDialog<>(saves.get(0), saves);
-        dialog.setTitle("Load Game");
-        dialog.setHeaderText("Choose a saved game");
-        dialog.setContentText("Save:");
-        dialog.initOwner(stage);
-
-        Optional<SaveEntry> result = dialog.showAndWait();
-        if (!result.isPresent()) {
+        List<String> labels = new ArrayList<>();
+        for (SaveEntry s : saves) {
+            labels.add(s.saveName + "   —   " + s.savedAt);
+        }
+        Optional<Integer> picked = EditorStyledDialog.chooseIndex(
+                stage,
+                "Load Game",
+                "Choose a saved game to restore:",
+                labels);
+        if (!picked.isPresent()) {
             return false;
         }
-        return loadSavedGame(result.get().path);
+        return loadSavedGame(saves.get(picked.get()).path);
     }
 
     public boolean loadSavedGame(Path path) {
@@ -555,11 +554,7 @@ public class ScreenManager {
     }
 
     private void showInfo(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION, message);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.initOwner(stage);
-        alert.showAndWait();
+        EditorStyledDialog.showMessage(stage, title, message);
     }
 
     private static class MapFileEntry {
