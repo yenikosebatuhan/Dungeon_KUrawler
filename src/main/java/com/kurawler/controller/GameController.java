@@ -2,6 +2,7 @@ package com.kurawler.controller;
 
 import com.kurawler.action.Action;
 import com.kurawler.action.BreakAction;
+import com.kurawler.action.EquipAction;
 import com.kurawler.action.ReadAction;
 import com.kurawler.action.SearchAction;
 import com.kurawler.action.WearAction;
@@ -20,6 +21,7 @@ import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Projectile;
 import com.kurawler.model.object.Scroll;
 import com.kurawler.model.object.StaticObject;
+import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.Wearable;
 import com.kurawler.persistence.MapDeserializer;
 import com.kurawler.persistence.MapSerializer;
@@ -132,6 +134,23 @@ public class GameController {
             return false;
         }
         executeAction(new WearAction(wearable));
+        return true;
+    }
+
+    public boolean equipWeapon(Weapon weapon) {
+        if (weapon == null || !session.getHero().getInventory().hasItem(weapon)) {
+            return false;
+        }
+        executeAction(new EquipAction(weapon));
+        return true;
+    }
+
+    public boolean unequipWearable(Wearable wearable) {
+        Hero hero = session.getHero();
+        if (wearable == null || !hero.isWearableEquipped(wearable)) {
+            return false;
+        }
+        hero.unequipWearable(wearable);
         return true;
     }
 

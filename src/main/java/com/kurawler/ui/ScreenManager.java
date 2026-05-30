@@ -8,7 +8,10 @@ import com.kurawler.model.TeamMatchSession;
 import com.kurawler.model.achievement.AchievementManager;
 import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
-import com.kurawler.model.character.ShadowClone;
+import com.kurawler.model.object.Consumable;
+import com.kurawler.model.object.GameObject;
+import com.kurawler.model.object.Item;
+import com.kurawler.model.object.StaticContainer;
 import com.kurawler.persistence.MapDeserializer;
 import com.kurawler.persistence.MapSerializer;
 import javafx.scene.control.Alert;
@@ -44,6 +47,8 @@ public class ScreenManager {
     private GameSession currentSession;
     private GameView activeGameView;
     private String pendingEditorStatus;
+    private String lastGameType = "Default";
+    private String lastDifficulty = "Normal";
 
     public ScreenManager(Stage stage) {
         this.stage = stage;
@@ -73,7 +78,7 @@ public class ScreenManager {
 
     public void startNewGame() {
         currentSession = null;
-        showPlayMode();
+        showDifficultyScreen("Default");
     }
 
     /** PBI-16: play a map JSON from maps/ with a win objective. */
@@ -87,6 +92,8 @@ public class ScreenManager {
         MapFactory.configureObjectiveForMap(map, session);
         session.setAchievementManager(new AchievementManager());
         session.wireObservers();
+        lastGameType = "Custom";
+        lastDifficulty = "Normal";
         showPlayMode(session);
     }
 
@@ -171,6 +178,8 @@ public class ScreenManager {
             return false;
         }
         currentSession = loadedSession;
+        lastGameType = loadedSession.getCurrentMode();
+        lastDifficulty = loadedSession.getDifficulty();
         showPlayMode(currentSession);
         return true;
     }
@@ -184,10 +193,12 @@ public class ScreenManager {
     }
 
     public void startRandomDungeon() {
-        com.kurawler.model.ProceduralMapGenerator generator =
-                new com.kurawler.model.ProceduralMapGenerator();
-        currentSession = generator.generate();
-        showPlayMode(currentSession);
+        showDifficultyScreen("Random");
+    }
+
+    public void playAgain() {
+        shutdownActiveGameView();
+        launchGameWithDifficulty(lastGameType, lastDifficulty);
     }
 
     public void startTeamMatch() {
@@ -208,13 +219,7 @@ public class ScreenManager {
             return;
         }
 
-        tmSession.initializeMatch();
-        currentSession = tmSession;
-
-        GameController controller = new GameController(tmSession);
-        GameView view = new GameView(controller, this);
-        activeGameView = view;
-        view.show(stage);
+        showDifficultyScreen("TeamMatch");
     }
 
     public void showBuildMode() {
@@ -377,6 +382,111 @@ public class ScreenManager {
             }
         }
         return null;
+    }
+
+    public void showDifficultyScreen(String gameType) {
+        shutdownActiveGameView();
+        DifficultySelectionScreen diffScreen = new DifficultySelectionScreen(this, gameType);
+        stage.setScene(diffScreen.createScene());
+        stage.setTitle("Select Difficulty");
+        stage.setResizable(false);
+        stage.show();
+    }
+
+    public void launchGameWithDifficulty(String gameType, String difficulty) {
+        lastGameType = gameType;
+        lastDifficulty = difficulty;
+
+        if ("Random".equals(gameType)) {
+            com.kurawler.model.ProceduralMapGenerator generator =
+                    new com.kurawler.model.ProceduralMapGenerator();
+            currentSession = generator.generate();
+        } else if ("TeamMatch".equals(gameType)) {
+            com.kurawler.model.Map map;
+            if (currentSession != null && currentSession.getMap() != null) {
+                map = currentSession.getMap();
+            } else {
+                map = MapFactory.createDefaultMap().getMap();
+            }
+            TeamMatchSession tmSession = new TeamMatchSession(map);
+            tmSession.initializeMatch();
+            currentSession = tmSession;
+        } else {
+            currentSession = MapFactory.createDefaultMap();
+        }
+
+        applyDifficultyToSession(currentSession, difficulty);
+        showPlayMode(currentSession);
+    }
+
+    private void applyDifficultyToSession(GameSession session, String difficulty) {
+        session.setDifficulty(difficulty);
+        Hero hero = session.getHero();
+
+        if (hero != null) {
+            if ("Easy".equals(difficulty)) {
+                hero.setMaxEnergy(150);
+                hero.setEnergy(150);
+            } else if ("Hard".equals(difficulty)) {
+                hero.setMaxEnergy(75);
+                hero.setEnergy(75);
+            }
+        }
+
+        List<com.kurawler.model.Map> mapsToCheck = new ArrayList<>();
+        mapsToCheck.add(session.getMap());
+        if (session.getWorldMaps() != null) {
+            mapsToCheck.addAll(session.getWorldMaps().values());
+        }
+
+        for (com.kurawler.model.Map m : mapsToCheck) {
+            if (m == null) {
+                continue;
+            }
+            for (int r = 0; r < m.getHeight(); r++) {
+                for (int c = 0; c < m.getWidth(); c++) {
+                    GridCell cell = m.getCell(r, c);
+                    if (cell == null) {
+                        continue;
+                    }
+
+                    if (cell.getOccupyingCharacter() instanceof Enemy) {
+                        Enemy enemy = (Enemy) cell.getOccupyingCharacter();
+                        if ("Easy".equals(difficulty)) {
+                            enemy.setMaxHealth((int) (enemy.getMaxHealth() * 0.7));
+                            enemy.setHealth((int) (enemy.getHealth() * 0.7));
+                            enemy.setStrength((int) (enemy.getStrength() * 0.7));
+                        } else if ("Hard".equals(difficulty)) {
+                            enemy.setMaxHealth((int) (enemy.getMaxHealth() * 1.3));
+                            enemy.setHealth((int) (enemy.getHealth() * 1.3));
+                            enemy.setStrength((int) (enemy.getStrength() * 1.3));
+                        }
+                    }
+
+                    if ("Hard".equals(difficulty)) {
+                        List<GameObject> toRemove = new ArrayList<>();
+                        for (GameObject obj : cell.getObjects()) {
+                            if (obj instanceof Consumable && "Health Potion".equals(obj.getName())) {
+                                toRemove.add(obj);
+                            } else if (obj instanceof StaticContainer) {
+                                StaticContainer sc = (StaticContainer) obj;
+                                List<Item> chestItems = new ArrayList<>(sc.getContents());
+                                sc.getContents().clear();
+                                for (Item item : chestItems) {
+                                    if (!(item instanceof Consumable
+                                            && "Health Potion".equals(item.getName()))) {
+                                        sc.addItem(item);
+                                    }
+                                }
+                            }
+                        }
+                        for (GameObject obj : toRemove) {
+                            cell.removeObject(obj);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public Stage getStage() {
