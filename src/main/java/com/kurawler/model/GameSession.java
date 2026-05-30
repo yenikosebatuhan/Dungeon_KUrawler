@@ -30,6 +30,7 @@ public class GameSession {
     private int itemsCollectedCount;
     private int floorsClearedCount;
     private String currentMode;
+    private String difficulty = "Normal";
     private Item targetObjective;
   /** True when playing a map launched from the level editor (no game-over popup on editor). */
     private boolean editorTestPlay;
@@ -96,6 +97,10 @@ public class GameSession {
 
     public String getCurrentMode() { return currentMode; }
     public void setCurrentMode(String mode) { this.currentMode = mode; }
+    public String getDifficulty() { return difficulty; }
+    public void setDifficulty(String difficulty) {
+        this.difficulty = difficulty != null ? difficulty : "Normal";
+    }
     public boolean isTeamMatch() { return "TeamMatch".equals(currentMode); }
     public int getPlayDurationTimer() { return playDurationTimer; }
     public void setPlayDurationTimer(int timer) { this.playDurationTimer = Math.max(0, timer); }
@@ -109,6 +114,8 @@ public class GameSession {
     // --- TEAM'S METHODS ---
     public Map getMap() { return map; }
     public void setMap(Map map) { this.map = map; }
+
+    public java.util.Map<String, Map> getWorldMaps() { return worldMaps; }
 
     public void registerWorldMap(String mapId, Map worldMap) {
         if (mapId != null && worldMap != null) {
