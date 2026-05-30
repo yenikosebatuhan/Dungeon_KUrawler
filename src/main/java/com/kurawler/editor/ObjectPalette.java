@@ -5,8 +5,14 @@ import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.Sorcerer;
+import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
+import com.kurawler.model.object.Key;
+import com.kurawler.model.object.PortableContainer;
+import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
+import com.kurawler.model.object.Weapon;
+import com.kurawler.model.object.Wearable;
 import java.util.ArrayList;
 import java.util.List;
 
