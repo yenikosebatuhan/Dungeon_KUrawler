@@ -1,4 +1,4 @@
-package com.kurawler.ui;
+﻿package com.kurawler.ui;
 
 import com.kurawler.controller.GameController;
 import com.kurawler.engine.AudioManager;
@@ -557,8 +557,131 @@ public class GameView {
     }
 
     private void showTeamMatchResult(String result) {
-        Platform.runLater(() -> showEndScreen(
-                "\u2694 MATCH OVER \u2694", result, "#6fc3df", "#1a2a3a"));
+        Platform.runLater(() -> {
+            GameSession session = controller.getSession();
+            boolean heroWon = result != null && result.contains("Team B");
+            String title = heroWon ? "\u2694 VICTORY \u2694" : "\u2620 DEFEAT \u2620";
+            String accent = heroWon ? "#6fc3df" : "#ef5350";
+            String bgTint = heroWon ? "#1a2a3a" : "#3a1a1a";
+            String timeStr = session != null ? formatTime(session.getPlayDurationTimer()) : "00:00";
+            int turns = session != null ? session.getTurnCount() : 0;
+            String message = (result != null ? result : "")
+                    + "\nTime: " + timeStr + "  |  Turns: " + turns;
+            showTeamMatchEndScreen(title, message, accent, bgTint);
+        });
+    }
+
+    private void showTeamMatchEndScreen(String title, String message, String accent, String bgTint) {
+        if (!isPlaySceneActive()) return;
+        Stage popup = new Stage();
+        popup.initOwner(stage);
+        popup.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        popup.initStyle(javafx.stage.StageStyle.UNDECORATED);
+
+        Canvas bg = new Canvas(420, 300);
+        GraphicsContext gc2 = bg.getGraphicsContext2D();
+        SpriteSheet wallSheet = new SpriteSheet("/assets/walls_x3.png", 48);
+        gc2.setFill(Color.web("#0a0a10"));
+        gc2.fillRect(0, 0, 420, 300);
+        if (wallSheet.isLoaded()) {
+            for (int y = 0; y < 300; y += 48) {
+                for (int x = 0; x < 420; x += 48) {
+                    int hash = Math.abs((x * 73856093) ^ (y * 19349663));
+                    javafx.scene.image.Image tile = wallSheet.getSprite(hash % 5, 1);
+                    if (tile != null) gc2.drawImage(tile, x, y, 48, 48);
+                }
+            }
+        }
+        gc2.setFill(Color.web(bgTint, 0.7));
+        gc2.fillRect(0, 0, 420, 300);
+
+        Label titleLabel = new Label(title);
+        titleLabel.setFont(Font.font("Serif", FontWeight.BOLD, 36));
+        titleLabel.setTextFill(Color.web(accent));
+        javafx.scene.effect.InnerShadow engrave =
+                new javafx.scene.effect.InnerShadow(3, 1, 2, Color.web("#000000", 0.6));
+        javafx.scene.effect.DropShadow glow =
+                new javafx.scene.effect.DropShadow(20, Color.web(accent, 0.5));
+        glow.setInput(engrave);
+        titleLabel.setEffect(glow);
+
+        Label msgLabel = new Label(message);
+        msgLabel.setFont(Font.font("Serif", 15));
+        msgLabel.setTextFill(Color.web("#c8b880"));
+        msgLabel.setWrapText(true);
+        msgLabel.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+        msgLabel.setMaxWidth(360);
+        msgLabel.setEffect(new javafx.scene.effect.DropShadow(4, 0, 1, Color.BLACK));
+
+        String base = "-fx-background-color: "
+                + "linear-gradient(to bottom, #4a4438, #2e2a22, #1e1b16, #2a2720); "
+                + "-fx-text-fill: " + accent + "; "
+                + "-fx-background-radius: 4; -fx-border-radius: 4; "
+                + "-fx-border-color: " + accent + "88 #3a3220 #3a3220 " + accent + "88; "
+                + "-fx-border-width: 2; -fx-cursor: hand;";
+        String hover = "-fx-background-color: "
+                + "linear-gradient(to bottom, #5a5448, #3e3a30, #2a2720, #353028); "
+                + "-fx-text-fill: #ffffff; "
+                + "-fx-background-radius: 4; -fx-border-radius: 4; "
+                + "-fx-border-color: " + accent + " " + accent + "aa " + accent + "aa " + accent + "; "
+                + "-fx-border-width: 2; -fx-cursor: hand; "
+                + "-fx-effect: dropshadow(gaussian, " + accent + "44, 10, 0, 0, 0);";
+
+        Button playAgainBtn = new Button("\u25b6  Play Again");
+        playAgainBtn.setFont(Font.font("Serif", FontWeight.BOLD, 15));
+        playAgainBtn.setPrefWidth(200);
+        playAgainBtn.setPrefHeight(40);
+        playAgainBtn.setStyle(base);
+        playAgainBtn.setOnMouseEntered(e -> playAgainBtn.setStyle(hover));
+        playAgainBtn.setOnMouseExited(e -> playAgainBtn.setStyle(base));
+        playAgainBtn.setOnAction(e -> {
+            popup.close();
+            playActive = false;
+            shutdown();
+            screenManager.startTeamMatch();
+        });
+
+        Button menuBtn = new Button("Return to Menu");
+        menuBtn.setFont(Font.font("Serif", FontWeight.BOLD, 15));
+        menuBtn.setPrefWidth(200);
+        menuBtn.setPrefHeight(40);
+        menuBtn.setStyle(base);
+        menuBtn.setOnMouseEntered(e -> menuBtn.setStyle(hover));
+        menuBtn.setOnMouseExited(e -> menuBtn.setStyle(base));
+        menuBtn.setOnAction(e -> {
+            popup.close();
+            playActive = false;
+            shutdown();
+            screenManager.showMainMenu();
+        });
+
+        VBox content = new VBox(16, titleLabel, msgLabel, playAgainBtn, menuBtn);
+        content.setAlignment(javafx.geometry.Pos.CENTER);
+        content.setPadding(new Insets(24));
+        content.setStyle("-fx-border-color: " + accent + "66; -fx-border-width: 3; "
+                + "-fx-border-radius: 4; -fx-background-radius: 4;");
+        content.setOpacity(0);
+
+        StackPane root = new StackPane(bg, content);
+        Scene popupScene = new Scene(root, 420, 300);
+        popupScene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+            if (e.getCode() == KeyCode.SPACE || e.getCode() == KeyCode.ENTER
+                    || e.getCode() == KeyCode.ESCAPE) {
+                e.consume();
+            }
+        });
+        popup.setScene(popupScene);
+        popup.setTitle(title);
+        popup.setOnShown(e -> {
+            popup.setX(stage.getX() + (stage.getWidth() - 420) / 2);
+            popup.setY(stage.getY() + (stage.getHeight() - 300) / 2);
+            javafx.animation.FadeTransition ft = new javafx.animation.FadeTransition(
+                    javafx.util.Duration.millis(400), content);
+            ft.setFromValue(0);
+            ft.setToValue(1);
+            ft.play();
+        });
+        popup.showAndWait();
     }
 
     private void showEndScreen(String title, String message, String accent, String bgTint) {
@@ -1695,16 +1818,28 @@ public class GameView {
                             : (occupant instanceof Assassin) ? "Assassin" : "Sorcerer";
                     boolean mirrorKnight = (occupant instanceof Knight || occupant instanceof Guard)
                             && occupant.getCol() > hero.getCol();
+
+                    Team occupantTeam = null;
+                    if (session instanceof TeamMatchSession) {
+                        occupantTeam = ((TeamMatchSession) session).getTeamForCharacter(occupant);
+                    }
+                    if (occupantTeam != null) {
+                        Color tint = occupantTeam.getColor() == Team.TeamColor.RED
+                                ? Color.rgb(200, 0, 0, 0.15) : Color.rgb(0, 60, 200, 0.15);
+                        gc.setFill(tint);
+                        gc.fillRect((int) pos[0], (int) pos[1], TILE_SIZE, TILE_SIZE);
+                    }
+
                     renderer.drawEnemy(gc, (int) pos[0], (int) pos[1], type, mirrorKnight, occupant.getName());
                     renderer.drawHpBar(gc, (int) pos[0], (int) pos[1],
                             occupant.getHealth(), occupant.getMaxHealth());
 
-                    if (session instanceof TeamMatchSession) {
-                        TeamMatchSession tmSession = (TeamMatchSession) session;
-                        Team team = tmSession.getTeamForCharacter(occupant);
-                        if (team != null) {
-                            drawTeamIndicator(gc, (int) pos[0], (int) pos[1], team.getColor());
-                        }
+                    if (occupantTeam != null) {
+                        String label = (occupant instanceof Knight) ? "KNIGHT"
+                                : (occupant instanceof Sorcerer) ? "SORCER"
+                                : (occupant instanceof Assassin) ? "ASSASN" : type.toUpperCase();
+                        drawTeamNameplate(gc, (int) pos[0], (int) pos[1], label, occupantTeam.getColor());
+                        drawTeamIndicator(gc, (int) pos[0], (int) pos[1], occupantTeam.getColor());
                     }
                 }
             }
@@ -1731,13 +1866,19 @@ public class GameView {
         updateAndDrawHitParticles(gc);
 
         if (session instanceof TeamMatchSession) {
+            gc.setFill(Color.rgb(0, 60, 200, 0.15));
+            gc.fillRect(heroSx, heroSy, TILE_SIZE, TILE_SIZE);
+            drawTeamNameplate(gc, heroSx, heroSy, "HERO", Team.TeamColor.BLUE);
             drawTeamIndicator(gc, heroSx, heroSy, Team.TeamColor.BLUE);
         }
 
-        if (gameLoop != null) {
-            for (com.kurawler.model.object.Projectile proj : gameLoop.getActiveProjectiles()) {
-                double[] pPos = lerpPosition(proj,
-                        proj.getPositionCol() * TILE_SIZE, proj.getPositionRow() * TILE_SIZE);
+        java.util.List<com.kurawler.model.object.Projectile> activeProjs =
+                (teamMatchGameLoop != null) ? teamMatchGameLoop.getActiveProjectiles()
+                : (gameLoop != null) ? gameLoop.getActiveProjectiles()
+                : java.util.Collections.emptyList();
+        for (com.kurawler.model.object.Projectile proj : activeProjs) {
+            double[] pPos = lerpPosition(proj,
+                    proj.getPositionCol() * TILE_SIZE, proj.getPositionRow() * TILE_SIZE);
             String projName = proj.getName();
             if ("Hero Bolt".equals(projName) || "Weapon Strike".equals(projName)) {
                 renderer.drawHeroProjectile(gc, (int) pPos[0], (int) pPos[1]);
@@ -1750,7 +1891,6 @@ public class GameView {
                 renderer.drawBombProjectile(gc, (int) pPos[0], (int) pPos[1]);
             } else {
                 renderer.drawProjectile(gc, (int) pPos[0], (int) pPos[1]);
-            }
             }
         }
 
@@ -1841,26 +1981,38 @@ public class GameView {
         double lineStep = (L.panelH - 20) / 5.0;
         double ty = L.panelY + 18;
         gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
-        gc.setFill(Color.web("#ffffff", 0.92));
-        gc.fillText("\u23F1  " + formatTime(session.getPlayDurationTimer()), tx, ty);
-        ty += lineStep;
-        gc.setFill(hero.getEquippedWeapon() != null ? Color.web("#ffd54f") : Color.web("#e8c84a"));
-        gc.fillText("\u2694  ATK " + hero.calculateDamage(), tx, ty);
-        ty += lineStep;
-        gc.setFill(Color.web("#ffffff", 0.95));
-        gc.fillText("\u26E8  DEF " + hero.getDefensePower(), tx, ty);
-        ty += lineStep;
-        gc.setFill(Color.web("#ffffff", 0.88));
-        gc.fillText("\u2694  WPN", tx, ty);
-        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 11));
-        gc.setFill(Color.web("#d4c8a8"));
-        gc.fillText(fitTextToWidth(gc, formatEquippedWeaponLine(hero), innerW), tx, ty + lineStep * 0.85);
+        if (session instanceof TeamMatchSession) {
+            TeamMatchSession tmHud = (TeamMatchSession) session;
+            gc.setFill(Color.web("#6fc3df"));
+            gc.fillText("TEAM MATCH", tx, ty);
+            ty += lineStep;
+            gc.setFill(Color.rgb(255, 80, 80));
+            gc.fillText("\u25A0 A: " + tmHud.getTeamA().aliveCount() + "/4", tx, ty);
+            ty += lineStep;
+            gc.setFill(Color.rgb(80, 140, 255));
+            gc.fillText("\u25A0 B: " + tmHud.getTeamB().aliveCount() + "/4", tx, ty);
+        } else {
+            gc.setFill(Color.web("#ffffff", 0.92));
+            gc.fillText("\u23F1  " + formatTime(session.getPlayDurationTimer()), tx, ty);
+            ty += lineStep;
+            gc.setFill(hero.getEquippedWeapon() != null ? Color.web("#ffd54f") : Color.web("#e8c84a"));
+            gc.fillText("\u2694  ATK " + hero.calculateDamage(), tx, ty);
+            ty += lineStep;
+            gc.setFill(Color.web("#ffffff", 0.95));
+            gc.fillText("\u26E8  DEF " + hero.getDefensePower(), tx, ty);
+            ty += lineStep;
+            gc.setFill(Color.web("#ffffff", 0.88));
+            gc.fillText("\u2694  WPN", tx, ty);
+            gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 11));
+            gc.setFill(Color.web("#d4c8a8"));
+            gc.fillText(fitTextToWidth(gc, formatEquippedWeaponLine(hero), innerW), tx, ty + lineStep * 0.85);
+        }
 
         // Play / pause
         drawOrnateHudPanel(gc, L.pauseX, L.panelY, L.iconW, L.panelH);
         gc.setFont(Font.font("Serif", FontWeight.BOLD, 26));
         gc.setFill(Color.web("#e8c84a"));
-        gc.fillText(paused ? "\u25B6" : "\u23F8",
+        gc.fillText(paused ? "▶" : "⏸",
                 L.pauseX + L.iconW / 2.0 - 10, L.panelY + L.panelH / 2.0 + 9);
 
         // Trophy + progress count (HUD)
@@ -2148,12 +2300,21 @@ public class GameView {
         Color borderColor = (teamColor == Team.TeamColor.RED)
                 ? Color.rgb(255, 60, 60, 0.9)
                 : Color.rgb(60, 120, 255, 0.9);
+        Color glowColor = (teamColor == Team.TeamColor.RED)
+                ? Color.rgb(255, 60, 60, 0.25)
+                : Color.rgb(60, 120, 255, 0.25);
         Color dotColor = (teamColor == Team.TeamColor.RED)
                 ? Color.rgb(255, 80, 80)
                 : Color.rgb(80, 140, 255);
 
+        // Outer translucent glow ring
+        gc.setStroke(glowColor);
+        gc.setLineWidth(5.0);
+        gc.strokeRect(sx - 1, sy - 1, TILE_SIZE + 2, TILE_SIZE + 2);
+
+        // Inner solid stroke
         gc.setStroke(borderColor);
-        gc.setLineWidth(2.5);
+        gc.setLineWidth(2.0);
         gc.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
 
         gc.setFill(dotColor);
@@ -2161,6 +2322,22 @@ public class GameView {
         gc.setStroke(Color.web("#000000", 0.6));
         gc.setLineWidth(1);
         gc.strokeOval(sx + TILE_SIZE - 12, sy + 2, 9, 9);
+    }
+
+    private void drawTeamNameplate(GraphicsContext gc, int sx, int sy, String label, Team.TeamColor teamColor) {
+        Color bgColor = (teamColor == Team.TeamColor.RED)
+                ? Color.rgb(140, 20, 20, 0.85)
+                : Color.rgb(20, 40, 160, 0.85);
+        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 9));
+        double textW = label.length() * 6.0;
+        double plateW = textW + 6;
+        double plateH = 12;
+        double plateX = sx + (TILE_SIZE - plateW) / 2.0;
+        double plateY = sy - plateH - 1;
+        gc.setFill(bgColor);
+        gc.fillRoundRect(plateX, plateY, plateW, plateH, 2, 2);
+        gc.setFill(Color.WHITE);
+        gc.fillText(label, plateX + 3, plateY + plateH - 2);
     }
 
     private String teamRoster(Team team) {
