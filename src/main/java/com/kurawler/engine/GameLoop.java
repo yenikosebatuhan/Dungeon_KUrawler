@@ -289,6 +289,7 @@ public class GameLoop {
                 if (!occupant.isAlive() && !isHero) {
                     targetCell.setOccupyingCharacter(null);
                     session.decrementEnemyCount();
+                    AudioManager.getInstance().play("enemyDown");
                 }
             }
         }
