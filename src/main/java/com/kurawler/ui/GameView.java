@@ -250,9 +250,10 @@ public class GameView {
         }
         render();
         if (!session.isEditorTestPlay() && session.getTargetObjective() != null
-                && "hall".equals(session.getCurrentMapId())) {
-            showGameMessage(
-                    "EXIT: east DOOR (\u2192). SEARCH a shelf (?) for the Golden Key. Win item is in a vault chest.");
+                && "gatehouse".equals(session.getCurrentMapId())) {
+            String relicName = session.getTargetObjective().getName();
+            showGameMessage("Find the " + relicName
+                    + " \u2014 hidden in the Inner Vault chest. Get the Iron Key (\u2192 chest) to unlock the east gate.");
         }
     }
 
@@ -785,23 +786,18 @@ public class GameView {
                 showGameMessage("Entered " + mapDisplayName(mapId) + ".");
             }
         }
-        if (session.getTargetObjective() != null && "hall".equals(session.getCurrentMapId())) {
-            showGameMessage(
-                    "EXIT: east DOOR (\u2192). SEARCH a shelf (?) for the Golden Key. Win item is in a vault chest.");
+        if (session.getTargetObjective() != null && "gatehouse".equals(session.getCurrentMapId())) {
+            String relicName = session.getTargetObjective().getName();
+            showGameMessage("Find the " + relicName
+                    + " \u2014 hidden in the Inner Vault chest. Get the Iron Key (\u2192 chest) to open the east gate.");
         }
     }
 
     private static String mapDisplayName(String mapId) {
-        if ("hall".equals(mapId)) {
-            return "Entry Hall";
-        }
-        if ("catacombs".equals(mapId)) {
-            return "Catacombs";
-        }
-        if ("vault".equals(mapId)) {
-            return "Treasure Vault";
-        }
-        return mapId;
+        if ("gatehouse".equals(mapId))  return "The Gatehouse";
+        if ("armory".equals(mapId))     return "The Armory";
+        if ("innervault".equals(mapId)) return "The Inner Vault";
+        return mapId != null ? mapId : "";
     }
 
     private void showPortalMessageIfAny() {

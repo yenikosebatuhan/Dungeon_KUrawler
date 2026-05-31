@@ -193,6 +193,16 @@ public class GameSession {
         this.map = next;
         this.currentMapId = mapId;
         clearEnemies();
+        for (int r = 0; r < next.getHeight(); r++) {
+            for (int c = 0; c < next.getWidth(); c++) {
+                GridCell cell = next.getCell(r, c);
+                if (cell == null) continue;
+                if (cell.getOccupyingCharacter() instanceof Enemy) {
+                    Enemy e = (Enemy) cell.getOccupyingCharacter();
+                    if (e.isAlive()) addEnemy(e);
+                }
+            }
+        }
         if (shadowClone != null) {
             setShadowClone(null);
         }
@@ -212,9 +222,9 @@ public class GameSession {
     }
 
     private static String mapDisplayName(String mapId) {
-        if ("hall".equals(mapId)) return "Entry Hall";
-        if ("catacombs".equals(mapId)) return "Catacombs";
-        if ("vault".equals(mapId)) return "Treasure Vault";
+        if ("gatehouse".equals(mapId))  return "The Gatehouse";
+        if ("armory".equals(mapId))     return "The Armory";
+        if ("innervault".equals(mapId)) return "The Inner Vault";
         return mapId;
     }
     public Hero getHero() { return hero; }
