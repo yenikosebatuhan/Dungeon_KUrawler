@@ -588,15 +588,18 @@ public class TileRenderer {
 
     private void loadCharacters() {
         if (!characters.isLoaded()) return;
-        heroSprite = characters.getSprite(3, 0);
-        heroSpriteUp = characters.getSprite(5, 0);
-        heroSpriteLeft = characters.getSprite(4, 0);
-        heroSpriteRight = characters.getSprite(3, 0);
+        // Hero: blonde adventurer — one sprite; mirror horizontally when facing left only.
+        heroSprite = characters.getSprite(3, 1);
+        heroSpriteRight = heroSprite;
+        heroSpriteLeft = heroSprite;
+        heroSpriteUp = heroSprite;
 
-        knightSprite = characters.getSprite(6, 1);
-        knightSprite2 = characters.getSprite(7, 1);
-        sorcererSprite = characters.getSprite(3, 1);
-        sorcererSprite2 = characters.getSprite(4, 1);
+        // Knight: blue armored warrior — one sprite; mirror when facing left.
+        knightSprite = characters.getSprite(1, 1);
+        knightSprite2 = knightSprite;
+        // Sorcerer: robed wizard (formerly hero row)
+        sorcererSprite = characters.getSprite(3, 0);
+        sorcererSprite2 = characters.getSprite(4, 0);
 
         if (heroSpriteUp == null) heroSpriteUp = heroSprite;
         if (heroSpriteLeft == null) heroSpriteLeft = heroSprite;
@@ -752,14 +755,16 @@ public class TileRenderer {
     }
 
     public void drawHeroFacing(GraphicsContext gc, int screenX, int screenY, int facingR, int facingC) {
-        Image sprite;
-        if (facingC > 0) sprite = heroSpriteRight;
-        else if (facingC < 0) sprite = heroSpriteLeft;
-        else if (facingR < 0) sprite = heroSpriteUp;
-        else if (facingR > 0) sprite = heroSprite;
-        else sprite = heroSpriteRight;
-        if (sprite == null) sprite = heroSprite;
-        drawSprite(gc, sprite, screenX, screenY, Color.web("#4caf50"));
+        Image sprite = heroSprite != null ? heroSprite : heroSpriteRight;
+        if (sprite == null) {
+            drawSprite(gc, null, screenX, screenY, Color.web("#4caf50"));
+            return;
+        }
+        if (facingC < 0) {
+            drawSpriteMirrored(gc, sprite, screenX, screenY, true, false);
+        } else {
+            drawSprite(gc, sprite, screenX, screenY, Color.web("#4caf50"));
+        }
     }
 
     public void drawShadowClone(GraphicsContext gc, int screenX, int screenY) {
@@ -772,9 +777,21 @@ public class TileRenderer {
     }
 
     public void drawEnemy(GraphicsContext gc, int screenX, int screenY, String enemyType) {
+        drawEnemy(gc, screenX, screenY, enemyType, false);
+    }
+
+    public void drawEnemy(GraphicsContext gc, int screenX, int screenY, String enemyType, boolean mirrorH) {
         if ("Knight".equals(enemyType)) {
-            Image sprite = ((screenX + screenY) % 2 == 0) ? knightSprite : knightSprite2;
-            drawSprite(gc, sprite, screenX, screenY, Color.web("#d32f2f"));
+            Image sprite = knightSprite != null ? knightSprite : knightSprite2;
+            if (sprite == null) {
+                drawSprite(gc, null, screenX, screenY, Color.web("#d32f2f"));
+                return;
+            }
+            if (mirrorH) {
+                drawSpriteMirrored(gc, sprite, screenX, screenY, true, false);
+            } else {
+                drawSprite(gc, sprite, screenX, screenY, Color.web("#d32f2f"));
+            }
         } else {
             Image sprite = ((screenX + screenY) % 2 == 0) ? sorcererSprite : sorcererSprite2;
             drawSprite(gc, sprite, screenX, screenY, Color.web("#7b1fa2"));
@@ -1565,6 +1582,25 @@ public class TileRenderer {
             gc.setFill(fallback);
             gc.fillRoundRect(sx + 6, sy + 4, tileSize - 12, tileSize - 8, 6, 6);
         }
+    }
+
+    private void drawSpriteMirrored(GraphicsContext gc, Image sprite, int sx, int sy,
+                                    boolean flipH, boolean flipV) {
+        if (sprite == null) {
+            return;
+        }
+        if (!flipH && !flipV) {
+            gc.drawImage(sprite, sx, sy, tileSize, tileSize);
+            return;
+        }
+        double cx = sx + tileSize / 2.0;
+        double cy = sy + tileSize / 2.0;
+        gc.save();
+        gc.translate(cx, cy);
+        gc.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+        gc.translate(-cx, -cy);
+        gc.drawImage(sprite, sx, sy, tileSize, tileSize);
+        gc.restore();
     }
 
     private void drawSmallSprite(GraphicsContext gc, Image sprite, int sx, int sy, Color fallback) {
