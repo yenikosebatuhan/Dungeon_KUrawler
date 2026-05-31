@@ -4,7 +4,9 @@ import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Map;
 import com.kurawler.model.achievement.AchievementManager;
+import com.kurawler.model.character.Assassin;
 import com.kurawler.model.character.Enemy;
+import com.kurawler.model.character.Guard;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.ShadowClone;
@@ -16,6 +18,7 @@ import com.kurawler.model.object.Key;
 import com.kurawler.model.object.PortableContainer;
 import com.kurawler.model.object.Scroll;
 import com.kurawler.model.object.StaticContainer;
+import com.kurawler.model.object.MapPortal;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.Wearable;
@@ -247,7 +250,13 @@ public class MapDeserializer {
 
             int row = (int) enemyJson.get("row");
             int col = (int) enemyJson.get("col");
+            if (enemyJson.containsKey("name")) {
+                enemy.setName((String) enemyJson.get("name"));
+            }
             enemy.setHealth(getIntOrZero(enemyJson, "hp"));
+            if (enemyJson.containsKey("atk")) {
+                enemy.setAttackPower((int) enemyJson.get("atk"));
+            }
             enemy.setMana(getIntOrZero(enemyJson, "mana"));
             enemy.setEnergy(getIntOrZero(enemyJson, "energy"));
             if (enemyJson.containsKey("str")) {
@@ -268,6 +277,8 @@ public class MapDeserializer {
     private Enemy createEnemy(String type) {
         if ("Sorcerer".equals(type)) return new Sorcerer();
         if ("Knight".equals(type)) return new Knight();
+        if ("Guard".equals(type)) return new Guard();
+        if ("Assassin".equals(type)) return new Assassin();
         return null;
     }
 
@@ -351,6 +362,57 @@ public class MapDeserializer {
         }
     }
 
+    /** Result of loading a world file: all maps keyed by ID, plus the start map ID. */
+    public static class WorldData {
+        public final java.util.LinkedHashMap<String, Map> maps;
+        public final String startMapId;
+        public WorldData(java.util.LinkedHashMap<String, Map> maps, String startMapId) {
+            this.maps = maps;
+            this.startMapId = startMapId;
+        }
+    }
+
+    public WorldData loadWorldFromJson(String json) {
+        if (json == null || json.isEmpty()) return null;
+        try {
+            src = json;
+            pos = 0;
+            LinkedHashMap<String, Object> root = parseObject();
+            return parseWorldRoot(root);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public WorldData loadWorldFromFile(String filename) {
+        try {
+            String content = new String(Files.readAllBytes(Paths.get(filename)));
+            return loadWorldFromJson(content);
+        } catch (NoSuchFileException e) {
+            System.out.println("[Persistence] No world file found: " + filename);
+            return null;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private WorldData parseWorldRoot(LinkedHashMap<String, Object> root) {
+        String startMapId = root.containsKey("startMapId") ? (String) root.get("startMapId") : "";
+        java.util.LinkedHashMap<String, Map> maps = new java.util.LinkedHashMap<>();
+        LinkedHashMap<String, Object> mapsJson = (LinkedHashMap<String, Object>) root.get("maps");
+        if (mapsJson != null) {
+            for (java.util.Map.Entry<String, Object> entry : mapsJson.entrySet()) {
+                src = ""; // reset so parseMapRoot uses the already-parsed object
+                Map map = parseMapRoot((LinkedHashMap<String, Object>) entry.getValue());
+                maps.put(entry.getKey(), map);
+            }
+        }
+        return new WorldData(maps, startMapId);
+    }
+
     private Map parseMapRoot(LinkedHashMap<String, Object> root) {
         int width = (int) root.get("width");
         int height = (int) root.get("height");
@@ -420,18 +482,33 @@ public class MapDeserializer {
             LinkedHashMap<String, Object> soJson = (LinkedHashMap<String, Object>) cellJson.get("staticObject");
             String soName = (String) soJson.get("name");
             String soDesc = soJson.containsKey("description") ? (String) soJson.get("description") : "";
-            boolean soPassable = soJson.containsKey("passable") ? (boolean) soJson.get("passable") : true;
-            boolean soSearchable = soJson.containsKey("searchable") ? (boolean) soJson.get("searchable") : false;
-            StaticObject staticObject = new StaticObject(soName, soDesc, soPassable, soSearchable);
-            if (soJson.containsKey("hiddenItem") && soJson.get("hiddenItem") != null) {
-                @SuppressWarnings("unchecked")
-                LinkedHashMap<String, Object> hiddenJson =
-                        (LinkedHashMap<String, Object>) soJson.get("hiddenItem");
-                GameObject hidden = deserializeObject(hiddenJson);
-                if (hidden instanceof Item) {
-                    staticObject.setHiddenItem((Item) hidden);
+            StaticObject staticObject;
+            if ("MapPortal".equals(soJson.get("type"))) {
+                String targetMapId = soJson.containsKey("targetMapId") ? (String) soJson.get("targetMapId") : "";
+                int targetRow = soJson.containsKey("targetRow") ? (int) soJson.get("targetRow") : 0;
+                int targetCol = soJson.containsKey("targetCol") ? (int) soJson.get("targetCol") : 0;
+                String reqKey = soJson.containsKey("requiredKeyId") ? (String) soJson.get("requiredKeyId") : null;
+                boolean unlocked = soJson.containsKey("unlocked") ? (boolean) soJson.get("unlocked") : true;
+                boolean stairsMode = soJson.containsKey("stairsMode") ? (boolean) soJson.get("stairsMode") : false;
+                staticObject = new MapPortal(soName, soDesc,
+                        targetMapId.isEmpty() ? null : targetMapId,
+                        targetRow, targetCol, reqKey, unlocked, stairsMode);
+            } else {
+                boolean soPassable = soJson.containsKey("passable") ? (boolean) soJson.get("passable") : true;
+                boolean soSearchable = soJson.containsKey("searchable") ? (boolean) soJson.get("searchable") : false;
+                staticObject = new StaticObject(soName, soDesc, soPassable, soSearchable);
+                if (soJson.containsKey("hiddenItem") && soJson.get("hiddenItem") != null) {
+                    @SuppressWarnings("unchecked")
+                    LinkedHashMap<String, Object> hiddenJson =
+                            (LinkedHashMap<String, Object>) soJson.get("hiddenItem");
+                    GameObject hidden = deserializeObject(hiddenJson);
+                    if (hidden instanceof Item) {
+                        staticObject.setHiddenItem((Item) hidden);
+                    }
                 }
             }
+            if (soJson.containsKey("rotation"))
+                staticObject.setRotation((int) soJson.get("rotation"));
             cell.setStaticObject(staticObject);
         } else if (!(boolean) cellJson.get("walkable")) {
             // Backward compat: old saves only stored "walkable": false for walls
@@ -457,13 +534,20 @@ public class MapDeserializer {
         String name        = (String) json.get("name");
         String description = json.containsKey("description") ? (String) json.get("description") : "";
 
+        return withRestoredRotation(deserializeObjectInner(json, type, name, description), json);
+    }
+
+    private GameObject deserializeObjectInner(LinkedHashMap<String, Object> json,
+            String type, String name, String description) {
         switch (type) {
             case "Weapon":
                 int damage = json.containsKey("damage") ? (int) json.get("damage") : 0;
                 return new Weapon(name, description, damage);
             case "Consumable":
                 int heal = json.containsKey("healAmount") ? (int) json.get("healAmount") : 0;
-                return new Consumable(name, description, heal);
+                int mana = json.containsKey("manaAmount") ? (int) json.get("manaAmount") : 0;
+                int energy = json.containsKey("energyAmount") ? (int) json.get("energyAmount") : 0;
+                return new Consumable(name, description, heal, mana, energy);
             case "StaticObject":
                 return new StaticObject(name, description, true, false);
             case "Key":
@@ -476,7 +560,9 @@ public class MapDeserializer {
             case "Scroll":
                 String text = json.containsKey("text") ? (String) json.get("text") : description;
                 int scrollHeal = json.containsKey("healAmount") ? (int) json.get("healAmount") : 0;
-                return new Scroll(name, description, text, scrollHeal);
+                int scrollMana = json.containsKey("manaAmount") ? (int) json.get("manaAmount") : 0;
+                int scrollEnergy = json.containsKey("energyAmount") ? (int) json.get("energyAmount") : 0;
+                return new Scroll(name, description, text, scrollHeal, scrollMana, scrollEnergy);
             case "PortableContainer":
                 int capacity = json.containsKey("capacity") ? (int) json.get("capacity") : 4;
                 PortableContainer portable = new PortableContainer(name, description, capacity);
@@ -490,6 +576,13 @@ public class MapDeserializer {
                 System.out.println("[Persistence] Unknown object type: " + type);
                 return null;
         }
+    }
+
+    /** Apply rotation to a deserialized object if the field was saved. */
+    private GameObject withRestoredRotation(GameObject obj, LinkedHashMap<String, Object> json) {
+        if (obj != null && json.containsKey("rotation"))
+            obj.setRotation((int) json.get("rotation"));
+        return obj;
     }
 
     @SuppressWarnings("unchecked")
