@@ -55,9 +55,6 @@ public class ReadScrollEffect implements Effect {
             // Save the clone to the active session
             session.setShadowClone(clone);
             
-            // CRITICAL: Add the clone as an observer so it reacts to hero movements
-            hero.addObserver(clone);
-            
             System.out.println("[Effect] Shadow Clone spawned at (" + hero.getRow() + ", " + hero.getCol() + ")");
         }
     }

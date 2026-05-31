@@ -250,10 +250,7 @@ public class MapDeserializer {
     @SuppressWarnings("unchecked")
     private void restoreShadowClone(LinkedHashMap<String, Object> root, GameSession session) {
         if (!root.containsKey("shadowClone") || root.get("shadowClone") == null) {
-            Hero hero = session.getHero();
-            if (hero != null) {
-                session.setShadowClone(new ShadowClone(hero.getRow(), hero.getCol(), session.getMap()));
-            }
+            session.setShadowClone(null);
             return;
         }
 
@@ -282,6 +279,7 @@ public class MapDeserializer {
             }
             manager.restoreProgress(
                     getIntOrZero(achievementJson, "totalMoves"),
+                    getIntOrZero(achievementJson, "shadowCloneMoves"),
                     getIntOrZero(achievementJson, "enemiesKilled"),
                     getIntOrZero(achievementJson, "itemsCollected"),
                     getIntOrZero(achievementJson, "damageTaken"),
