@@ -22,9 +22,9 @@ import java.util.Random;
  */
 public class MapFactory {
 
-    /** All story maps share one size so the play window does not shrink on transition. */
-    private static final int WORLD_WIDTH = 22;
-    private static final int WORLD_HEIGHT = 16;
+    /** All story maps share the single standard size so the play window never resizes. */
+    private static final int WORLD_WIDTH = 26;
+    private static final int WORLD_HEIGHT = 15;
 
     public static GameSession createDefaultMap() {
         Map hall = buildEntryHall();
@@ -72,8 +72,8 @@ public class MapFactory {
     private static Map newWorldMap() {
         Map map = new Map(WORLD_WIDTH, WORLD_HEIGHT);
         fillWalls(map);
-        carveRoom(map, 1, 1, 14, 20);
-        carveRoom(map, 10, 2, 4, 6);
+        // One open hall filling the 26x15 interior (rows 1-13, cols 1-24); border stays wall.
+        carveRoom(map, 1, 1, 13, 24);
         return map;
     }
 
@@ -84,10 +84,10 @@ public class MapFactory {
                 "Ancient Bookshelf", "Dusty tomes line the shelves — try searching.", true, true));
         setFloor(map, 10, 5, new StaticObject(
                 "Gargoyle Pool", "A shallow pool — something may be hidden inside.", true, true));
-        setFloor(map, 12, 8, new StaticObject(
+        setFloor(map, 11, 8, new StaticObject(
                 "Stone Column", "A cracked pillar — search the base.", false, true));
 
-        map.getCell(7, 19).setStaticObject(new MapPortal(
+        map.getCell(7, 24).setStaticObject(new MapPortal(
                 "Wooden Door", "Leads deeper into the dungeon.",
                 "catacombs", 7, 2, null, true));
 
@@ -105,14 +105,14 @@ public class MapFactory {
         if (catacombsPool != null) {
             catacombsPool.setHiddenItem(new Consumable("Health Potion", "Restores 15 HP", 15, 0, 0));
         }
-        setFloor(map, 12, 8, new StaticObject(
+        setFloor(map, 11, 8, new StaticObject(
                 "Stone Column", "A cracked pillar — search the base.", false, true));
 
         map.getCell(7, 1).setStaticObject(new MapPortal(
                 "Wooden Door", "Back to the entry hall.",
-                "hall", 7, 18, null, true));
+                "hall", 7, 23, null, true));
 
-        map.getCell(7, 19).setStaticObject(new MapPortal(
+        map.getCell(7, 24).setStaticObject(new MapPortal(
                 "Iron Door", "A heavy door to the treasure vault.",
                 "vault", 7, 2, "gold", false));
 
@@ -127,12 +127,12 @@ public class MapFactory {
                 "Wall Shelf", "Relics rest on stone shelves — search carefully.", true, true));
         setFloor(map, 10, 6, new StaticObject(
                 "Gargoyle Pool", "A dark pool — search the water.", true, true));
-        setFloor(map, 12, 10, new StaticObject(
+        setFloor(map, 11, 10, new StaticObject(
                 "Stone Column", "Ancient carvings cover the column.", false, true));
 
         map.getCell(7, 1).setStaticObject(new MapPortal(
                 "Iron Door", "Return to the catacombs.",
-                "catacombs", 7, 18, null, true));
+                "catacombs", 7, 23, null, true));
 
         map.placeObject(6, 14, new StaticContainer("Chest", "A sealed treasure chest"));
         map.placeObject(8, 10, new StaticContainer("Chest", "An ornate chest"));
@@ -157,9 +157,9 @@ public class MapFactory {
         hall.placeObject(8, 14, new Consumable("Energy Apple", "Restores energy", 0, 0, 25));
         hall.placeObject(9, 10, new Consumable("Mana Elixir", "Restores 25 mana", 0, 25, 0));
         hall.placeObject(11, 6, new Weapon("Dagger", "A quick blade", 5));
-        hall.placeObject(13, 12, new Scroll("Spell Book", "Arcane tome",
+        hall.placeObject(11, 12, new Scroll("Spell Book", "Arcane tome",
                 "Runes mend your wounds.", 12));
-        hall.placeObject(14, 5, new Wearable("Armor", "Leather armor", 2));
+        hall.placeObject(11, 5, new Wearable("Armor", "Leather armor", 2));
         hall.placeObject(6, 14, new StaticContainer("Chest", "A dusty chest"));
 
         catacombs.placeObject(3, 5, new Weapon("Sword", "A chipped sword", 6));
@@ -179,9 +179,9 @@ public class MapFactory {
         vault.placeObject(8, 14, new Consumable("Energy Apple", "Restores energy", 0, 0, 30));
         vault.placeObject(9, 10, new Consumable("Mana Elixir", "Restores 30 mana", 0, 30, 0));
         vault.placeObject(11, 6, new Weapon("Dagger", "Ceremonial dagger", 6));
-        vault.placeObject(13, 12, new Scroll("Spell Book", "Ancient scripture",
+        vault.placeObject(11, 12, new Scroll("Spell Book", "Ancient scripture",
                 "Warm light restores your wounds.", 10));
-        vault.placeObject(14, 5, new Wearable("Armor", "Royal armor", 4));
+        vault.placeObject(11, 5, new Wearable("Armor", "Royal armor", 4));
 
         populateChest(hall, 6, 14,
                 new Consumable("Energy Apple", "Restores energy", 0, 0, 20),

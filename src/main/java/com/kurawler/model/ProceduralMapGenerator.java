@@ -20,10 +20,10 @@ import java.util.Random;
  */
 public class ProceduralMapGenerator {
 
-    private static final int WIDTH = 20;
-    private static final int HEIGHT = 20;
+    private static final int WIDTH = 26;
+    private static final int HEIGHT = 15;
     private static final int MIN_ROOM_SIZE = 3;
-    private static final int MAX_ROOM_SIZE = 6;
+    private static final int MAX_ROOM_SIZE = 5;
     private static final int ROOM_ATTEMPTS = 30;
 
     private final Random rng = new Random();
