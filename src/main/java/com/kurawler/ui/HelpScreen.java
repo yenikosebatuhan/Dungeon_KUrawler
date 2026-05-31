@@ -24,8 +24,8 @@ import javafx.scene.text.TextAlignment;
  */
 public class HelpScreen {
 
-    private static final int W = 560;
-    private static final int H = 680;
+    private static final int W = ScreenManager.WINDOW_W;
+    private static final int H = ScreenManager.WINDOW_H;
     private static final int BG_TILE = 48;
 
     private final ScreenManager screenManager;

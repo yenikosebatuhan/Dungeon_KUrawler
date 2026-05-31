@@ -181,18 +181,15 @@ public class GameView {
             }
         });
 
-        double availableW = ScreenManager.WINDOW_W;
-        double availableH = ScreenManager.WINDOW_H - HUD_HEIGHT;
-        double scaleX = availableW / canvasW;
-        double scaleY = availableH / canvasH;
-        double scale = Math.min(scaleX, scaleY);
-        scale = Math.min(scale, 1.5);
+        applyMapFitScale(canvasW, canvasH);
 
-        canvas.getTransforms().clear();
-        canvas.getTransforms().add(new javafx.scene.transform.Scale(scale, scale));
+        // Fixed play viewport (window minus HUD). The map is centered on a themed
+        // dungeon backdrop so any leftover area reads as dungeon wall, never flat black.
+        Canvas viewportBg = new Canvas(ScreenManager.WINDOW_W, ScreenManager.WINDOW_H - HUD_HEIGHT);
+        drawViewportBackdrop(viewportBg);
 
         javafx.scene.Group canvasGroup = new javafx.scene.Group(canvas);
-        StackPane mapContainer = new StackPane(canvasGroup);
+        StackPane mapContainer = new StackPane(viewportBg, canvasGroup);
         mapContainer.setStyle("-fx-background-color: #0a0a10;");
 
         StackPane canvasStack = new StackPane(mapContainer, messageLabel);
@@ -247,9 +244,11 @@ public class GameView {
                 && !session.isEditorTestPlay()
                 && session.getTargetObjective() != null) {
             javafx.application.Platform.runLater(() -> {
+                // Draw the board + HUD first so the quest popup overlays the real
+                // game screen instead of a blank backdrop.
+                render();
                 new TargetItemPopup(stage, session.getTargetObjective()).show();
                 startGameLoop(session);
-                render();
                 showInitialPlayMessages(session);
             });
         } else {
@@ -1169,29 +1168,43 @@ public class GameView {
         popup.initOwner(stage);
         popup.initStyle(StageStyle.TRANSPARENT);
 
-        int popupW = 440;
-        int popupH = 340;
+        int popupW = 480;
+        int popupH = 470;
         Canvas bg = new Canvas(popupW, popupH);
-        drawDungeonBg(bg, popupW, popupH);
+        drawMenuDungeonBg(bg, popupW, popupH);
 
-        Label title = new Label("\u2630  GAME MENU");
-        title.setFont(Font.font("Monospaced", FontWeight.BOLD, 22));
+        Label title = new Label("GAME MENU");
+        title.setFont(Font.font("Serif", FontWeight.BOLD, 34));
         title.setTextFill(Color.web("#e8c84a"));
-        title.setEffect(new javafx.scene.effect.DropShadow(6, 0, 1, Color.BLACK));
+        javafx.scene.effect.InnerShadow engrave =
+                new javafx.scene.effect.InnerShadow(3, 1, 1, Color.web("#5a4210"));
+        javafx.scene.effect.DropShadow outerGlow =
+                new javafx.scene.effect.DropShadow(20, Color.web("#ff9500", 0.5));
+        outerGlow.setInput(engrave);
+        javafx.scene.effect.DropShadow deepShadow =
+                new javafx.scene.effect.DropShadow(6, 2, 3, Color.web("#000000", 0.8));
+        deepShadow.setInput(outerGlow);
+        title.setEffect(deepShadow);
+
+        Label ornament = new Label("\u2501\u2501\u2501\u2501 \u2726 \u2726 \u2726 \u2501\u2501\u2501\u2501");
+        ornament.setFont(Font.font("Monospaced", 15));
+        ornament.setTextFill(Color.web("#8b6914", 0.75));
+        ornament.setEffect(new javafx.scene.effect.DropShadow(4, 0, 1, Color.web("#000000", 0.5)));
 
         Label subtitle = new Label(
                 "Save your progress, load a previous run, or return to the title screen.");
-        subtitle.setFont(Font.font("Monospaced", 12));
-        subtitle.setTextFill(Color.web("#c8b880"));
+        subtitle.setFont(Font.font("Serif", 13));
+        subtitle.setTextFill(Color.web("#8a7a55"));
         subtitle.setWrapText(true);
         subtitle.setTextAlignment(TextAlignment.CENTER);
         subtitle.setMaxWidth(360);
         subtitle.setAlignment(Pos.CENTER);
+        subtitle.setEffect(new javafx.scene.effect.DropShadow(4, 1, 1, Color.web("#000000", 0.7)));
 
-        Button saveBtn = popupButton("Save Game", "#55efc4");
-        Button loadBtn = popupButton("Load Game", "#5dade2");
-        Button mainMenuBtn = popupButton("Main Menu", "#e8c84a");
-        Button resumeBtn = popupButton("Resume", "#a09070");
+        Button saveBtn = menuStoneButton("\u2694  Save Game");
+        Button loadBtn = menuStoneButton("\u2693  Load Game");
+        Button mainMenuBtn = menuStoneButton("\u2302  Main Menu");
+        Button resumeBtn = menuStoneButton("\u25b6  Resume");
 
         Runnable closePopup = popup::close;
 
@@ -1230,12 +1243,15 @@ public class GameView {
             closePopup.run();
         });
 
-        VBox panel = new VBox(12, title, subtitle, saveBtn, loadBtn, mainMenuBtn, resumeBtn);
+        Label ornament2 = new Label("━━━━ ✦ ✦ ✦ ━━━━");
+        ornament2.setFont(Font.font("Monospaced", 15));
+        ornament2.setTextFill(Color.web("#8b6914", 0.75));
+        ornament2.setEffect(new javafx.scene.effect.DropShadow(4, 0, 1, Color.web("#000000", 0.5)));
+
+        VBox panel = new VBox(13, title, ornament, subtitle,
+                saveBtn, loadBtn, mainMenuBtn, ornament2, resumeBtn);
         panel.setAlignment(Pos.CENTER);
-        panel.setPadding(new Insets(22, 28, 24, 28));
-        panel.setStyle("-fx-background-color: rgba(14,12,10,0.94); "
-                + "-fx-border-color: #c8a840; -fx-border-width: 2.5; "
-                + "-fx-border-radius: 10; -fx-background-radius: 10;");
+        panel.setPadding(new Insets(28, 34, 30, 34));
 
         StackPane root = new StackPane(bg, panel);
         StackPane.setAlignment(panel, Pos.CENTER);
@@ -1275,13 +1291,46 @@ public class GameView {
         int canvasW = map.getWidth() * TILE_SIZE;
         int canvasH = map.getHeight() * TILE_SIZE;
         if (canvas.getWidth() != canvasW || canvas.getHeight() != canvasH) {
+            // Map size changed (e.g. portal to another map). Re-fit the map into the
+            // fixed viewport; never resize the window or the HUD.
             canvas.setWidth(canvasW);
             canvas.setHeight(canvasH);
-            hudCanvas.setWidth(canvasW);
-            if (stage != null) {
-                stage.sizeToScene();
+            hudCanvas.setWidth(ScreenManager.WINDOW_W);
+            applyMapFitScale(canvasW, canvasH);
+        }
+    }
+
+    /** Scale the map canvas to fit the fixed play viewport (contain, preserve aspect). */
+    private void applyMapFitScale(double canvasW, double canvasH) {
+        double availableW = ScreenManager.WINDOW_W;
+        double availableH = ScreenManager.WINDOW_H - HUD_HEIGHT;
+        double scale = Math.min(availableW / canvasW, availableH / canvasH);
+        canvas.getTransforms().setAll(new javafx.scene.transform.Scale(scale, scale));
+    }
+
+    /** Tiled dungeon-wall backdrop for the play viewport (fills any letterbox area). */
+    private void drawViewportBackdrop(Canvas c) {
+        GraphicsContext gc = c.getGraphicsContext2D();
+        double w = c.getWidth();
+        double h = c.getHeight();
+        SpriteSheet walls = new SpriteSheet("/assets/walls_x3.png", 48);
+        gc.setFill(Color.web("#0a0a14"));
+        gc.fillRect(0, 0, w, h);
+        if (walls.isLoaded()) {
+            for (int y = 0; y < h; y += 48) {
+                for (int x = 0; x < w; x += 48) {
+                    int hash = Math.abs((x * 73856093) ^ (y * 19349663));
+                    javafx.scene.image.Image tile = walls.getSprite(hash % 5, 1);
+                    if (tile != null) gc.drawImage(tile, x, y, 48, 48);
+                }
             }
         }
+        gc.setFill(new javafx.scene.paint.RadialGradient(
+                0, 0, w / 2.0, h / 2.0, Math.max(w, h) * 0.7, false,
+                CycleMethod.NO_CYCLE,
+                new Stop(0, Color.web("#0a0a14", 0.35)),
+                new Stop(1, Color.web("#000000", 0.88))));
+        gc.fillRect(0, 0, w, h);
     }
 
     /** Render the entire game state by reading the model. */
@@ -2433,6 +2482,75 @@ public class GameView {
         }
         gc.setFill(Color.web("#0a0a10", 0.8));
         gc.fillRect(0, 0, w, h);
+    }
+
+    /** Main-menu-style dungeon background for the in-game menu: wall border ring,
+     *  varied floor interior, vignette, and a gold double frame. */
+    private void drawMenuDungeonBg(Canvas c, int w, int h) {
+        GraphicsContext gc = c.getGraphicsContext2D();
+        SpriteSheet walls = new SpriteSheet("/assets/walls_x3.png", 48);
+        gc.setFill(Color.web("#0a0a14"));
+        gc.fillRect(0, 0, w, h);
+        if (walls.isLoaded()) {
+            javafx.scene.image.Image[] wallTiles = {
+                    walls.getSprite(0, 1), walls.getSprite(1, 1), walls.getSprite(2, 1),
+                    walls.getSprite(3, 1), walls.getSprite(4, 1)
+            };
+            javafx.scene.image.Image[] floorTiles = {
+                    walls.getSprite(0, 3), walls.getSprite(1, 3),
+                    walls.getSprite(2, 3), walls.getSprite(3, 3)
+            };
+            for (int y = 0; y < h; y += 48) {
+                for (int x = 0; x < w; x += 48) {
+                    int hash = Math.abs((x * 73856093) ^ (y * 19349663));
+                    boolean isWall = (y < 48) || (y > h - 96)
+                            || (x < 48) || (x > w - 96) || hash % 7 == 0;
+                    javafx.scene.image.Image tile = isWall
+                            ? wallTiles[hash % wallTiles.length]
+                            : floorTiles[hash % floorTiles.length];
+                    if (tile != null) gc.drawImage(tile, x, y, 48, 48);
+                }
+            }
+        }
+        gc.setFill(new javafx.scene.paint.RadialGradient(
+                0, 0, w / 2.0, h * 0.4, Math.max(w, h) * 0.7, false,
+                CycleMethod.NO_CYCLE,
+                new Stop(0, Color.web("#0a0a14", 0.30)),
+                new Stop(1, Color.web("#000000", 0.86))));
+        gc.fillRect(0, 0, w, h);
+        gc.setStroke(Color.web("#c8a840"));
+        gc.setLineWidth(2.5);
+        gc.strokeRoundRect(2, 2, w - 4, h - 4, 12, 12);
+        gc.setStroke(Color.web("#8b7530", 0.5));
+        gc.setLineWidth(1);
+        gc.strokeRoundRect(8, 8, w - 16, h - 16, 9, 9);
+    }
+
+    /** Stone button matching the main menu, for the in-game menu overlay. */
+    private Button menuStoneButton(String text) {
+        Button btn = new Button(text);
+        btn.setFont(Font.font("Serif", FontWeight.BOLD, 16));
+        btn.setPrefWidth(300);
+        btn.setPrefHeight(44);
+        btn.setAlignment(Pos.CENTER);
+        String base = "-fx-background-color: "
+                + "linear-gradient(to bottom, #4a4438, #2e2a22, #1e1b16, #2a2720, #3a362e); "
+                + "-fx-text-fill: #c8b880; "
+                + "-fx-background-radius: 4; -fx-border-radius: 4; "
+                + "-fx-border-color: #8b7940 #5a4e30 #3a3220 #8b7940; "
+                + "-fx-border-width: 2; -fx-cursor: hand; "
+                + "-fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 6, 0, 0, 3);";
+        String hover = "-fx-background-color: "
+                + "linear-gradient(to bottom, #5a5448, #3e3a30, #2a2720, #353028, #4a4638); "
+                + "-fx-text-fill: #f0e0a0; "
+                + "-fx-background-radius: 4; -fx-border-radius: 4; "
+                + "-fx-border-color: #c8a850 #8b7940 #5a4e30 #c8a850; "
+                + "-fx-border-width: 2; -fx-cursor: hand; "
+                + "-fx-effect: dropshadow(gaussian, rgba(200,168,80,0.3), 12, 0, 0, 0);";
+        btn.setStyle(base);
+        btn.setOnMouseEntered(e -> btn.setStyle(hover));
+        btn.setOnMouseExited(e -> btn.setStyle(base));
+        return btn;
     }
 
     private void centerPopup(Stage popup) {
