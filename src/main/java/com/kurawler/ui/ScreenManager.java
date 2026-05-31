@@ -328,6 +328,22 @@ public class ScreenManager {
         showPlayMode(session);
     }
 
+    public void playEditedMapAsTeamMatch(com.kurawler.model.Map map) {
+        if (map == null) {
+            return;
+        }
+        TeamMatchSession tmSession = new TeamMatchSession(map);
+        if (!tmSession.validateMap()) {
+            EditorStyledDialog.showMessage(stage, "Team Match Error",
+                    "Map does not have enough open space for Team Match.");
+            return;
+        }
+        tmSession.initializeMatch();
+        tmSession.setEditorTestPlay(true);
+        prepareSessionForPlay(tmSession);
+        showPlayMode(tmSession);
+    }
+
     private void restoreHeroForEditor(com.kurawler.model.Map map) {
         for (int row = 0; row < map.getHeight(); row++) {
             for (int col = 0; col < map.getWidth(); col++) {
