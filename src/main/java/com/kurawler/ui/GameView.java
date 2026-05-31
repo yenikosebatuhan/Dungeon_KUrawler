@@ -698,6 +698,12 @@ public class GameView {
             case S: case DOWN:  isMoveKey = true; dRow = 1; dCol = 0; break;
             case A: case LEFT:  isMoveKey = true; dRow = 0; dCol = -1; break;
             case D: case RIGHT: isMoveKey = true; dRow = 0; dCol = 1; break;
+            case SPACE:
+                if (!tryAttackFacingEnemy()) {
+                    messageLabel.setText("No enemy in facing direction.");
+                }
+                event.consume();
+                break;
             case E:
                 if (tryUseAdjacentPortal()) {
                     render();
@@ -787,6 +793,23 @@ public class GameView {
         if (portalMsg != null && !portalMsg.isEmpty()) {
             messageLabel.setText(portalMsg);
         }
+    }
+
+    /**
+     * Space key: melee attack the enemy one tile ahead in the hero's facing direction.
+     */
+    private boolean tryAttackFacingEnemy() {
+        GameSession session = controller.getSession();
+        Hero hero = session.getHero();
+        int row = hero.getRow() + hero.getFacingRow();
+        int col = hero.getCol() + hero.getFacingCol();
+        GridCell cell = session.getMap().getCell(row, col);
+        if (cell == null || !(cell.getOccupyingCharacter() instanceof Enemy enemy)
+                || !enemy.isAlive()) {
+            return false;
+        }
+        executeInteraction("attack", row, col, enemy.getName(), session);
+        return true;
     }
 
     /**
