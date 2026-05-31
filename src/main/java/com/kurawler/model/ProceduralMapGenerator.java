@@ -152,8 +152,8 @@ public class ProceduralMapGenerator {
             place(floors, new Weapon(w[0], w[1], Integer.parseInt(w[2])));
         }
         place(floors, new Consumable("Health Potion", "Restores 15 HP", 15, 0, 0));
-        place(floors, new Consumable("Mana Elixir", "Restores 20 mana", 0, 20, 0));
-        place(floors, new Consumable("Energy Apple", "Restores energy", 0, 0, 20));
+        place(floors, new Consumable("Mana Potion", "Restores 30 mana", 0, 30, 0));
+        place(floors, new Consumable("Energy Potion", "Restores 35 energy", 0, 0, 35));
         place(floors, new Wearable("Chain Mail", "Decent protection", 3));
         place(floors, new Key("Silver Key", "Opens a silver lock", "silver"));
     }
@@ -199,7 +199,7 @@ public class ProceduralMapGenerator {
             case 0:
                 return new Consumable("Health Potion", "Restores 15 HP", 15, 0, 0);
             case 1:
-                return new Consumable("Energy Apple", "Restores energy", 0, 0, 20);
+                return new Consumable("Energy Potion", "Restores 35 energy", 0, 0, 35);
             case 2:
                 return new Scroll("Spark Scroll", "A crackling note", "A minor shock courses through you.", 4);
             default:

@@ -5,6 +5,7 @@ import com.kurawler.model.Map;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
+import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
 import java.util.List;
 
@@ -78,6 +79,22 @@ public class MapEditor {
         cell.setOccupyingCharacter(character);
         character.setPosition(cell.getRow(), cell.getCol());
         return true;
+    }
+
+    public boolean addItemToContainer(Item item, int x, int y) {
+        GridCell cell = currentMap.getCellAt(x, y);
+        if (item == null || cell == null) {
+            return false;
+        }
+
+        for (GameObject obj : cell.getObjects()) {
+            if (obj instanceof StaticContainer) {
+                pushUndoSnapshot();
+                ((StaticContainer) obj).addItem(item);
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean deleteObject(int x, int y) {
