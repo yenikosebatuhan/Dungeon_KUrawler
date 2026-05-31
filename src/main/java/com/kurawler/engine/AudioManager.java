@@ -22,6 +22,7 @@ public class AudioManager {
 
     private Clip musicClip;
     private String currentMusicKey;
+    private boolean musicEnabled = true;
 
     private AudioManager() {
         sounds.put("button",   "button.wav");
@@ -67,7 +68,7 @@ public class AudioManager {
      *          is already playing. Stops any previous track first.
      */
     public void playMusic(String musicKey, boolean loop) {
-        if (!enabled || musicKey == null) {
+    	if (!enabled || !musicEnabled || musicKey == null) {
             return;
         }
         if (musicKey.equals(currentMusicKey) && musicClip != null && musicClip.isRunning()) {
@@ -123,6 +124,27 @@ public class AudioManager {
      */
     public boolean isEnabled() {
         return enabled;
+    }
+    
+    /**
+     * @requires true
+     * @modifies this.musicEnabled
+     * @effects Enables or disables only the background music.
+     */
+    public void setMusicEnabled(boolean musicEnabled) {
+        this.musicEnabled = musicEnabled;
+        if (!musicEnabled) {
+            stopMusic();
+        }
+    }
+
+    /**
+     * @requires none
+     * @modifies none
+     * @effects Returns true if music is currently enabled.
+     */
+    public boolean isMusicEnabled() {
+        return musicEnabled;
     }
 
     /**
