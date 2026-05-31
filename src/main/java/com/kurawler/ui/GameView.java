@@ -1174,7 +1174,7 @@ public class GameView {
         popup.initStyle(StageStyle.TRANSPARENT);
 
         int popupW = 440;
-        int popupH = 340;
+        int popupH = 390; // INCREASED from 340 to fit the new button
         Canvas bg = new Canvas(popupW, popupH);
         drawDungeonBg(bg, popupW, popupH);
 
@@ -1194,6 +1194,20 @@ public class GameView {
 
         Button saveBtn = popupButton("Save Game", "#55efc4");
         Button loadBtn = popupButton("Load Game", "#5dade2");
+        
+        // NEW MUSIC BUTTON (Adapted to use popupButton instead of pauseMenuBtn)
+        Button musicBtn = popupButton("\u266B  Music: " + (AudioManager.getInstance().isMusicEnabled() ? "ON" : "OFF"), "#f39c12");
+        musicBtn.setOnAction(e -> {
+            AudioManager audio = AudioManager.getInstance();
+            boolean newState = !audio.isMusicEnabled();
+            audio.setMusicEnabled(newState);
+            musicBtn.setText("\u266B  Music: " + (newState ? "ON" : "OFF"));
+            audio.play("button");
+            if (newState) {
+                audio.playMusic("combat", true); 
+            }
+        });
+
         Button mainMenuBtn = popupButton("Main Menu", "#e8c84a");
         Button resumeBtn = popupButton("Resume", "#a09070");
 
@@ -1234,7 +1248,8 @@ public class GameView {
             closePopup.run();
         });
 
-        VBox panel = new VBox(12, title, subtitle, saveBtn, loadBtn, mainMenuBtn, resumeBtn);
+        // ADDED musicBtn TO THE VBOX HERE
+        VBox panel = new VBox(12, title, subtitle, saveBtn, loadBtn, musicBtn, mainMenuBtn, resumeBtn);
         panel.setAlignment(Pos.CENTER);
         panel.setPadding(new Insets(22, 28, 24, 28));
         panel.setStyle("-fx-background-color: rgba(14,12,10,0.94); "

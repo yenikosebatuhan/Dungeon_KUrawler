@@ -3,6 +3,7 @@ package com.kurawler.ui;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import com.kurawler.engine.AudioManager;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -97,8 +98,20 @@ public class MainMenuScreen {
 
         Button exitBtn = smallStoneButton("Exit");
         exitBtn.setOnAction(e -> Platform.exit());
+        
+        Button musicBtn = smallStoneButton("Music: " + (AudioManager.getInstance().isMusicEnabled() ? "ON" : "OFF"));
+        musicBtn.setOnAction(e -> {
+            AudioManager audio = AudioManager.getInstance();
+            boolean newState = !audio.isMusicEnabled();
+            audio.setMusicEnabled(newState);
+            musicBtn.setText("Music: " + (newState ? "ON" : "OFF"));
+            audio.play("button");
+            if (newState) {
+                audio.playMusic("menu", true); 
+            }
+        });
 
-        HBox bottomRow = new HBox(12, saveBtn, loadBtn, helpBtn, exitBtn);
+        HBox bottomRow = new HBox(12, saveBtn, loadBtn, musicBtn, helpBtn, exitBtn);
         bottomRow.setAlignment(Pos.CENTER);
 
         Label version = new Label("v2.0 \u2022 KU Spring 2026");
