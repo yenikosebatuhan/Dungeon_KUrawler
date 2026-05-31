@@ -32,6 +32,7 @@ public class TeamMatchGameLoop {
 
     private int enemyTickCounter       = 0;
     private int projectileTickCounter  = 0;
+    private long playTimeAccumulatorMs = 0;
 
     private final List<Projectile> activeProjectiles = new ArrayList<>();
 
@@ -71,6 +72,8 @@ public class TeamMatchGameLoop {
     public void update(long deltaMs) {
         if (!running) return;
         if (!"TeamMatch".equals(session.getCurrentMode())) return;
+
+        updatePlayTimer(deltaMs);
 
         if (++enemyTickCounter >= ENEMY_TICK_INTERVAL) {
             enemyTickCounter = 0;
@@ -202,6 +205,16 @@ public class TeamMatchGameLoop {
      * @modifies none
      * @effects Returns true if the loop is currently running.
      */
+    private void updatePlayTimer(long deltaMs) {
+        if (deltaMs <= 0) return;
+        playTimeAccumulatorMs += deltaMs;
+        if (playTimeAccumulatorMs >= 1000) {
+            int elapsed = (int) (playTimeAccumulatorMs / 1000);
+            session.setPlayDurationTimer(session.getPlayDurationTimer() + elapsed);
+            playTimeAccumulatorMs %= 1000;
+        }
+    }
+
     public boolean isRunning()                        { return running; }
 
     /**

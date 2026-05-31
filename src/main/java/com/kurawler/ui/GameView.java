@@ -423,8 +423,98 @@ public class GameView {
     }
 
     private void showTeamMatchResult(String result) {
-        Platform.runLater(() -> showEndScreen(
-                "\u2694 MATCH OVER \u2694", result, "#6fc3df", "#1a2a3a"));
+        Platform.runLater(() -> {
+            if (!isPlaySceneActive()) return;
+            GameSession session = controller.getSession();
+            boolean victory = result.startsWith("Team B");
+            String title  = victory ? "\u2694 VICTORY \u2694" : "\u2620 DEFEAT \u2620";
+            String accent = victory ? "#42a5f5" : "#ef5350";
+            String bgTint = victory ? "#0a1a2a" : "#2a0a0a";
+            String time   = formatTime(session.getPlayDurationTimer());
+            String msg    = (victory ? "Your team won the arena battle!"
+                                     : "Your team was eliminated.")
+                          + "\n\nTime: " + time + "  |  Turns: " + session.getTurnCount();
+
+            Stage popup = new Stage();
+            popup.initOwner(stage);
+            popup.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            popup.initStyle(javafx.stage.StageStyle.UNDECORATED);
+
+            Canvas bg = new Canvas(420, 320);
+            GraphicsContext gc = bg.getGraphicsContext2D();
+            SpriteSheet wallSheet = new SpriteSheet("/assets/walls_x3.png", 48);
+            gc.setFill(Color.web("#0a0a10"));
+            gc.fillRect(0, 0, 420, 320);
+            if (wallSheet.isLoaded()) {
+                for (int y = 0; y < 320; y += 48)
+                    for (int x = 0; x < 420; x += 48) {
+                        int hash = Math.abs((x * 73856093) ^ (y * 19349663));
+                        javafx.scene.image.Image tile = wallSheet.getSprite(hash % 5, 1);
+                        if (tile != null) gc.drawImage(tile, x, y, 48, 48);
+                    }
+            }
+            gc.setFill(Color.web(bgTint, 0.75));
+            gc.fillRect(0, 0, 420, 320);
+
+            Label titleLabel = new Label(title);
+            titleLabel.setFont(Font.font("Serif", FontWeight.BOLD, 36));
+            titleLabel.setTextFill(Color.web(accent));
+            javafx.scene.effect.DropShadow glow = new javafx.scene.effect.DropShadow(20, Color.web(accent, 0.6));
+            glow.setInput(new javafx.scene.effect.InnerShadow(3, 1, 2, Color.web("#000000", 0.6)));
+            titleLabel.setEffect(glow);
+
+            Label msgLabel = new Label(msg);
+            msgLabel.setFont(Font.font("Serif", 15));
+            msgLabel.setTextFill(Color.web("#c8b880"));
+            msgLabel.setWrapText(true);
+            msgLabel.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+            msgLabel.setMaxWidth(360);
+            msgLabel.setEffect(new javafx.scene.effect.DropShadow(4, 0, 1, Color.BLACK));
+
+            String btnBase = "-fx-background-color: linear-gradient(to bottom,#4a4438,#2e2a22,#1e1b16,#2a2720);"
+                    + "-fx-text-fill:" + accent + ";-fx-background-radius:4;-fx-border-radius:4;"
+                    + "-fx-border-color:" + accent + "88 #3a3220 #3a3220 " + accent + "88;"
+                    + "-fx-border-width:2;-fx-cursor:hand;";
+            String btnHover = "-fx-background-color: linear-gradient(to bottom,#5a5448,#3e3a30,#2a2720,#353028);"
+                    + "-fx-text-fill:#ffffff;-fx-background-radius:4;-fx-border-radius:4;"
+                    + "-fx-border-color:" + accent + " " + accent + "aa " + accent + "aa " + accent + ";"
+                    + "-fx-border-width:2;-fx-cursor:hand;";
+
+            Button playAgainBtn = new Button("Play Again");
+            playAgainBtn.setFont(Font.font("Serif", FontWeight.BOLD, 15));
+            playAgainBtn.setPrefWidth(200); playAgainBtn.setPrefHeight(40);
+            playAgainBtn.setStyle(btnBase);
+            playAgainBtn.setOnMouseEntered(e -> playAgainBtn.setStyle(btnHover));
+            playAgainBtn.setOnMouseExited(e -> playAgainBtn.setStyle(btnBase));
+            playAgainBtn.setOnAction(e -> { popup.close(); playActive = false; shutdown(); screenManager.startTeamMatch(); });
+
+            Button menuBtn = new Button("Return to Menu");
+            menuBtn.setFont(Font.font("Serif", FontWeight.BOLD, 15));
+            menuBtn.setPrefWidth(200); menuBtn.setPrefHeight(40);
+            menuBtn.setStyle(btnBase);
+            menuBtn.setOnMouseEntered(e -> menuBtn.setStyle(btnHover));
+            menuBtn.setOnMouseExited(e -> menuBtn.setStyle(btnBase));
+            menuBtn.setOnAction(e -> { popup.close(); playActive = false; shutdown(); screenManager.showMainMenu(); });
+
+            VBox content = new VBox(16, titleLabel, msgLabel, playAgainBtn, menuBtn);
+            content.setAlignment(javafx.geometry.Pos.CENTER);
+            content.setPadding(new Insets(28));
+            content.setStyle("-fx-border-color:" + accent + "66;-fx-border-width:3;"
+                    + "-fx-border-radius:4;-fx-background-radius:4;");
+
+            StackPane root = new StackPane(bg, content);
+            root.setOpacity(0);
+            popup.setScene(new Scene(root, 420, 320));
+
+            popup.setOnShown(e -> {
+                popup.setX(stage.getX() + (stage.getWidth() - 420) / 2);
+                popup.setY(stage.getY() + (stage.getHeight() - 320) / 2);
+                javafx.animation.FadeTransition ft = new javafx.animation.FadeTransition(
+                        javafx.util.Duration.millis(400), root);
+                ft.setFromValue(0); ft.setToValue(1); ft.play();
+            });
+            popup.showAndWait();
+        });
     }
 
     private void showEndScreen(String title, String message, String accent, String bgTint) {
@@ -1293,6 +1383,8 @@ public class GameView {
                         Team team = tmSession.getTeamForCharacter(occupant);
                         if (team != null) {
                             drawTeamIndicator(gc, (int) pos[0], (int) pos[1], team.getColor());
+                            String label = (occupant instanceof Knight) ? "KNIGHT" : "SORCER";
+                            drawNameplate(gc, (int) pos[0], (int) pos[1], label, team.getColor());
                         }
                     }
                 }
@@ -1321,17 +1413,20 @@ public class GameView {
 
         if (session instanceof TeamMatchSession) {
             drawTeamIndicator(gc, heroSx, heroSy, Team.TeamColor.BLUE);
+            drawNameplate(gc, heroSx, heroSy, "HERO", Team.TeamColor.BLUE);
         }
 
-        if (gameLoop != null) {
-            for (com.kurawler.model.object.Projectile proj : gameLoop.getActiveProjectiles()) {
-                double[] pPos = lerpPosition(proj,
-                        proj.getPositionCol() * TILE_SIZE, proj.getPositionRow() * TILE_SIZE);
-                if ("Hero Bolt".equals(proj.getName())) {
-                    renderer.drawHeroProjectile(gc, (int) pPos[0], (int) pPos[1]);
-                } else {
-                    renderer.drawProjectile(gc, (int) pPos[0], (int) pPos[1]);
-                }
+        java.util.List<com.kurawler.model.object.Projectile> projectilesToRender =
+                (gameLoop != null) ? gameLoop.getActiveProjectiles() :
+                (teamMatchGameLoop != null) ? teamMatchGameLoop.getActiveProjectiles() :
+                java.util.Collections.emptyList();
+        for (com.kurawler.model.object.Projectile proj : projectilesToRender) {
+            double[] pPos = lerpPosition(proj,
+                    proj.getPositionCol() * TILE_SIZE, proj.getPositionRow() * TILE_SIZE);
+            if ("Hero Bolt".equals(proj.getName())) {
+                renderer.drawHeroProjectile(gc, (int) pPos[0], (int) pPos[1]);
+            } else {
+                renderer.drawProjectile(gc, (int) pPos[0], (int) pPos[1]);
             }
         }
 
@@ -1414,8 +1509,21 @@ public class GameView {
         gc.setFill(Color.web("#c8b880"));
         gc.fillText("\u23F1 " + formatTime(session.getPlayDurationTimer()), statsX2, barsTopY + 14);
         gc.fillText("Turn " + session.getTurnCount(), statsX2, barsTopY + 14 + 20);
-        gc.setFill(Color.web("#aa9870"));
-        gc.fillText("Foes " + session.getActiveEnemyCount(), statsX2, barsTopY + 14 + 40);
+        if (session instanceof TeamMatchSession) {
+            TeamMatchSession tm = (TeamMatchSession) session;
+            gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 10));
+            gc.setFill(Color.web("#e8c84a"));
+            gc.fillText("\u2694 TEAM MATCH", statsX2, barsTopY + 14 + 39);
+            gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 11));
+            gc.setFill(Color.rgb(255, 80, 80));
+            gc.fillText("\u25A0A:" + tm.getTeamA().aliveCount() + "/4", statsX2, barsTopY + 14 + 53);
+            gc.setFill(Color.rgb(80, 140, 255));
+            gc.fillText("\u25A0B:" + tm.getTeamB().aliveCount() + "/4", statsX2 + 62, barsTopY + 14 + 53);
+            gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
+        } else {
+            gc.setFill(Color.web("#aa9870"));
+            gc.fillText("Foes " + session.getActiveEnemyCount(), statsX2, barsTopY + 14 + 40);
+        }
 
         // ── SECTION 4: Achievements (trophy icon) ──
         double achX = statsX2 + 110;
@@ -1607,22 +1715,45 @@ public class GameView {
     }
 
     private void drawTeamIndicator(GraphicsContext gc, int sx, int sy, Team.TeamColor teamColor) {
-        Color borderColor = (teamColor == Team.TeamColor.RED)
-                ? Color.rgb(255, 60, 60, 0.9)
-                : Color.rgb(60, 120, 255, 0.9);
-        Color dotColor = (teamColor == Team.TeamColor.RED)
-                ? Color.rgb(255, 80, 80)
-                : Color.rgb(80, 140, 255);
+        boolean red = (teamColor == Team.TeamColor.RED);
 
-        gc.setStroke(borderColor);
-        gc.setLineWidth(2.5);
+        // Subtle tile tint
+        gc.setFill(red ? Color.rgb(180, 0, 0, 0.15) : Color.rgb(0, 60, 200, 0.15));
+        gc.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+
+        // Outer glow ring (translucent, wide)
+        gc.setStroke(red ? Color.rgb(255, 80, 80, 0.3) : Color.rgb(80, 120, 255, 0.3));
+        gc.setLineWidth(6);
+        gc.strokeRect(sx - 1, sy - 1, TILE_SIZE + 2, TILE_SIZE + 2);
+
+        // Inner solid stroke
+        gc.setStroke(red ? Color.rgb(255, 60, 60, 0.9) : Color.rgb(60, 120, 255, 0.9));
+        gc.setLineWidth(2);
         gc.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
 
+        // Corner dot
+        Color dotColor = red ? Color.rgb(255, 80, 80) : Color.rgb(80, 140, 255);
         gc.setFill(dotColor);
         gc.fillOval(sx + TILE_SIZE - 12, sy + 2, 9, 9);
         gc.setStroke(Color.web("#000000", 0.6));
         gc.setLineWidth(1);
         gc.strokeOval(sx + TILE_SIZE - 12, sy + 2, 9, 9);
+    }
+
+    private void drawNameplate(GraphicsContext gc, int sx, int sy, String label, Team.TeamColor teamColor) {
+        boolean red = (teamColor == Team.TeamColor.RED);
+        Color bg = red ? Color.rgb(100, 0, 0, 0.92) : Color.rgb(0, 0, 130, 0.92);
+        int pw = TILE_SIZE, ph = 12, py = sy - 13;
+        gc.setFill(bg);
+        gc.fillRoundRect(sx, py, pw, ph, 3, 3);
+        gc.setStroke(red ? Color.rgb(255, 100, 100, 0.7) : Color.rgb(100, 140, 255, 0.7));
+        gc.setLineWidth(1);
+        gc.strokeRoundRect(sx, py, pw, ph, 3, 3);
+        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 9));
+        gc.setFill(Color.WHITE);
+        double textX = sx + (pw - label.length() * 5.4) / 2.0;
+        gc.fillText(label, textX, py + 9);
+        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
     }
 
     private String teamRoster(Team team) {
