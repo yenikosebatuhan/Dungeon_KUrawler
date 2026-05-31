@@ -6,6 +6,7 @@ import com.kurawler.model.Map;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Projectile;
 import java.util.ArrayList;
 import java.util.List;
@@ -113,6 +114,7 @@ public class GameLoop {
             return;
         }
 
+        updateShadowClone(deltaTime);
         updateEnemies();
         if (++projectileTickCounter >= PROJECTILE_TICK_INTERVAL) {
             projectileTickCounter = 0;
@@ -163,6 +165,31 @@ public class GameLoop {
         }
     }
 
+    private void updateShadowClone(long deltaTime) {
+        if (session instanceof com.kurawler.model.TeamMatchSession) {
+            return;
+        }
+        ShadowClone clone = session.getShadowClone();
+        if (clone == null) {
+            return;
+        }
+        if (deltaTime > 0) {
+            clone.tick(deltaTime);
+        }
+        if (clone.isExpired()) {
+            session.setShadowClone(null);
+        }
+    }
+
+    /** Phase 2: while active, enemies treat the clone as the hero target. */
+    private Character resolveEnemyTarget(Hero hero) {
+        ShadowClone clone = session.getShadowClone();
+        if (clone != null && clone.isAlive() && !clone.isExpired()) {
+            return clone;
+        }
+        return hero;
+    }
+
     /**
      * Scans the grid for all living enemies and lets each one decide its
      * action (chase, attack, wander, teleport, or cast spell) based on type.
@@ -177,12 +204,17 @@ public class GameLoop {
             return;
         }
 
+        Character target = resolveEnemyTarget(hero);
+        if (target == null || !target.isAlive()) {
+            return;
+        }
+
         List<Enemy> enemies = findAllEnemies(map);
         for (Enemy enemy : enemies) {
             if (!enemy.isAlive()) {
                 continue;
             }
-            enemy.decideAction((Character) hero, map, session);
+            enemy.decideAction(target, map, session);
         }
     }
 
