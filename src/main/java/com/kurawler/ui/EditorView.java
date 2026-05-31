@@ -717,7 +717,7 @@ public class EditorView {
 
     // ---------- MAP / LOADING ----------
 
-    private void applyLoadedMap(Map map) {
+    void applyLoadedMap(Map map) {
         editor.setMap(map);
         int canvasW = map.getWidth() * TILE_SIZE;
         int canvasH = map.getHeight() * TILE_SIZE;
