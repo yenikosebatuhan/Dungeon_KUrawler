@@ -151,7 +151,7 @@ public abstract class Character {
     public int getAttackPower() { return attackPower; }
 
     /**
-     * @requires true
+     * @requires attackPower >= 0
      * @modifies this.attackPower
      * @effects Sets attackPower to the given value.
      */
@@ -165,7 +165,7 @@ public abstract class Character {
     public int getDefensePower() { return defensePower; }
 
     /**
-     * @requires true
+     * @requires defensePower >= 0
      * @modifies this.defensePower
      * @effects Sets defensePower to the given value.
      */
@@ -179,7 +179,7 @@ public abstract class Character {
     public int getStrength() { return strength; }
 
     /**
-     * @requires true
+     * @requires strength >= 0
      * @modifies this.strength
      * @effects Sets strength to the given value.
      */

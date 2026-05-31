@@ -56,6 +56,13 @@ public class Hero extends Character implements HeroSubject {
         return Collections.unmodifiableList(observers);
     }
 
+    /**
+     * @requires none
+     * @modifies this.row, this.col, this.currentCell, this.facingRow, this.facingCol,
+     *           previous cell's occupyingCharacter, newCell.occupyingCharacter, observers
+     * @effects Moves this hero to newCell, updates facing direction, and notifies observers.
+     *          If newCell == null, removes hero from the map.
+     */
     @Override
     public void moveToCell(GridCell newCell) {
         if (newCell == null) {
@@ -73,6 +80,12 @@ public class Hero extends Character implements HeroSubject {
         notifyMoved(getRow(), getCol(), deltaRow, deltaCol);
     }
 
+    /**
+     * @requires amount >= 0
+     * @modifies this.health, observers
+     * @effects Delegates to super.takeDamage(amount) and notifies observers of actual damage
+     *          dealt. Does nothing beyond notification if actual damage is 0.
+     */
     @Override
     public void takeDamage(int amount) {
         int before = getHealth();
@@ -150,6 +163,13 @@ public class Hero extends Character implements HeroSubject {
         return true;
     }
 
+    /**
+     * @requires target != null
+     * @modifies this.energy, target.health, observers
+     * @effects If target is dead, out of melee range, or hero lacks energy, returns false.
+     *          Otherwise spends ATTACK_ENERGY_COST energy, deals CombatResolver-calculated
+     *          damage to target, notifies observers, and returns true.
+     */
     public boolean attack(Enemy target) {
         if (target == null || !target.isAlive()) return false;
         if (getEnergy() < ATTACK_ENERGY_COST) return false;
@@ -207,6 +227,12 @@ public class Hero extends Character implements HeroSubject {
         }
     }
 
+    /**
+     * @requires wearable != null
+     * @modifies this.defensePower, this.equippedArmor, this.equippedShield, this.equippedRing
+     * @effects If wearable is already equipped in its slot, does nothing. Otherwise unequips
+     *          the current item in that slot, equips wearable, and adjusts defensePower.
+     */
     public void equipWearable(Wearable wearable) {
         if (wearable == null) {
             return;
@@ -222,6 +248,12 @@ public class Hero extends Character implements HeroSubject {
         setDefensePower(getDefensePower() + wearable.getDefenseBonus());
     }
 
+    /**
+     * @requires wearable != null
+     * @modifies this.defensePower, this.equippedArmor, this.equippedShield, this.equippedRing
+     * @effects If wearable is equipped in its slot, unequips it and subtracts its defense
+     *          bonus from defensePower. Otherwise does nothing.
+     */
     public void unequipWearable(Wearable wearable) {
         if (wearable == null) {
             return;
@@ -234,7 +266,12 @@ public class Hero extends Character implements HeroSubject {
         clearWearableSlot(wearable);
     }
 
-    /** Unequips the first filled wearable slot (armor, then shield, then ring). */
+    /**
+     * @requires none
+     * @modifies this.defensePower, this.equippedArmor, this.equippedShield, this.equippedRing
+     * @effects Unequips the first filled wearable slot (armor, then shield, then ring).
+     *          If every wearable slot is empty, does nothing.
+     */
     public void unequipWearable() {
         if (equippedArmor != null) {
             unequipWearable(equippedArmor);
@@ -279,6 +316,12 @@ public class Hero extends Character implements HeroSubject {
         }
     }
 
+    /**
+     * @requires consumable != null
+     * @modifies this.health, this.mana, this.energy, inventory
+     * @effects If consumable is not in inventory, returns false. Otherwise removes it from
+     *          inventory, applies its heal, mana, and energy amounts, and returns true.
+     */
     public boolean useConsumable(Consumable consumable) {
         if (consumable == null || !inventory.removeItem(consumable)) return false;
         if (consumable.getHealAmount() > 0) heal(consumable.getHealAmount());
@@ -287,6 +330,13 @@ public class Hero extends Character implements HeroSubject {
         return true;
     }
 
+    /**
+     * @requires none
+     * @modifies this.mana, observers
+     * @effects If mana < RANGED_MANA_COST, returns null. Otherwise spends RANGED_MANA_COST
+     *          mana, notifies observers, and returns a projectile positioned one cell ahead
+     *          in the facing direction.
+     */
     public Projectile shootProjectile() {
         if (getMana() < RANGED_MANA_COST) return null;
         useMana(RANGED_MANA_COST);
@@ -323,4 +373,23 @@ public class Hero extends Character implements HeroSubject {
 
     /** @deprecated use {@link #getEquippedArmor()} — kept for older save format */
     public Wearable getEquippedWearable() { return equippedArmor; }
+
+    /**
+     * RI: name != null and non-empty; 0 <= health <= maxHealth; maxHealth > 0;
+     *     0 <= mana <= maxMana; 0 <= energy <= maxEnergy;
+     *     strength >= 0; attackPower >= 0; defensePower >= 0; inventory != null.
+     *
+     * @requires none
+     * @modifies none
+     * @effects Returns true iff all representation invariant conditions hold.
+     */
+    public boolean repOk() {
+        if (getName() == null || getName().isEmpty()) return false;
+        if (getHealth() < 0 || getHealth() > getMaxHealth()) return false;
+        if (getMana() < 0 || getMana() > getMaxMana()) return false;
+        if (getEnergy() < 0 || getEnergy() > getMaxEnergy()) return false;
+        if (getMaxHealth() <= 0 || getMaxMana() < 0 || getMaxEnergy() < 0) return false;
+        if (getStrength() < 0 || getAttackPower() < 0 || getDefensePower() < 0) return false;
+        return inventory != null;
+    }
 }
