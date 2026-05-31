@@ -139,6 +139,11 @@ public class ShadowClone extends Character implements HeroObserver {
      */
     public long getRemainingMs() { return remainingMs; }
 
+    /** Restores lifetime after load (persistence only). */
+    public void setRemainingMs(long remainingMs) {
+        this.remainingMs = Math.max(0, remainingMs);
+    }
+
     private boolean isWall(GridCell cell) {
         StaticObject obj = cell.getStaticObject();
         return obj != null && !obj.isPassable();
