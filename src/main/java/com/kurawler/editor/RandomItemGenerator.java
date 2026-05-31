@@ -247,11 +247,11 @@ public class RandomItemGenerator {
                 return new Consumable("Health Potion", "Restores HP",
                         10 + random.nextInt(20), 0, 0);
             case 2:
-                return new Consumable("Mana Elixir", "Restores mana",
-                        0, 15 + random.nextInt(15), 0);
+                return new Consumable("Mana Potion", "Restores 30 mana",
+                        0, 30, 0);
             case 3:
-                return new Consumable("Energy Apple", "Restores energy",
-                        0, 0, 15 + random.nextInt(15));
+                return new Consumable("Energy Potion", "Restores 35 energy",
+                        0, 0, 35);
             case 4:
                 return new Wearable("Random Armor", "Protective gear", 1 + random.nextInt(3));
             case 5:
@@ -278,8 +278,8 @@ public class RandomItemGenerator {
                 return new Consumable("Health Potion", "Restores HP",
                         10 + random.nextInt(20), 0, 0);
             case 2:
-                return new Consumable("Mana Elixir", "Restores mana",
-                        0, 15 + random.nextInt(15), 0);
+                return new Consumable("Mana Potion", "Restores 30 mana",
+                        0, 30, 0);
             case 3:
                 return new Wearable("Random Armor", "Protective gear", 1 + random.nextInt(3));
             case 4:

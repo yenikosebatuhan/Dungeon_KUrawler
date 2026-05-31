@@ -1,5 +1,6 @@
 package com.kurawler.model.object;
 
+import com.kurawler.model.ResourceAssetCatalog;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,6 +47,6 @@ public class StaticContainer extends GameObject {
 
     /** Sprite hint for renderer: empty chest uses open sprite. */
     public String getSpriteName() {
-        return isEmpty() ? getName() + " open" : getName();
+        return ResourceAssetCatalog.containerSpriteName(getName(), isEmpty());
     }
 }
