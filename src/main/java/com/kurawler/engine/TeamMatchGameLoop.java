@@ -151,6 +151,11 @@ public class TeamMatchGameLoop {
             }
 
             p.setPosition(newRow, newCol);
+            p.incrementStepsTraveled();
+            if (p.hasExceededRange()) {
+                activeProjectiles.remove(p);
+                continue;
+            }
 
             Character occupant = cell.getOccupyingCharacter();
             if (occupant != null && occupant.isAlive()) {
@@ -175,7 +180,10 @@ public class TeamMatchGameLoop {
      */
     private Team findFiringTeam(Projectile p) {
         // "Hero Bolt" is always Team B
-        if ("Hero Bolt".equals(p.getName())) return session.getTeamB();
+        if ("Hero Bolt".equals(p.getName()) || "Arrow".equals(p.getName()) || "Bomb".equals(p.getName())
+                || "Staff Bolt".equals(p.getName())) {
+            return session.getTeamB();
+        }
         // Arcane Bolt — identify by which sorcerer is closest to the origin
         // Since we can't store the owner in Projectile easily, treat all Arcane Bolts as
         // coming from "the other team" relative to Hero (conservative — hits anyone not Hero).

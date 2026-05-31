@@ -268,15 +268,23 @@ public class GameLoop {
             }
 
             projectile.setPosition(newRow, newCol);
+            projectile.incrementStepsTraveled();
+            if (projectile.hasExceededRange()) {
+                activeProjectiles.remove(projectile);
+                continue;
+            }
 
             Character occupant = targetCell.getOccupyingCharacter();
             if (occupant != null && occupant.isAlive()) {
-                boolean isHeroProjectile = "Hero Bolt".equals(projectile.getName());
+                boolean isHeroProjectile = isHeroOwnedProjectile(projectile.getName());
                 boolean isHero = occupant instanceof Hero;
                 if (isHeroProjectile == isHero) {
                     continue;
                 }
                 CombatResolver.applyProjectileDamage(projectile, occupant);
+                if ("Bomb".equals(projectile.getName())) {
+                    applyBombSplashDamage(projectile, newRow, newCol);
+                }
                 activeProjectiles.remove(projectile);
                 if (!occupant.isAlive() && !isHero) {
                     targetCell.setOccupyingCharacter(null);
@@ -291,6 +299,25 @@ public class GameLoop {
      *
      * @param projectile the projectile to track
      */
+    private static boolean isHeroOwnedProjectile(String name) {
+        return "Hero Bolt".equals(name) || "Arrow".equals(name) || "Bomb".equals(name)
+                || "Staff Bolt".equals(name) || "Weapon Strike".equals(name);
+    }
+
+    /** Hero takes splash damage when a bomb explodes on a tile adjacent to them. */
+    private void applyBombSplashDamage(Projectile bomb, int explodeRow, int explodeCol) {
+        Hero hero = session.getHero();
+        if (hero == null || !hero.isAlive()) {
+            return;
+        }
+        int dist = Math.abs(hero.getRow() - explodeRow) + Math.abs(hero.getCol() - explodeCol);
+        if (dist > 1) {
+            return;
+        }
+        int selfDmg = Math.max(1, bomb.getDamage() / 2 + 2);
+        hero.takeDamage(selfDmg);
+    }
+
     public void addProjectile(Projectile projectile) {
         if (projectile != null) {
             activeProjectiles.add(projectile);
