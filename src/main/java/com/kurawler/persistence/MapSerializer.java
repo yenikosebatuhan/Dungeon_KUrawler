@@ -65,6 +65,10 @@ public class MapSerializer {
         sb.append("  \"height\": ").append(map.getHeight()).append(",\n");
         sb.append("  \"playDurationTimer\": ").append(session.getPlayDurationTimer()).append(",\n");
         sb.append("  \"currentMode\": \"").append(escape(session.getCurrentMode())).append("\",\n");
+        sb.append("  \"difficulty\": \"").append(escape(session.getDifficulty())).append("\",\n");
+        sb.append("  \"enemiesDefeatedCount\": ").append(session.getEnemiesDefeatedCount()).append(",\n");
+        sb.append("  \"itemsCollectedCount\": ").append(session.getItemsCollectedCount()).append(",\n");
+        sb.append("  \"floorsClearedCount\": ").append(session.getFloorsClearedCount()).append(",\n");
         sb.append("  \"targetObjective\": ").append(session.getTargetObjective() != null
                 ? buildObjectJson(session.getTargetObjective()) : "null").append(",\n");
         sb.append("  \"hero\": ").append(buildHeroJson(session.getHero())).append(",\n");
@@ -148,6 +152,7 @@ public class MapSerializer {
         return "{ \"row\": " + shadowClone.getRow()
                 + ", \"col\": " + shadowClone.getCol()
                 + ", \"hp\": " + shadowClone.getHealth()
+                + ", \"remainingMs\": " + shadowClone.getRemainingMs()
                 + " }";
     }
 
@@ -182,8 +187,10 @@ public class MapSerializer {
         sb.append(", \"row\": ").append(hero.getRow());
         sb.append(", \"col\": ").append(hero.getCol());
         sb.append(", \"hp\": ").append(hero.getHealth());
+        sb.append(", \"maxHp\": ").append(hero.getMaxHealth());
         sb.append(", \"mana\": ").append(hero.getMana());
         sb.append(", \"energy\": ").append(hero.getEnergy());
+        sb.append(", \"maxEnergy\": ").append(hero.getMaxEnergy());
         sb.append(", \"str\": ").append(hero.getStrength());
         sb.append(", \"def\": ").append(hero.getDefensePower());
 
