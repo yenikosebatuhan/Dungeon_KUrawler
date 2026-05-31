@@ -1,7 +1,9 @@
 package com.kurawler.engine;
 
 import com.kurawler.model.character.Character;
+import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Projectile;
 
@@ -24,10 +26,13 @@ public class CombatResolver {
         if (attacker == null || defender == null || !attacker.isAlive() || !defender.isAlive()) {
             return;
         }
+        if (attacker instanceof Enemy && defender.getCurrentCell() != null) {
+            ShadowCloneScrollRules.removeFromCell(defender.getCurrentCell());
+        }
         if (defender instanceof ShadowClone) {
             return;
         }
-        
+
         int finalDamage = calculateFinalDamage(attacker, defender);
         defender.takeDamage(finalDamage);
     }
@@ -58,6 +63,14 @@ public class CombatResolver {
         }
 
         int def = defender.getDefensePower();
+
+        if (attacker instanceof Hero) {
+            return Math.max(1, ((Hero) attacker).calculateDamage() - def);
+        }
+
+        if (attacker instanceof Knight) {
+            return Math.max(1, ((Knight) attacker).calculateDamage() - def);
+        }
 
         // Sophisticated PDF formula
         int damage = (str / 2) + atk - def;

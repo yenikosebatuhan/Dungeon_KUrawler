@@ -56,13 +56,16 @@ public class DifficultySelectionScreen {
         Label descLabel = new Label("Normal:\nDefault enemy stats and starting energy.");
         descLabel.setFont(Font.font("Monospaced", FontWeight.BOLD, 18));
         descLabel.setTextFill(Color.web("#e8c84a"));
-        descLabel.setTextAlignment(TextAlignment.CENTER);
         descLabel.setWrapText(true);
+        descLabel.setMaxWidth(680);
+        descLabel.setAlignment(Pos.CENTER);
+        descLabel.setTextAlignment(TextAlignment.CENTER);
+        descLabel.setStyle("-fx-text-alignment: center;");
 
-        StackPane descPlaque = new StackPane(descLabel);
+        VBox descPlaque = new VBox(descLabel);
+        descPlaque.setAlignment(Pos.CENTER);
         descPlaque.setMaxWidth(750);
-        descPlaque.setPrefHeight(100);
-        descPlaque.setPadding(new Insets(15, 30, 15, 30));
+        descPlaque.setPadding(new Insets(18, 32, 18, 32));
         descPlaque.setStyle("-fx-background-color: rgba(15, 15, 25, 0.85); "
                 + "-fx-background-radius: 8; -fx-border-color: #8b7940; "
                 + "-fx-border-width: 2; -fx-border-radius: 8; "
@@ -76,7 +79,7 @@ public class DifficultySelectionScreen {
 
         easyBtn.setOnAction(e -> {
             selectedDifficulty = "Easy";
-            descLabel.setText("Easy:\nEnemies have -30% HP and ATK. Hero starts with 150 Energy.");
+            descLabel.setText("Easy:\nEnemies have -30% HP and ATK.\nHero starts with 150 Energy.");
             descLabel.setTextFill(Color.web("#55efc4"));
             resetButtonStyles(easyBtn, normalBtn, hardBtn);
             setActiveStyle(easyBtn, "#55efc4");
@@ -94,7 +97,7 @@ public class DifficultySelectionScreen {
 
         hardBtn.setOnAction(e -> {
             selectedDifficulty = "Hard";
-            descLabel.setText("Hard:\nEnemies have +30% HP and ATK. Hero starts with 75 Energy.\nNo Health Potions on the map!");
+            descLabel.setText("Hard:\nEnemies have +30% HP and ATK.\nHero starts with 75 Energy.\nNo Health Potions on the map!");
             descLabel.setTextFill(Color.web("#ff4a4a"));
             resetButtonStyles(easyBtn, normalBtn, hardBtn);
             setActiveStyle(hardBtn, "#ff4a4a");

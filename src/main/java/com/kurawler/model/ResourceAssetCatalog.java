@@ -117,7 +117,9 @@ public final class ResourceAssetCatalog {
         if (n.contains("bronze")) return "Open Bronze Chest";
         if (n.contains("copper")) return "Open Copper Chest";
         if (n.contains("orange") || n.contains("amber")) return "Open Orange Chest";
-        return name;
+        if (n.contains("chest")) return "Open Orange Chest";
+        if (n.contains("crate") || n.contains("box")) return "Open Crate";
+        return "Open Orange Chest";
     }
 
     public static StaticObject createStatic(String name) {
