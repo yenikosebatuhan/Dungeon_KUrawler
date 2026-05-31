@@ -1,5 +1,7 @@
 package com.kurawler.model.object;
 
+import com.kurawler.model.GridCell;
+import com.kurawler.model.Map;
 import com.kurawler.model.ResourceAssetCatalog;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,8 +47,37 @@ public class StaticContainer extends GameObject {
 
     public boolean isEmpty() { return contents.isEmpty(); }
 
+    /** Lootable chests/crates disappear from the map once fully emptied. */
+    public boolean shouldDisplayOnMap() {
+        return isShelfLike() || !isEmpty();
+    }
+
+    /** Removes this container from the grid when it has been looted (not bookshelves). */
+    public void removeFromMapIfLooted(Map map) {
+        if (map == null || isShelfLike() || !isEmpty()) {
+            return;
+        }
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int c = 0; c < map.getWidth(); c++) {
+                GridCell cell = map.getCell(r, c);
+                if (cell != null && cell.removeObject(this)) {
+                    return;
+                }
+            }
+        }
+    }
+
+    /** Bookshelves use the static prop sprite on the tile; no chest overlay. */
+    public boolean isShelfLike() {
+        String n = getName().toLowerCase();
+        return n.contains("bookshelf") || n.contains("shelf");
+    }
+
     /** Sprite hint for renderer: empty chest uses open sprite. */
     public String getSpriteName() {
+        if (isShelfLike()) {
+            return getName();
+        }
         return ResourceAssetCatalog.containerSpriteName(getName(), isEmpty());
     }
 }

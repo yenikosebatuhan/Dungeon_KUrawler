@@ -6,6 +6,7 @@ import com.kurawler.model.Map;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Projectile;
 import java.util.ArrayList;
@@ -38,9 +39,7 @@ public class GameLoop {
     private int enemyTickCounter = 0;
     private int projectileTickCounter = 0;
 
-    /** Phase II — Shadow Clone Scroll auto-spawn interval (15 seconds). */
-    private static final long SHADOW_CLONE_SCROLL_SPAWN_INTERVAL_MS = 15_000;
-    private long shadowCloneScrollSpawnAccumulatorMs = 0;
+    private long lastShadowCloneScrollSpawnMs = 0;
     private final java.util.Random rng = new java.util.Random();
 
     /**
@@ -125,7 +124,6 @@ public class GameLoop {
 
         // Phase II features added in this PR:
         handleSorcererRingDrops();              // §2.5.2 — ring drops from defeated sorcerers
-        updateShadowCloneScrollSpawn(deltaTime); // Phase II — auto-spawn scroll every 15 s
 
         if (session.checkWinCondition()) {
             stop();
@@ -165,31 +163,6 @@ public class GameLoop {
         }
     }
 
-    private void updateShadowClone(long deltaTime) {
-        if (session instanceof com.kurawler.model.TeamMatchSession) {
-            return;
-        }
-        ShadowClone clone = session.getShadowClone();
-        if (clone == null) {
-            return;
-        }
-        if (deltaTime > 0) {
-            clone.tick(deltaTime);
-        }
-        if (clone.isExpired()) {
-            session.setShadowClone(null);
-        }
-    }
-
-    /** Phase 2: while active, enemies treat the clone as the hero target. */
-    private Character resolveEnemyTarget(Hero hero) {
-        ShadowClone clone = session.getShadowClone();
-        if (clone != null && clone.isAlive() && !clone.isExpired()) {
-            return clone;
-        }
-        return hero;
-    }
-
     /**
      * Scans the grid for all living enemies and lets each one decide its
      * action (chase, attack, wander, teleport, or cast spell) based on type.
@@ -204,18 +177,41 @@ public class GameLoop {
             return;
         }
 
-        Character target = resolveEnemyTarget(hero);
-        if (target == null || !target.isAlive()) {
-            return;
-        }
-
         List<Enemy> enemies = findAllEnemies(map);
         for (Enemy enemy : enemies) {
             if (!enemy.isAlive()) {
                 continue;
             }
+            // Knights always chase/attack the hero; sorcerers may target shadow clone.
+            Character target = enemy instanceof Knight ? hero : resolveEnemyTarget(hero);
             enemy.decideAction(target, map, session);
         }
+    }
+
+    private void updateShadowClone(long deltaTime) {
+        if (session instanceof com.kurawler.model.TeamMatchSession) {
+            return;
+        }
+        ShadowClone clone = session.getShadowClone();
+        if (clone == null) {
+            return;
+        }
+        if (deltaTime > 0) {
+            long step = Math.min(deltaTime, 64L);
+            clone.tick(step);
+        }
+        if (clone.isExpired()) {
+            session.setShadowClone(null);
+        }
+    }
+
+    /** Phase 2: while active, sorcerers treat the shadow clone as the hero target. */
+    private Character resolveEnemyTarget(Hero hero) {
+        ShadowClone clone = session.getShadowClone();
+        if (clone != null && clone.isAlive() && !clone.isExpired()) {
+            return clone;
+        }
+        return hero;
     }
 
     /**
@@ -268,6 +264,9 @@ public class GameLoop {
             }
 
             projectile.setPosition(newRow, newCol);
+            if (!isHeroOwnedProjectile(projectile.getName())) {
+                ShadowCloneScrollRules.removeFromCell(targetCell);
+            }
             projectile.incrementStepsTraveled();
             if (projectile.hasExceededRange()) {
                 activeProjectiles.remove(projectile);
@@ -289,7 +288,6 @@ public class GameLoop {
                 if (!occupant.isAlive() && !isHero) {
                     targetCell.setOccupyingCharacter(null);
                     session.decrementEnemyCount();
-                    AudioManager.getInstance().play("enemyDown");
                 }
             }
         }
@@ -399,35 +397,44 @@ public class GameLoop {
     }
 
     /**
-     * Phase II — Shadow Clone: every 15 seconds a Shadow Clone Scroll appears
-     * on a random walkable, unoccupied cell of the map, regardless of how many
-     * scrolls already exist.
-     *
-     * @param deltaTime milliseconds elapsed since the last frame
+     * Phase II map scroll timing (15 s spawn, 7 s visibility). Uses wall clock so
+     * timers keep running while the inventory popup has the game paused.
      */
-    private void updateShadowCloneScrollSpawn(long deltaTime) {
-        // Shadow Clone is a single-player feature; skip it in Team Match.
-        if (session instanceof com.kurawler.model.TeamMatchSession) return;
-
-        // Frame-based fallback: even if deltaTime is 0/unreliable, advance ~16 ms per frame.
-        long step = (deltaTime > 0) ? deltaTime : 16;
-        shadowCloneScrollSpawnAccumulatorMs += step;
-        if (shadowCloneScrollSpawnAccumulatorMs < SHADOW_CLONE_SCROLL_SPAWN_INTERVAL_MS) {
+    public void updateTimedMapObjects() {
+        if (session instanceof com.kurawler.model.TeamMatchSession) {
             return;
         }
-        shadowCloneScrollSpawnAccumulatorMs = 0;
-
         Map map = session.getMap();
-        if (map == null) return;
+        if (map == null) {
+            return;
+        }
+        ShadowCloneScrollRules.removeExpiredFromMap(map);
 
-        // Collect candidate cells: walkable, no character, no static blocker.
+        long now = System.currentTimeMillis();
+        if (lastShadowCloneScrollSpawnMs == 0) {
+            lastShadowCloneScrollSpawnMs = now;
+        }
+        if (now - lastShadowCloneScrollSpawnMs < ShadowCloneScrollRules.SPAWN_INTERVAL_MS) {
+            return;
+        }
+        lastShadowCloneScrollSpawnMs = now;
+        spawnShadowCloneScroll(map);
+    }
+
+    private void spawnShadowCloneScroll(Map map) {
         List<GridCell> candidates = new ArrayList<>();
         for (int x = 0; x < map.getGridWidth(); x++) {
             for (int y = 0; y < map.getGridHeight(); y++) {
                 GridCell cell = map.getCellAt(x, y);
-                if (cell == null) continue;
-                if (!cell.isWalkable()) continue;
-                if (cell.getOccupyingCharacter() != null) continue;
+                if (cell == null) {
+                    continue;
+                }
+                if (!cell.isWalkable()) {
+                    continue;
+                }
+                if (cell.getOccupyingCharacter() != null) {
+                    continue;
+                }
                 candidates.add(cell);
             }
         }

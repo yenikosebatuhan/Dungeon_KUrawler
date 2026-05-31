@@ -1,6 +1,7 @@
 package com.kurawler.model;
 
 import com.kurawler.model.object.GameObject;
+import com.kurawler.model.object.MapPortal;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.character.Character;
 import java.util.ArrayList;
@@ -41,6 +42,17 @@ public class GridCell {
         if (staticObject != null && !staticObject.isPassable()) return true;
         if (occupyingCharacter != null) return true;
         return false;
+    }
+
+    /** Enemies cannot stand on walls, doors/portals, or occupied tiles. */
+    public boolean isEnemyWalkable() {
+        if (staticObject instanceof MapPortal) {
+            return false;
+        }
+        if (staticObject != null && !staticObject.isPassable()) {
+            return false;
+        }
+        return occupyingCharacter == null;
     }
 
     // Alias for teammates

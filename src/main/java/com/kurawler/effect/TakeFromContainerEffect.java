@@ -33,7 +33,9 @@ public class TakeFromContainerEffect implements Effect {
         }
 
         if (container instanceof StaticContainer) {
-            ((StaticContainer) container).removeItem(item);
+            StaticContainer sc = (StaticContainer) container;
+            sc.removeItem(item);
+            sc.removeFromMapIfLooted(session.getMap());
         } else if (container instanceof PortableContainer) {
             ((PortableContainer) container).removeItem(item);
         } else {

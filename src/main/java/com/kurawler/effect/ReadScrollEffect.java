@@ -1,8 +1,11 @@
 package com.kurawler.effect;
 
 import com.kurawler.model.GameSession;
+import com.kurawler.model.GridCell;
+import com.kurawler.model.Map;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.ShadowClone;
+import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Scroll;
 
 /**
@@ -11,60 +14,86 @@ import com.kurawler.model.object.Scroll;
 public class ReadScrollEffect implements Effect {
     private final Scroll scroll;
 
-    /**
-     * @requires scroll != null
-     * @modifies this.scroll
-     * @effects Stores the scroll to be consumed for use in apply().
-     */
     public ReadScrollEffect(Scroll scroll) {
         this.scroll = scroll;
     }
 
-    /**
-     * Applies the scroll's effect to the game session.
-     *
-     * @requires session != null && session.getHero() != null && scroll != null
-     * @modifies session.getHero().getInventory(), session.getHero() (health), 
-     * session (shadowClone property), and hero's observers.
-     * @effects Removes the scroll from the hero's inventory.
-     * If the scroll provides healing, increases the hero's HP.
-     * If the scroll is a "Shadow Clone" scroll, instantiates a new ShadowClone
-     * at the hero's current position, assigns it to the session, and registers 
-     * it as an observer to the hero.
-     */
     @Override
     public void apply(GameSession session) {
         Hero hero = session.getHero();
-        
-        // Validate and remove item from inventory
-        if (hero == null || scroll == null || !hero.getInventory().removeItem(scroll)) {
+        if (hero == null || scroll == null || session.getMap() == null) {
             return;
         }
-        
-        // 1. Handle Healing Scrolls
-        if (scroll.getHealAmount() > 0) {
-            hero.heal(scroll.getHealAmount());
-            System.out.println("[Effect] Read scroll. Healed hero by " + scroll.getHealAmount());
+
+        Scroll toConsume = resolveScrollInInventory(hero, scroll);
+        if (toConsume == null || !hero.getInventory().removeItem(toConsume)) {
+            return;
         }
-        if (scroll.getManaAmount() > 0) {
-            hero.restoreMana(scroll.getManaAmount());
-            System.out.println("[Effect] Read scroll. Restored mana by " + scroll.getManaAmount());
-        }
-        if (scroll.getEnergyAmount() > 0) {
-            hero.restoreEnergy(scroll.getEnergyAmount());
-            System.out.println("[Effect] Read scroll. Restored energy by " + scroll.getEnergyAmount());
-        }
-        // 2. Handle Shadow Clone Scrolls
-        if (scroll.getName().toLowerCase().contains("shadow") || scroll.getName().toLowerCase().contains("clone")) {
-            
-            // Create the clone at the hero's current row and col
-            ShadowClone clone = new ShadowClone(hero.getRow(), hero.getCol(), session.getMap());
-            
-            // Save the clone to the active session
+
+        String name = toConsume.getName() == null ? "" : toConsume.getName().toLowerCase();
+        int heal = toConsume.getHealAmount();
+        int hpBefore = hero.getHealth();
+
+        if (name.contains("shadow") || name.contains("clone")) {
+            int[] spawn = findCloneSpawnCell(session.getMap(), hero.getRow(), hero.getCol());
+            ShadowClone clone = new ShadowClone(spawn[0], spawn[1], session.getMap());
             session.setShadowClone(clone);
-            
-            System.out.println("[Effect] Shadow Clone spawned at (" + hero.getRow() + ", " + hero.getCol() + ")");
+            session.setLastPortalMessage("Shadow Clone summoned!");
+            return;
         }
+
+        if (name.contains("spell book") || name.contains("spell")) {
+            int manaGain = Math.max(15, heal);
+            hero.heal(heal);
+            hero.restoreMana(manaGain);
+            int healed = hero.getHealth() - hpBefore;
+            if (healed > 0) {
+                session.setLastPortalMessage("Spell Book: +" + healed + " HP, +" + manaGain + " MP.");
+            } else {
+                session.setLastPortalMessage("Spell Book: restored " + manaGain + " MP.");
+            }
+            return;
+        }
+
+        if (heal > 0) {
+            hero.heal(heal);
+            int healed = hero.getHealth() - hpBefore;
+            session.setLastPortalMessage("Read scroll: +" + healed + " HP.");
+            return;
+        }
+
+        session.setLastPortalMessage("Read " + toConsume.getName() + " — the runes fade.");
+    }
+
+    /** Prefer an adjacent walkable tile so the clone is visible beside the hero. */
+    private static int[] findCloneSpawnCell(Map map, int heroRow, int heroCol) {
+        int[][] offsets = {
+                {-1, 0}, {1, 0}, {0, -1}, {0, 1},
+                {-1, -1}, {-1, 1}, {1, -1}, {1, 1},
+                {0, 0}
+        };
+        for (int[] off : offsets) {
+            int r = heroRow + off[0];
+            int c = heroCol + off[1];
+            GridCell cell = map.getCell(r, c);
+            if (cell != null && cell.isWalkable() && cell.getOccupyingCharacter() == null) {
+                return new int[] { r, c };
+            }
+        }
+        return new int[] { heroRow, heroCol };
+    }
+
+    private static Scroll resolveScrollInInventory(Hero hero, Scroll scroll) {
+        if (hero.getInventory().hasItem(scroll)) {
+            return scroll;
+        }
+        String targetName = scroll.getName();
+        for (Item item : hero.getInventory().getItems()) {
+            if (item instanceof Scroll && item.getName().equals(targetName)) {
+                return (Scroll) item;
+            }
+        }
+        return null;
     }
 
     @Override
