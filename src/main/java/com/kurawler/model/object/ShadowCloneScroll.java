@@ -15,6 +15,11 @@ package com.kurawler.model.object;
  */
 public class ShadowCloneScroll extends Scroll {
 
+    /** Wall-clock spawn time; scroll vanishes from the map after {@link #VISIBILITY_MS}. */
+    public static final long VISIBILITY_MS = 7_000L;
+
+    private final long spawnedAtMs;
+
     public ShadowCloneScroll() {
         super(
             "Shadow Clone Scroll",
@@ -22,5 +27,14 @@ public class ShadowCloneScroll extends Scroll {
             "The ink shifts as you read — a dark mirror peels away from you.",
             0   // no direct heal effect; clone summon handled separately
         );
+        this.spawnedAtMs = System.currentTimeMillis();
+    }
+
+    public long getSpawnedAtMs() {
+        return spawnedAtMs;
+    }
+
+    public boolean isMapVisibilityExpired() {
+        return System.currentTimeMillis() - spawnedAtMs >= VISIBILITY_MS;
     }
 }
