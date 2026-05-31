@@ -383,10 +383,11 @@ public class GameLoop {
                 GridCell cell = map.getCellAt(x, y);
                 if (cell == null) continue;
                 Character occupant = cell.getOccupyingCharacter();
+                if (!(occupant instanceof Enemy) || occupant.isAlive()) continue;
                 if (occupant instanceof com.kurawler.model.character.Sorcerer) {
                     com.kurawler.model.character.Sorcerer s =
                             (com.kurawler.model.character.Sorcerer) occupant;
-                    if (!s.isAlive() && !s.isRingDropped()) {
+                    if (!s.isRingDropped()) {
                         // 60% chance the sorcerer was carrying a ring
                         if (rng.nextDouble() < 0.60) {
                             cell.addObject(com.kurawler.model.object.Ring.sorcererDrop());
@@ -394,6 +395,9 @@ public class GameLoop {
                         s.markRingDropped();
                     }
                 }
+                // Clear the cell so dead enemies don't permanently occupy tiles.
+                cell.setOccupyingCharacter(null);
+                session.decrementEnemyCount();
             }
         }
     }

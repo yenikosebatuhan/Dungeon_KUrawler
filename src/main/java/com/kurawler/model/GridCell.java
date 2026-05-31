@@ -39,7 +39,7 @@ public class GridCell {
 
     public boolean isBlocked() {
         if (staticObject != null && !staticObject.isPassable()) return true;
-        if (occupyingCharacter != null) return true;
+        if (occupyingCharacter != null && occupyingCharacter.isAlive()) return true;
         return false;
     }
 
