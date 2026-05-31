@@ -166,6 +166,7 @@ public class MapSerializer {
         StringBuilder sb = new StringBuilder();
         sb.append("{ ");
         sb.append("\"totalMoves\": ").append(manager.getTotalMoves());
+        sb.append(", \"shadowCloneMoves\": ").append(manager.getShadowCloneMoves());
         sb.append(", \"enemiesKilled\": ").append(manager.getEnemiesKilled());
         sb.append(", \"itemsCollected\": ").append(manager.getItemsCollected());
         sb.append(", \"damageTaken\": ").append(manager.getDamageTaken());
