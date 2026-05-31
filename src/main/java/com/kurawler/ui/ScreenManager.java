@@ -419,15 +419,7 @@ public class ScreenManager {
         session.setDifficulty(difficulty);
         Hero hero = session.getHero();
 
-        if (hero != null) {
-            if ("Easy".equals(difficulty)) {
-                hero.setMaxEnergy(150);
-                hero.setEnergy(150);
-            } else if ("Hard".equals(difficulty)) {
-                hero.setMaxEnergy(75);
-                hero.setEnergy(75);
-            }
-        }
+        session.applyDifficultyHeroStats();
 
         List<com.kurawler.model.Map> mapsToCheck = new ArrayList<>();
         mapsToCheck.add(session.getMap());
