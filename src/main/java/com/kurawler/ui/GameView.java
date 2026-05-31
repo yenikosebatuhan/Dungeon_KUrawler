@@ -734,22 +734,28 @@ public class GameView {
         if ("attack_melee".equals(result)) {
             Hero hero = controller.getSession().getHero();
             GameSession session = controller.getSession();
-            Enemy enemy = hero.findFirstEnemyInDirection(session, hero.meleeFacingReach());
-            if (enemy != null) {
-                com.kurawler.model.Map map = session.getMap();
-                GridCell cell = map.getCell(enemy.getRow(), enemy.getCol());
-                if (!enemy.isAlive()) {
-                    if (cell != null) {
-                        cell.setOccupyingCharacter(null);
-                    }
-                    session.decrementEnemyCount();
-                    AudioManager.getInstance().play("enemyDown");
-                    showGameMessage(enemy.getName() + " defeated!");
-                } else {
-                    AudioManager.getInstance().play("attack");
-                    String verb = hero.getEquippedWeapon() == null ? "Punched" : "Hit";
-                    showGameMessage(verb + " " + enemy.getName() + "! HP:" + enemy.getHealth());
+            // Scan facing cells directly so we find the enemy even if it just died
+            // (findFirstEnemyInDirection skips dead enemies, causing cleanup to be skipped).
+            int[] dir = hero.attackDirection();
+            int reach = hero.meleeFacingReach();
+            com.kurawler.model.Map map = session.getMap();
+            Enemy hitEnemy = null;
+            for (int step = 1; step <= reach; step++) {
+                GridCell c = map.getCell(hero.getRow() + dir[0] * step, hero.getCol() + dir[1] * step);
+                if (c == null) break;
+                if (c.getStaticObject() != null && !c.getStaticObject().isPassable()) break;
+                if (c.getOccupyingCharacter() instanceof Enemy) {
+                    hitEnemy = (Enemy) c.getOccupyingCharacter();
+                    break;
                 }
+            }
+            if (hitEnemy != null && !hitEnemy.isAlive()) {
+                AudioManager.getInstance().play("enemyDown");
+                showGameMessage(hitEnemy.getName() + " defeated!");
+            } else if (hitEnemy != null) {
+                AudioManager.getInstance().play("attack");
+                String verb = hero.getEquippedWeapon() == null ? "Punched" : "Hit";
+                showGameMessage(verb + " " + hitEnemy.getName() + "! HP:" + hitEnemy.getHealth());
             } else {
                 AudioManager.getInstance().play("attack");
                 showGameMessage(hero.getEquippedWeapon() == null ? "Punch!" : "Strike!");
