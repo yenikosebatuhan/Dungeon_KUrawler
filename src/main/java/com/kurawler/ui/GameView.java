@@ -390,7 +390,7 @@ public class GameView {
             return;
         }
         endScreenShown = true;
-        AudioManager.getInstance().play("gameOver");
+        AudioManager.getInstance().playMusic("gameover", false);
         Platform.runLater(() -> {
             if (!isPlaySceneActive()) {
                 return;
@@ -407,7 +407,7 @@ public class GameView {
             return;
         }
         endScreenShown = true;
-        AudioManager.getInstance().play("victory");
+        AudioManager.getInstance().playMusic("victory", false);
         GameSession session = controller.getSession();
         String itemName = session.getTargetObjective() != null
                 ? session.getTargetObjective().getName() : "the artifact";

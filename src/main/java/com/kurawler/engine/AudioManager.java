@@ -17,7 +17,11 @@ public class AudioManager {
     private static final AudioManager INSTANCE = new AudioManager();
 
     private final Map<String, String> sounds = new HashMap<>();
+    private final Map<String, String> music = new HashMap<>();
     private boolean enabled = true;
+
+    private Clip musicClip;
+    private String currentMusicKey;
 
     private AudioManager() {
         sounds.put("button",   "button.wav");
@@ -26,6 +30,12 @@ public class AudioManager {
         sounds.put("enemyDown","enemy_down.wav");
         sounds.put("gameOver", "game_over.wav");
         sounds.put("victory",  "victory.wav");
+
+        // Looping/background tracks (separate channel from short sound effects).
+        music.put("menu",     "menu_loop.wav");
+        music.put("combat",   "combat_loop.wav");
+        music.put("victory",  "victory_stinger.wav");
+        music.put("gameover", "game_over_stinger.wav");
     }
 
     /**
@@ -44,6 +54,66 @@ public class AudioManager {
      */
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+        if (!enabled) {
+            stopMusic();
+        }
+    }
+
+    /**
+     * @requires musicKey != null
+     * @modifies this.musicClip, this.currentMusicKey
+     * @effects If enabled and musicKey maps to an existing wav, plays it as the background
+     *          track (looping forever if loop is true, otherwise once). No-op if that track
+     *          is already playing. Stops any previous track first.
+     */
+    public void playMusic(String musicKey, boolean loop) {
+        if (!enabled || musicKey == null) {
+            return;
+        }
+        if (musicKey.equals(currentMusicKey) && musicClip != null && musicClip.isRunning()) {
+            return;
+        }
+        stopMusic();
+        String fileName = music.get(musicKey);
+        if (fileName == null) {
+            return;
+        }
+        File file = new File(AUDIO_DIR, fileName);
+        if (!file.exists()) {
+            return;
+        }
+        try (AudioInputStream stream = AudioSystem.getAudioInputStream(file)) {
+            Clip clip = AudioSystem.getClip();
+            clip.open(stream);
+            if (loop) {
+                clip.loop(Clip.LOOP_CONTINUOUSLY);
+            } else {
+                clip.start();
+            }
+            musicClip = clip;
+            currentMusicKey = musicKey;
+        } catch (Exception e) {
+            musicClip = null;
+            currentMusicKey = null;
+        }
+    }
+
+    /**
+     * @requires none
+     * @modifies this.musicClip, this.currentMusicKey
+     * @effects Stops and releases the current background track, if any.
+     */
+    public void stopMusic() {
+        if (musicClip != null) {
+            try {
+                musicClip.stop();
+                musicClip.close();
+            } catch (Exception ignore) {
+                // already closed
+            }
+            musicClip = null;
+        }
+        currentMusicKey = null;
     }
 
     /**
