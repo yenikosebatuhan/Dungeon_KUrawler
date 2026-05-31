@@ -21,6 +21,9 @@ public class Projectile extends GameObject {
     private int stepsTraveled;
     private int maxRange;
 
+    /** Which team fired this projectile. Null only outside of Team Match. */
+    private com.kurawler.model.Team ownerTeam;
+
     /**
      * Creates a projectile with a name, description, damage, and direction.
      *
@@ -151,6 +154,10 @@ public class Projectile extends GameObject {
     public boolean hasExceededRange() {
         return maxRange > 0 && stepsTraveled >= maxRange;
     }
+
+    public com.kurawler.model.Team getOwnerTeam() { return ownerTeam; }
+
+    public void setOwnerTeam(com.kurawler.model.Team team) { this.ownerTeam = team; }
 
     /**
      * Parses a direction string into row/col direction components.

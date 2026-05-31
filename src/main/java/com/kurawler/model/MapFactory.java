@@ -590,4 +590,40 @@ public class MapFactory {
         return Math.abs(cell.getRow() - row) <= radius
                 && Math.abs(cell.getCol() - col) <= radius;
     }
+
+    // =========================================================
+    // BOOKSHELF HELPERS (called by GameView for browse interaction)
+    // =========================================================
+
+    private static StaticContainer findBookshelfContainer(Map map, int row, int col) {
+        GridCell cell = map.getCell(row, col);
+        if (cell == null) return null;
+        for (GameObject obj : cell.getObjects()) {
+            if (obj instanceof StaticContainer && ((StaticContainer) obj).isShelfLike()) {
+                return (StaticContainer) obj;
+            }
+        }
+        return null;
+    }
+
+    public static boolean isShelfStaticObject(StaticObject so) {
+        if (so == null) return false;
+        String n = so.getName().toLowerCase();
+        return n.contains("bookshelf") || n.contains("shelf");
+    }
+
+    /** Returns the bookshelf container on the tile, creating one if only a legacy hidden-item shelf exists. */
+    public static StaticContainer resolveBookshelfContainer(Map map, int row, int col) {
+        GridCell cell = map.getCell(row, col);
+        if (cell == null) return null;
+        StaticContainer existing = findBookshelfContainer(map, row, col);
+        if (existing != null) return existing;
+        StaticObject so = cell.getStaticObject();
+        if (!isShelfStaticObject(so)) return null;
+        StaticContainer shelf = new StaticContainer("Bookshelf", so.getDescription());
+        Item hidden = so.revealHiddenItem();
+        if (hidden != null) shelf.addItem(hidden);
+        cell.addObject(shelf);
+        return shelf;
+    }
 }
