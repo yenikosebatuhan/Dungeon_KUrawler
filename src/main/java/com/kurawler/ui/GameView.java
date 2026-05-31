@@ -13,7 +13,9 @@ import com.kurawler.model.TeamMatchSession;
 import com.kurawler.model.achievement.Achievement;
 import com.kurawler.model.achievement.AchievementManager;
 import com.kurawler.model.character.Character;
+import com.kurawler.model.character.Assassin;
 import com.kurawler.model.character.Enemy;
+import com.kurawler.model.character.Guard;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.ShadowClone;
@@ -21,7 +23,6 @@ import com.kurawler.model.character.Sorcerer;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
-import com.kurawler.model.object.Key;
 import com.kurawler.model.object.Scroll;
 import com.kurawler.model.object.StaticContainer;
 import com.kurawler.effect.MapTransitionEffect;
@@ -384,7 +385,7 @@ public class GameView {
                 String msg = died
                         ? "Test play ended — hero died. Map unchanged in editor."
                         : "Test play ended — objective complete.";
-                screenManager.returnToEditorAfterTest(session.getMap(), msg);
+                screenManager.returnToEditorAfterTest(session, msg);
             });
             return;
         }
@@ -1111,15 +1112,16 @@ public class GameView {
                 break;
             case "search":
                 StaticObject so = cell.getStaticObject();
-                if (so != null) {
+                if (so instanceof MapPortal && ((MapPortal) so).isStairsMode()) {
+                    usePortalAt(session, hero, row, col, (MapPortal) so);
+                } else if (so != null) {
                     Item hidden = so.getHiddenItem();
                     boolean searched = controller.searchObject(so);
                     if (hidden != null && searched)
                         showGameMessage("Found: " + hidden.getName() + "!");
                     else if (searched) showGameMessage("Nothing found.");
                     else showGameMessage("Cannot search.");
-                    
-                    AudioManager.getInstance().play("interact"); // Added interact sound
+                    AudioManager.getInstance().play("interact");
                 }
                 break;
             case "break":
@@ -1247,8 +1249,7 @@ public class GameView {
             GameSession s = controller.getSession();
             if (s.isEditorTestPlay()) {
                 shutdown();
-                screenManager.returnToEditorAfterTest(
-                        s.getMap(), "Returned to level editor.");
+                screenManager.returnToEditorAfterTest(s, "Returned to level editor.");
             } else {
                 screenManager.showMainMenu();
             }
@@ -1379,73 +1380,70 @@ public class GameView {
 
                 StaticObject so = cell.getStaticObject();
                 boolean isPortal = so instanceof MapPortal;
-                if (isPortal) {
-                    MapPortal portal = (MapPortal) so;
-                    if (!portal.isPassable()) {
-                        renderer.drawWall(gc, sx, sy);
-                    } else {
-                        renderer.drawFloor(gc, sx, sy);
-                    }
-                } else if (so != null && so.isSearchable()) {
-                    // Searchable props (pool, column, bookshelf) — floor underneath, not wall tiles.
-                    renderer.drawFloor(gc, sx, sy);
-                } else if (so != null && !so.isPassable()) {
-                    if (renderer.isWallName(so.getName())) {
-                        renderer.drawWallByName(gc, sx, sy, so.getName());
-                    } else if (renderer.spriteForAsset(so.getName()) != null) {
-                        renderer.drawFloor(gc, sx, sy);
-                    } else {
-                        renderer.drawWall(gc, sx, sy);
-                    }
-                } else if (so != null && renderer.isFloorName(so.getName())) {
-                    renderer.drawFloorByName(gc, sx, sy, so.getName());
-                } else {
-                    renderer.drawFloor(gc, sx, sy);
-                }
+                final int soRot = so != null ? so.getRotation() : 0;
 
-                if (so != null && so.isSearchable() && !isPortal) {
-                    renderer.drawSearchable(gc, sx, sy, so.getName());
-                } else if (so != null && !isPortal
-                        && renderer.spriteForAsset(so.getName()) != null
-                        && !renderer.isWallName(so.getName())
-                        && !renderer.isFloorName(so.getName())) {
-                    renderer.drawStaticDecor(gc, sx, sy, so);
-                }
+                renderer.applyRotation(gc, sx, sy, soRot, () -> {
+                    if (isPortal) {
+                        MapPortal portal = (MapPortal) so;
+                        if (!portal.isPassable()) {
+                            renderer.drawWall(gc, sx, sy);
+                        } else {
+                            renderer.drawFloor(gc, sx, sy);
+                        }
+                    } else if (so != null && so.isSearchable()) {
+                        renderer.drawFloor(gc, sx, sy);
+                    } else if (so != null && !so.isPassable()) {
+                        if (renderer.isWallName(so.getName())) {
+                            renderer.drawWallByName(gc, sx, sy, so.getName());
+                        } else if (renderer.spriteForAsset(so.getName()) != null) {
+                            renderer.drawFloor(gc, sx, sy);
+                        } else {
+                            renderer.drawWall(gc, sx, sy);
+                        }
+                    } else if (so != null && renderer.isFloorName(so.getName())) {
+                        renderer.drawFloorByName(gc, sx, sy, so.getName());
+                    } else {
+                        renderer.drawFloor(gc, sx, sy);
+                    }
+
+                    if (so != null && so.isSearchable() && !isPortal) {
+                        renderer.drawSearchable(gc, sx, sy, so.getName());
+                    } else if (so != null && !isPortal
+                            && renderer.spriteForAsset(so.getName()) != null
+                            && !renderer.isWallName(so.getName())
+                            && !renderer.isFloorName(so.getName())) {
+                        renderer.drawStaticDecor(gc, sx, sy, so);
+                    }
+
+                    if (isPortal) {
+                        MapPortal portal = (MapPortal) so;
+                        renderer.drawPortalOrNavSprite(gc, sx, sy, portal);
+                    }
+                });
 
                 for (GameObject obj : cell.getObjects()) {
-                    if (obj instanceof StaticContainer) {
-                        StaticContainer sc = (StaticContainer) obj;
-                        renderer.drawContainerByName(gc, sx, sy, sc.getSpriteName());
-                    } else if (obj instanceof Weapon) {
-                        renderer.drawWeaponByName(gc, sx, sy, obj.getName());
-                    } else if (obj instanceof Scroll) {
-                        renderer.drawItem(gc, sx, sy, "Scroll");
-                    } else if (obj instanceof Wearable) {
-                        renderer.drawItemObject(gc, sx, sy, (Item) obj);
-                    } else if (obj instanceof Consumable) {
-                        Consumable cons = (Consumable) obj;
-                        String pt = cons.getManaAmount() > 0 ? "ManaPotion"
-                                  : cons.getEnergyAmount() > 0 ? "EnergyPotion"
-                                  : "HealthPotion";
-                        renderer.drawConsumable(gc, sx, sy, pt);
-                    } else if (obj instanceof Key) {
-                        renderer.drawItem(gc, sx, sy, "Key");
-                    } else if (obj instanceof Item) {
-                        renderer.drawItem(gc, sx, sy, "Item");
-                    }
-                }
-
-                if (isPortal) {
-                    MapPortal portal = (MapPortal) so;
-                    renderer.drawPortal(gc, sx, sy, portal.isUnlocked(), portal.getName());
+                    final int objRot = obj.getRotation();
+                    renderer.applyRotation(gc, sx, sy, objRot, () -> {
+                        if (obj instanceof StaticContainer) {
+                            StaticContainer sc = (StaticContainer) obj;
+                            renderer.drawContainerByName(gc, sx, sy, sc.getSpriteName());
+                        } else if (obj instanceof Weapon) {
+                            renderer.drawWeaponByName(gc, sx, sy, obj.getName());
+                        } else if (obj instanceof Item) {
+                            renderer.drawItemObject(gc, sx, sy, (Item) obj);
+                        }
+                    });
                 }
 
                 Character occupant = cell.getOccupyingCharacter();
                 if (occupant != null && occupant.isAlive() && !(occupant instanceof Hero)) {
                     double[] pos = lerpPosition(occupant, c * TILE_SIZE, r * TILE_SIZE);
-                    String type = (occupant instanceof Knight) ? "Knight" : "Sorcerer";
-                    boolean mirrorKnight = occupant instanceof Knight && occupant.getCol() > hero.getCol();
-                    renderer.drawEnemy(gc, (int) pos[0], (int) pos[1], type, mirrorKnight);
+                    String type = (occupant instanceof Knight) ? "Knight"
+                            : (occupant instanceof Guard) ? "Guard"
+                            : (occupant instanceof Assassin) ? "Assassin" : "Sorcerer";
+                    boolean mirrorKnight = (occupant instanceof Knight || occupant instanceof Guard)
+                            && occupant.getCol() > hero.getCol();
+                    renderer.drawEnemy(gc, (int) pos[0], (int) pos[1], type, mirrorKnight, occupant.getName());
                     renderer.drawHpBar(gc, (int) pos[0], (int) pos[1],
                             occupant.getHealth(), occupant.getMaxHealth());
 
@@ -1842,7 +1840,8 @@ public class GameView {
         StringBuilder sb = new StringBuilder();
         for (Character member : team.getMembers()) {
             String icon = (member instanceof Hero) ? "  \u2694 "
-                    : (member instanceof Sorcerer) ? "  \u2728 " : "  \u2620 ";
+                    : (member instanceof Sorcerer) ? "  \u2728 "
+                    : (member instanceof Assassin) ? "  A " : "  \u2620 ";
             if (member.isAlive()) {
                 sb.append(icon).append(member.getName())
                   .append("  HP:").append(member.getHealth())
