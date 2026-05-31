@@ -157,8 +157,8 @@ public class MapFactory {
     private static void scatterDefaultLoot(Map hall, Map catacombs, Map vault) {
         hall.placeObject(2, 12, new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
         hall.placeObject(6, 12, new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
-        hall.placeObject(8, 14, new Consumable("Energy Apple", "Restores energy", 0, 0, 25));
-        hall.placeObject(9, 10, new Consumable("Mana Elixir", "Restores 25 mana", 0, 25, 0));
+        hall.placeObject(8, 14, new Consumable("Energy Potion", "Restores 35 energy", 0, 0, 35));
+        hall.placeObject(9, 10, new Consumable("Mana Potion", "Restores 30 mana", 0, 30, 0));
         hall.placeObject(13, 12, new Scroll("Spell Book", "Arcane tome",
                 "Runes mend your wounds.", 12));
         hall.placeObject(14, 5, new Wearable("Armor", "Leather armor", 2));
@@ -167,27 +167,27 @@ public class MapFactory {
         catacombs.placeObject(4, 5, new Scroll("Spell Book", "Arcane tome",
                 "Runes flare and mend your wounds.", 14));
         catacombs.placeObject(5, 10, new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
-        catacombs.placeObject(8, 9, new Consumable("Mana Elixir", "Restores 25 mana", 0, 25, 0));
-        catacombs.placeObject(10, 12, new Consumable("Energy Apple", "Restores energy", 0, 0, 20));
+        catacombs.placeObject(8, 9, new Consumable("Mana Potion", "Restores 30 mana", 0, 30, 0));
+        catacombs.placeObject(10, 12, new Consumable("Energy Potion", "Restores 35 energy", 0, 0, 35));
         catacombs.placeObject(3, 7, new Wearable("Armor", "Worn chain mail", 2));
         catacombs.placeObject(5, 13, new Scroll("Healing Scroll", "Glowing parchment", "Heals wounds.", 10));
 
         vault.placeObject(2, 12, new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
         vault.placeObject(6, 12, new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
-        vault.placeObject(8, 14, new Consumable("Energy Apple", "Restores energy", 0, 0, 30));
-        vault.placeObject(9, 10, new Consumable("Mana Elixir", "Restores 30 mana", 0, 30, 0));
+        vault.placeObject(8, 14, new Consumable("Energy Potion", "Restores 35 energy", 0, 0, 35));
+        vault.placeObject(9, 10, new Consumable("Mana Potion", "Restores 30 mana", 0, 30, 0));
         vault.placeObject(13, 12, new Scroll("Spell Book", "Ancient scripture",
                 "Warm light restores your wounds.", 10));
         vault.placeObject(14, 5, new Wearable("Armor", "Royal armor", 4));
 
         populateChest(hall, 6, 14,
-                new Consumable("Energy Apple", "Restores energy", 0, 0, 20),
+                new Consumable("Energy Potion", "Restores 35 energy", 0, 0, 35),
                 new Key("Silver Key", "Ornamental key", "silver"));
         populateChest(catacombs, 6, 14,
-                new Consumable("Mana Elixir", "Restores 30 mana", 0, 30, 0),
+                new Consumable("Mana Potion", "Restores 30 mana", 0, 30, 0),
                 new Wearable("Armor", "Heavy armor", 3));
         populateChest(vault, 6, 14,
-                new Consumable("Energy Apple", "Restores energy", 0, 0, 30));
+                new Consumable("Energy Potion", "Restores 35 energy", 0, 0, 35));
         populateChest(vault, 8, 10,
                 new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0),
                 new Scroll("Spell Book", "Faded runes", "A spark of healing.", 8));
@@ -470,7 +470,7 @@ public class MapFactory {
             case 0:
                 return new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0);
             case 1:
-                return new Consumable("Energy Apple", "Restores energy", 0, 0, 20);
+                return new Consumable("Energy Potion", "Restores 35 energy", 0, 0, 35);
             case 2:
                 return new Scroll("Spell Book", "Faint magic", "A spark of healing.", 6);
             default:

@@ -46,6 +46,14 @@ public class ReadScrollEffect implements Effect {
             hero.heal(scroll.getHealAmount());
             System.out.println("[Effect] Read scroll. Healed hero by " + scroll.getHealAmount());
         }
+        if (scroll.getManaAmount() > 0) {
+            hero.restoreMana(scroll.getManaAmount());
+            System.out.println("[Effect] Read scroll. Restored mana by " + scroll.getManaAmount());
+        }
+        if (scroll.getEnergyAmount() > 0) {
+            hero.restoreEnergy(scroll.getEnergyAmount());
+            System.out.println("[Effect] Read scroll. Restored energy by " + scroll.getEnergyAmount());
+        }
         // 2. Handle Shadow Clone Scrolls
         if (scroll.getName().toLowerCase().contains("shadow") || scroll.getName().toLowerCase().contains("clone")) {
             

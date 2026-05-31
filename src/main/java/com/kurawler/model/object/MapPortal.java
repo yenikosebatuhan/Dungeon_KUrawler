@@ -12,27 +12,37 @@ public class MapPortal extends StaticObject {
     private final int targetCol;
     private final String requiredKeyId;
     private boolean unlocked;
+    private final boolean stairsMode;
 
+    /** Backwards-compatible constructor (door / portal, not stairs). */
     public MapPortal(String name, String description, String targetMapId,
                      int targetRow, int targetCol, String requiredKeyId, boolean startsOpen) {
-        super(name, description, startsOpen, false);
+        this(name, description, targetMapId, targetRow, targetCol, requiredKeyId, startsOpen, false);
+    }
+
+    /** Full constructor. {@code stairsMode=true} makes this portal searchable (stairs). */
+    public MapPortal(String name, String description, String targetMapId,
+                     int targetRow, int targetCol, String requiredKeyId,
+                     boolean startsOpen, boolean stairsMode) {
+        super(name, description, true, stairsMode);
         this.targetMapId = targetMapId;
         this.targetRow = targetRow;
         this.targetCol = targetCol;
         this.requiredKeyId = requiredKeyId;
         this.unlocked = startsOpen;
+        this.stairsMode = stairsMode;
     }
 
     public String getTargetMapId() { return targetMapId; }
     public int getTargetRow() { return targetRow; }
     public int getTargetCol() { return targetCol; }
+    public String getRequiredKeyId() { return requiredKeyId; }
     public boolean isUnlocked() { return unlocked; }
+    public boolean isStairsMode() { return stairsMode; }
 
-    /** Doors are never searchable — only ENTER / walk through. */
+    /** Stairs portals are searchable; door/portal portals use ENTER. */
     @Override
-    public boolean isSearchable() {
-        return false;
-    }
+    public boolean isSearchable() { return stairsMode; }
 
     public boolean tryUnlock(Hero hero) {
         if (unlocked) {

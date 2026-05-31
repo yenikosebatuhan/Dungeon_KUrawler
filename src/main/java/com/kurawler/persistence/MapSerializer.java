@@ -6,7 +6,9 @@ import com.kurawler.model.Inventory;
 import com.kurawler.model.Map;
 import com.kurawler.model.achievement.Achievement;
 import com.kurawler.model.achievement.AchievementManager;
+import com.kurawler.model.character.Assassin;
 import com.kurawler.model.character.Enemy;
+import com.kurawler.model.character.Guard;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.ShadowClone;
@@ -18,6 +20,7 @@ import com.kurawler.model.object.Key;
 import com.kurawler.model.object.PortableContainer;
 import com.kurawler.model.object.Scroll;
 import com.kurawler.model.object.StaticContainer;
+import com.kurawler.model.object.MapPortal;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.Wearable;
@@ -82,8 +85,7 @@ public class MapSerializer {
             for (int col = 0; col < map.getWidth(); col++) {
                 GridCell cell = map.getCell(row, col);
                 StaticObject so = cell.getStaticObject();
-                boolean hasSpecialStatic = so != null && (!so.isPassable() || so.isSearchable());
-                if (hasSpecialStatic || cell.hasObjects()) {
+                if (so != null || cell.hasObjects()) {
                     entries.add(buildCellJson(cell, row, col));
                 }
             }
@@ -132,16 +134,27 @@ public class MapSerializer {
 
     private String buildEnemyJson(Enemy enemy) {
         String type = enemy instanceof Sorcerer ? "Sorcerer"
-                : enemy instanceof Knight ? "Knight" : enemy.getClass().getSimpleName();
+                : enemy instanceof Knight ? "Knight"
+                : enemy instanceof Guard ? "Guard"
+                : enemy instanceof Assassin ? "Assassin" : enemy.getClass().getSimpleName();
         return "{ \"type\": \"" + type + "\""
+                + ", \"name\": \"" + jsonEscape(enemy.getName()) + "\""
                 + ", \"row\": " + enemy.getRow()
                 + ", \"col\": " + enemy.getCol()
                 + ", \"hp\": " + enemy.getHealth()
+                + ", \"atk\": " + enemy.getAttackPower()
                 + ", \"mana\": " + enemy.getMana()
                 + ", \"energy\": " + enemy.getEnergy()
                 + ", \"str\": " + enemy.getStrength()
                 + ", \"def\": " + enemy.getDefensePower()
                 + " }";
+    }
+
+    private String jsonEscape(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private String buildShadowCloneJson(ShadowClone shadowClone) {
@@ -243,6 +256,38 @@ public class MapSerializer {
         return buildMapJson(map);
     }
 
+    /** Serialise multiple maps as a single world JSON file. */
+    public String worldToJson(java.util.Map<String, Map> maps, String startMapId) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\n");
+        sb.append("  \"format\": \"world\",\n");
+        sb.append("  \"startMapId\": \"").append(escape(startMapId)).append("\",\n");
+        sb.append("  \"maps\": {\n");
+        List<String> mapEntries = new ArrayList<>();
+        for (java.util.Map.Entry<String, Map> entry : maps.entrySet()) {
+            mapEntries.add("    \"" + escape(entry.getKey()) + "\": " + buildMapJson(entry.getValue()));
+        }
+        sb.append(String.join(",\n", mapEntries));
+        sb.append("\n  }\n}");
+        return sb.toString();
+    }
+
+    /** Save world JSON to the maps directory. Returns true on success. */
+    public boolean saveWorldToFile(java.util.Map<String, Map> maps, String startMapId, String filename) {
+        Path dir = Paths.get("maps");
+        try {
+            java.nio.file.Files.createDirectories(dir);
+            String json = worldToJson(maps, startMapId);
+            try (FileWriter fw = new FileWriter(dir.resolve(filename).toFile())) {
+                fw.write(json);
+            }
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     private String buildMapJson(Map map) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\n");
@@ -255,8 +300,7 @@ public class MapSerializer {
             for (int col = 0; col < map.getWidth(); col++) {
                 GridCell cell = map.getCell(row, col);
                 StaticObject so = cell.getStaticObject();
-                boolean hasSpecialStatic = so != null && (!so.isPassable() || so.isSearchable());
-                if (hasSpecialStatic || cell.hasObjects()) {
+                if (so != null || cell.hasObjects()) {
                     entries.add(buildCellJson(cell, row, col));
                 }
             }
@@ -276,14 +320,34 @@ public class MapSerializer {
         sb.append(", \"walkable\": ").append(cell.isWalkable());
 
         StaticObject so = cell.getStaticObject();
-        if (so != null && (!so.isPassable() || so.isSearchable())) {
+        if (so != null) {
             sb.append(", \"staticObject\": {");
-            sb.append(" \"name\": \"").append(escape(so.getName())).append("\"");
-            sb.append(", \"description\": \"").append(escape(so.getDescription())).append("\"");
-            sb.append(", \"passable\": ").append(so.isPassable());
-            sb.append(", \"searchable\": ").append(so.isSearchable());
-            if (so.getHiddenItem() != null) {
-                sb.append(", \"hiddenItem\": ").append(buildObjectJson(so.getHiddenItem()));
+            if (so instanceof MapPortal) {
+                MapPortal portal = (MapPortal) so;
+                sb.append(" \"type\": \"MapPortal\"");
+                sb.append(", \"name\": \"").append(escape(portal.getName())).append("\"");
+                sb.append(", \"description\": \"").append(escape(portal.getDescription())).append("\"");
+                String tid = portal.getTargetMapId();
+                sb.append(", \"targetMapId\": \"").append(escape(tid != null ? tid : "")).append("\"");
+                sb.append(", \"targetRow\": ").append(portal.getTargetRow());
+                sb.append(", \"targetCol\": ").append(portal.getTargetCol());
+                if (portal.getRequiredKeyId() != null) {
+                    sb.append(", \"requiredKeyId\": \"").append(escape(portal.getRequiredKeyId())).append("\"");
+                }
+                sb.append(", \"unlocked\": ").append(portal.isUnlocked());
+                sb.append(", \"stairsMode\": ").append(portal.isStairsMode());
+                if (portal.getRotation() != 0)
+                    sb.append(", \"rotation\": ").append(portal.getRotation());
+            } else {
+                sb.append(" \"name\": \"").append(escape(so.getName())).append("\"");
+                sb.append(", \"description\": \"").append(escape(so.getDescription())).append("\"");
+                sb.append(", \"passable\": ").append(so.isPassable());
+                sb.append(", \"searchable\": ").append(so.isSearchable());
+                if (so.getRotation() != 0)
+                    sb.append(", \"rotation\": ").append(so.getRotation());
+                if (so.getHiddenItem() != null) {
+                    sb.append(", \"hiddenItem\": ").append(buildObjectJson(so.getHiddenItem()));
+                }
             }
             sb.append(" }");
         }
@@ -309,7 +373,10 @@ public class MapSerializer {
         if (obj instanceof Weapon) {
             sb.append(", \"damage\": ").append(((Weapon) obj).getDamage());
         } else if (obj instanceof Consumable) {
-            sb.append(", \"healAmount\": ").append(((Consumable) obj).getHealAmount());
+            Consumable consumable = (Consumable) obj;
+            sb.append(", \"healAmount\": ").append(consumable.getHealAmount());
+            sb.append(", \"manaAmount\": ").append(consumable.getManaAmount());
+            sb.append(", \"energyAmount\": ").append(consumable.getEnergyAmount());
         } else if (obj instanceof Key) {
             sb.append(", \"keyId\": \"").append(escape(((Key) obj).getKeyId())).append("\"");
         } else if (obj instanceof Wearable) {
@@ -318,6 +385,8 @@ public class MapSerializer {
             Scroll scroll = (Scroll) obj;
             sb.append(", \"text\": \"").append(escape(scroll.getText())).append("\"");
             sb.append(", \"healAmount\": ").append(scroll.getHealAmount());
+            sb.append(", \"manaAmount\": ").append(scroll.getManaAmount());
+            sb.append(", \"energyAmount\": ").append(scroll.getEnergyAmount());
         } else if (obj instanceof PortableContainer) {
             PortableContainer container = (PortableContainer) obj;
             sb.append(", \"capacity\": ").append(container.getCapacity());
@@ -326,6 +395,8 @@ public class MapSerializer {
             StaticContainer container = (StaticContainer) obj;
             sb.append(", \"contents\": ").append(buildItemListJson(container.getContents()));
         }
+        if (obj.getRotation() != 0)
+            sb.append(", \"rotation\": ").append(obj.getRotation());
         sb.append(" }");
         return sb.toString();
     }
