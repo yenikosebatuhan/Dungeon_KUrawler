@@ -1666,7 +1666,7 @@ public class GameView {
             drawGoldPanel(gc, edBtnX, pad + 4, 76, h - pad * 2 - 8);
             gc.setFont(Font.font("Serif", FontWeight.BOLD, 11));
             gc.setFill(Color.web("#e8c84a"));
-            gc.fillText("◄ Editor", edBtnX + 8, h / 2.0 + 5);
+            gc.fillText("Back to Editor", edBtnX + 8, h / 2.0 + 5);
         }
     }
 
