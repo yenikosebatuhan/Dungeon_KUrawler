@@ -4,7 +4,11 @@ import com.kurawler.editor.LevelEditor;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Map;
+import com.kurawler.model.ResourceAssetCatalog;
+import com.kurawler.model.WeaponCatalog;
+import com.kurawler.model.character.Assassin;
 import com.kurawler.model.character.Character;
+import com.kurawler.model.character.Guard;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.Sorcerer;
@@ -13,6 +17,7 @@ import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Key;
 import com.kurawler.model.object.Scroll;
+import com.kurawler.model.object.MapPortal;
 import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Wearable;
@@ -35,7 +40,10 @@ import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -46,11 +54,15 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.TextAlignment;
 import javafx.scene.transform.Scale;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Dungeon-themed level editor. Every sprite in the project's sheets is sliced
@@ -109,7 +121,8 @@ public class EditorView {
     private int hoverCol = -1;
     private int lastPaintRow = -1;
     private int lastPaintCol = -1;
-    private int currentRotation = 0; // applied to newly placed assets
+    private String lastEditMessage;
+    private int currentRotation = 0; // unused placeholder kept for compat
 
     private final java.util.Map<String, Button> assetCards = new HashMap<>();
     private final java.util.Map<String, Button> categoryChips = new HashMap<>();
@@ -119,15 +132,14 @@ public class EditorView {
     private enum EditMode {
         PLACE_OBJECT,
         PLACE_CHARACTER,
-        ERASE
+        ERASE,
+        ROTATE
     }
 
     public EditorView(ScreenManager screenManager, GameSession session) {
         this.screenManager = screenManager;
         this.renderer = new TileRenderer(TILE_SIZE);
 
-        // Start from a map paved with the plain stone floor — the designer places
-        // walls/props/items on top of it.
         Map src = session != null ? session.getMap() : null;
         int w = src != null ? src.getWidth() : 22;
         int h = src != null ? src.getHeight() : 16;
@@ -138,12 +150,30 @@ public class EditorView {
         indexCatalog();
     }
 
-    /** Fills every cell with the plain, unbroken stone floor as the initial map. */
+    /** Constructor used when returning from test-play with a full multi-map world. */
+    public EditorView(ScreenManager screenManager,
+                      java.util.LinkedHashMap<String, Map> worldMaps, String startMapId) {
+        this.screenManager = screenManager;
+        this.renderer = new TileRenderer(TILE_SIZE);
+
+        Map startMap = worldMaps.containsKey(startMapId)
+                ? worldMaps.get(startMapId) : worldMaps.values().iterator().next();
+        this.editor = new LevelEditor(startMap);
+        this.editor.loadWorld(worldMaps, startMapId);
+
+        indexCatalog();
+    }
+
+    /** Replace the current map (single-map load from test-play fallback). */
+    public void loadMap(Map map) {
+        editor.setMap(map);
+    }
+
+    /** Clears all cells to the default open floor (null static = patterned floor). */
     private void pavePlainFloor(Map map) {
         for (int row = 0; row < map.getHeight(); row++) {
             for (int col = 0; col < map.getWidth(); col++) {
-                map.getCell(row, col).setStaticObject(
-                        new StaticObject("Stone Floor", "Stone floor tile", true, false));
+                map.getCell(row, col).setStaticObject(null);
             }
         }
     }
@@ -230,23 +260,66 @@ public class EditorView {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        // ── Map selector ───────────────────────────────────────────────────
+        ComboBox<String> mapSelector = new ComboBox<>();
+        mapSelector.getItems().addAll(editor.getWorldMaps().keySet());
+        mapSelector.setValue(editor.getCurrentMapId());
+        mapSelector.setStyle("-fx-background-color:#3a3220;-fx-text-fill:#e8c84a;"
+                + "-fx-font-family:Serif;-fx-pref-width:110px;");
+        mapSelector.setOnAction(e -> {
+            String sel = mapSelector.getValue();
+            if (sel != null && !sel.equals(editor.getCurrentMapId())) {
+                editor.switchToMap(sel);
+                render();
+            }
+        });
+
+        Button newMap = stoneButton("+Map", 60);
+        newMap.setOnAction(e -> {
+            Optional<String> name = EditorStyledDialog.promptText(
+                    stage, "New Map", "Enter a name for the new map:", "map_2");
+            if (!name.isPresent()) return;
+            String id = name.get().replaceAll("[^a-zA-Z0-9_-]", "_");
+            editor.createNewMap(id);
+            pavePlainFloor(editor.getMap());
+            mapSelector.getItems().setAll(editor.getWorldMaps().keySet());
+            mapSelector.setValue(editor.getCurrentMapId());
+            render();
+            setStatus("Created map '" + editor.getCurrentMapId() + "'.");
+        });
+
+        Button delMap = stoneButton("-Map", 60);
+        delMap.setOnAction(e -> {
+            if (editor.getWorldMaps().size() <= 1) { setStatus("Cannot delete the last map."); return; }
+            String cur = editor.getCurrentMapId();
+            editor.removeMap(cur);
+            mapSelector.getItems().setAll(editor.getWorldMaps().keySet());
+            mapSelector.setValue(editor.getCurrentMapId());
+            render();
+            setStatus("Deleted map '" + cur + "'.");
+        });
+
+        // ── Save / Load / Play ─────────────────────────────────────────────
         Button save = stoneButton("Save", 70);
         save.setOnAction(e -> {
-            boolean saved = screenManager.showSaveMapDialog(editor.getMap());
-            setStatus(saved ? "Map saved under maps/." : "Save cancelled or failed.");
+            boolean saved = screenManager.showSaveWorldDialog(editor.getWorldMaps(), editor.getCurrentMapId());
+            setStatus(saved ? "World saved under maps/." : "Save cancelled or failed.");
         });
 
         Button load = stoneButton("Load", 70);
         load.setOnAction(e -> {
-            Map loaded = screenManager.showLoadMapDialog();
-            if (loaded != null) {
-                applyLoadedMap(loaded);
-                setStatus("Loaded map " + loaded.getWidth() + "x" + loaded.getHeight() + ".");
+            com.kurawler.persistence.MapDeserializer.WorldData data = screenManager.showLoadWorldDialog();
+            if (data != null) {
+                editor.loadWorld(data.maps, data.startMapId);
+                mapSelector.getItems().setAll(editor.getWorldMaps().keySet());
+                mapSelector.setValue(editor.getCurrentMapId());
+                render();
+                setStatus("Loaded world with " + data.maps.size() + " map(s).");
             }
         });
 
         Button play = stoneButton("Play", 70);
-        play.setOnAction(e -> screenManager.playEditedMap(editor.getMap()));
+        play.setOnAction(e -> screenManager.playEditedWorld(editor.getWorldMaps(), editor.getCurrentMapId()));
 
         Button teamMatch = stoneButton("Team Match", 104);
         teamMatch.setOnAction(e -> screenManager.playEditedMapAsTeamMatch(editor.getMap()));
@@ -281,13 +354,18 @@ public class EditorView {
             }
         });
 
-        rotateButton = stoneButton("Rotate \u21BB 0\u00B0", 112);
+        rotateButton = stoneButton("Rotate \u21BB", 84);
         rotateButton.setOnAction(e -> cycleRotation());
+        rotateButton.setOnMouseEntered(e  -> rotateButton.setStyle(mode == EditMode.ROTATE ? ROTATE_ACTIVE : stoneHover()));
+        rotateButton.setOnMouseExited(e   -> rotateButton.setStyle(mode == EditMode.ROTATE ? ROTATE_ACTIVE : stoneBase()));
+        rotateButton.setOnMousePressed(e  -> rotateButton.setStyle(mode == EditMode.ROTATE ? ROTATE_ACTIVE : stonePressed()));
+        rotateButton.setOnMouseReleased(e -> rotateButton.setStyle(mode == EditMode.ROTATE ? ROTATE_ACTIVE
+                : (rotateButton.isHover() ? stoneHover() : stoneBase())));
 
         Button back = stoneButton("Main Menu", 104);
         back.setOnAction(e -> screenManager.showMainMenu());
 
-        HBox bar = new HBox(7, title, spacer, save, load, play, teamMatch, random, rotateButton, clear, undo, back);
+        HBox bar = new HBox(5, title, mapSelector, newMap, delMap, spacer, save, load, play, teamMatch, random, rotateButton, clear, undo, back);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(8, 12, 8, 12));
         bar.setMinHeight(TOOLBAR_HEIGHT);
@@ -405,7 +483,9 @@ public class EditorView {
     private Button createAssetCard(EditorAsset asset) {
         boolean isCharacter = asset.kind == AssetKind.HERO
                 || asset.kind == AssetKind.KNIGHT
-                || asset.kind == AssetKind.SORCERER;
+                || asset.kind == AssetKind.GUARD
+                || asset.kind == AssetKind.SORCERER
+                || asset.kind == AssetKind.ASSASSIN;
         String payload = (isCharacter ? DRAG_CHARACTER : DRAG_OBJECT) + asset.name;
 
         Canvas icon = new Canvas(CARD_ICON, CARD_ICON);
@@ -535,9 +615,11 @@ public class EditorView {
         if (board.hasString()) {
             int row = tileRow(e.getY());
             int col = tileCol(e.getX());
+            lastEditMessage = null;
             success = applyPayloadAt(board.getString(), row, col);
-            setStatus(success
-                    ? "Placed at (" + row + "," + col + ")."
+            setStatus(lastEditMessage != null
+                    ? lastEditMessage
+                    : success ? "Placed at (" + row + "," + col + ")."
                     : "Cannot place at (" + row + "," + col + ").");
             render();
         }
@@ -553,7 +635,16 @@ public class EditorView {
         }
         if (payload.startsWith(DRAG_OBJECT)) {
             String name = payload.substring(DRAG_OBJECT.length());
+            AssetKind kind = assetKinds.get(name);
+            if (kind == AssetKind.PORTAL) {
+                MapPortal portal = showPortalConfigDialog(name, row, col);
+                return portal != null && editor.placeObject(row, col, portal);
+            }
             GameObject obj = createObjectFor(name);
+            if (obj instanceof Item && editor.addItemToContainer(row, col, (Item) obj)) {
+                noteContainerLoot(row, col, (Item) obj);
+                return true;
+            }
             return obj != null && editor.placeObject(row, col, obj);
         }
         if (payload.startsWith(DRAG_CHARACTER)) {
@@ -572,6 +663,7 @@ public class EditorView {
             return;
         }
         boolean changed;
+        lastEditMessage = null;
         if (lastPaintRow >= 0 && (Math.abs(row - lastPaintRow) > 1 || Math.abs(col - lastPaintCol) > 1)) {
             changed = paintLine(lastPaintRow, lastPaintCol, row, col);
         } else {
@@ -579,8 +671,9 @@ public class EditorView {
         }
         lastPaintRow = row;
         lastPaintCol = col;
-        setStatus(changed
-                ? "Updated cell (" + row + "," + col + ")."
+        setStatus(lastEditMessage != null
+                ? lastEditMessage
+                : changed ? "Updated cell (" + row + "," + col + ")."
                 : "Cannot edit cell (" + row + "," + col + ").");
         render();
     }
@@ -606,11 +699,34 @@ public class EditorView {
 
     /** Places/erases at a single cell according to the active mode. No render/status. */
     private boolean applyAtCell(int row, int col) {
+        if (mode == EditMode.ROTATE) {
+            GridCell cell = editor.getMap().getCell(row, col);
+            if (cell == null) return false;
+            StaticObject so = cell.getStaticObject();
+            if (so != null) {
+                so.setRotation(so.getRotation() + 90);
+                return true;
+            }
+            for (GameObject obj : cell.getObjects()) {
+                obj.setRotation(obj.getRotation() + 90);
+                return true;
+            }
+            return false;
+        }
         if (mode == EditMode.ERASE) {
             return editor.removeObject(row, col, null);
         }
         if (mode == EditMode.PLACE_OBJECT && selectedObjectName != null) {
+            AssetKind kind = assetKinds.get(selectedObjectName);
+            if (kind == AssetKind.PORTAL) {
+                MapPortal portal = showPortalConfigDialog(selectedObjectName, row, col);
+                return portal != null && editor.placeObject(row, col, portal);
+            }
             GameObject obj = createObjectFor(selectedObjectName);
+            if (obj instanceof Item && editor.addItemToContainer(row, col, (Item) obj)) {
+                noteContainerLoot(row, col, (Item) obj);
+                return true;
+            }
             return obj != null && editor.placeObject(row, col, obj);
         }
         if (mode == EditMode.PLACE_CHARACTER && selectedCharacterName != null) {
@@ -630,25 +746,25 @@ public class EditorView {
         GameObject obj;
         switch (kind) {
             case WEAPON:
-                obj = new Weapon(name, "A dungeon weapon", 5);
+                obj = WeaponCatalog.create(name);
                 break;
             case ITEM:
                 obj = createItemFor(name);
                 break;
             case CONTAINER:
-                obj = new StaticContainer(name, "A container");
+                obj = ResourceAssetCatalog.createContainer(name);
                 break;
             case STATIC:
-                obj = new StaticObject(name, "A dungeon prop", false, false);
+                obj = ResourceAssetCatalog.createStatic(name);
                 break;
             case NPC:
                 obj = new StaticObject(name, "A dungeon dweller", false, false);
                 break;
             case TERRAIN_WALL:
-                obj = new StaticObject(name, "A solid wall that blocks movement", false, false);
+                obj = ResourceAssetCatalog.createStatic(name);
                 break;
             case TERRAIN_FLOOR:
-                obj = new StaticObject(name, "Stone floor tile", true, false);
+                obj = ResourceAssetCatalog.createStatic(name);
                 break;
             default:
                 return null;
@@ -661,27 +777,147 @@ public class EditorView {
 
     /** Builds the right model type for a catalog item from its real name. */
     private Item createItemFor(String name) {
-        String n = name.toLowerCase();
-        if (n.contains("potion") || n.contains("elixir") || n.contains("tonic")) {
-            if (n.contains("mana")) {
-                return new Consumable(name, "Restores mana", 0, 20, 0);
+        return ResourceAssetCatalog.createItem(name);
+    }
+
+    /**
+     * Shows a modal dialog to configure a MapPortal.
+     * Returns null if the user cancelled.
+     */
+    private MapPortal showPortalConfigDialog(String assetName, int row, int col) {
+        boolean isStairs = assetName.toLowerCase().contains("stair");
+
+        Stage dialog = new Stage();
+        dialog.initOwner(stage);
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.initStyle(StageStyle.UNDECORATED);
+        dialog.setTitle("Configure Portal");
+
+        // Target map dropdown: existing map IDs + "(same map / door only)"
+        List<String> mapChoices = new ArrayList<>();
+        mapChoices.add("— door only (same map) —");
+        mapChoices.addAll(editor.getWorldMaps().keySet());
+        mapChoices.add("+ Create new map…");
+
+        ComboBox<String> targetMapBox = new ComboBox<>();
+        targetMapBox.getItems().addAll(mapChoices);
+        targetMapBox.setValue(mapChoices.size() > 1 ? mapChoices.get(1) : mapChoices.get(0));
+        targetMapBox.setMaxWidth(200);
+
+        TextField spawnRowField = new TextField("0");
+        spawnRowField.setPrefWidth(55);
+        TextField spawnColField = new TextField("0");
+        spawnColField.setPrefWidth(55);
+
+        List<String> keyChoices = Arrays.asList("None", "Bone Key", "Silver Key", "Gold Key",
+                "Copper Key", "Brass Key", "Key Ring");
+        ComboBox<String> keyBox = new ComboBox<>();
+        keyBox.getItems().addAll(keyChoices);
+        keyBox.setValue("None");
+        keyBox.setMaxWidth(150);
+
+        CheckBox stairsCheck = new CheckBox("Stairs mode (search to use)");
+        stairsCheck.setSelected(isStairs);
+        stairsCheck.setTextFill(Color.web("#e8c84a"));
+
+        Label title = new Label("Configure Portal / Door");
+        title.setFont(Font.font("Serif", FontWeight.BOLD, 16));
+        title.setTextFill(Color.web("#e8c84a"));
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(8);
+        grid.setPadding(new Insets(12));
+        grid.setStyle("-fx-background-color:#2a261e;");
+        grid.add(label("Target Map:"), 0, 0); grid.add(targetMapBox, 1, 0);
+        grid.add(label("Spawn Row:"), 0, 1);  grid.add(spawnRowField, 1, 1);
+        grid.add(label("Spawn Col:"), 0, 2);  grid.add(spawnColField, 1, 2);
+        grid.add(label("Req. Key:"), 0, 3);   grid.add(keyBox, 1, 3);
+        grid.add(stairsCheck, 0, 4, 2, 1);
+
+        Button ok = stoneButton("Place", 80);
+        Button cancel = stoneButton("Cancel", 80);
+        HBox buttons = new HBox(10, ok, cancel);
+        buttons.setAlignment(Pos.CENTER);
+        buttons.setPadding(new Insets(8, 12, 12, 12));
+        buttons.setStyle("-fx-background-color:#2a261e;");
+
+        VBox root = new VBox(0,
+                new javafx.scene.layout.StackPane(title) {{
+                    setStyle("-fx-background-color:#1a1610;");
+                    setPadding(new Insets(10, 12, 10, 12));
+                }},
+                grid, buttons);
+        root.setStyle("-fx-border-color:#8b7940;-fx-border-width:2;");
+
+        final MapPortal[] result = {null};
+        ok.setOnAction(ev -> {
+            String sel = targetMapBox.getValue();
+            String targetId = null;
+            if (sel != null && sel.startsWith("+ Create")) {
+                String newId = editor.createNewMap("map_" + (editor.getWorldMaps().size()));
+                pavePlainFloor(editor.getMap());
+                // switch back to the original map for placing
+                editor.switchToMap(editor.getWorldMaps().keySet().stream()
+                        .filter(k -> !k.equals(newId)).findFirst().orElse(newId));
+                targetId = newId;
+            } else if (sel != null && !sel.startsWith("—")) {
+                targetId = sel;
             }
-            if (n.contains("energy")) {
-                return new Consumable(name, "Restores energy", 0, 0, 20);
+            int tr = 0, tc = 0;
+            try { tr = Integer.parseInt(spawnRowField.getText().trim()); } catch (Exception ignored) {}
+            try { tc = Integer.parseInt(spawnColField.getText().trim()); } catch (Exception ignored) {}
+            String keyChoice = keyBox.getValue();
+            String keyId = "None".equals(keyChoice) ? null : keyChoiceToId(keyChoice);
+            boolean stairs = stairsCheck.isSelected();
+            result[0] = new MapPortal(assetName, assetName + " connection",
+                    targetId, tr, tc, keyId, keyId == null, stairs);
+            dialog.close();
+        });
+        cancel.setOnAction(ev -> dialog.close());
+
+        dialog.setScene(new javafx.scene.Scene(root));
+        dialog.showAndWait();
+        return result[0];
+    }
+
+    private Label label(String text) {
+        Label l = new Label(text);
+        l.setTextFill(Color.web("#c8b870"));
+        l.setFont(Font.font("Serif", 13));
+        return l;
+    }
+
+    private String keyChoiceToId(String choice) {
+        switch (choice) {
+            case "Bone Key":   return "bone";
+            case "Silver Key": return "silver";
+            case "Gold Key":   return "gold";
+            case "Copper Key": return "copper";
+            case "Brass Key":  return "brass";
+            case "Key Ring":   return "keyring";
+            default:           return null;
+        }
+    }
+
+    private void noteContainerLoot(int row, int col, Item item) {
+        StaticContainer container = findContainerAt(row, col);
+        int count = container == null ? 0 : container.getContents().size();
+        lastEditMessage = "Added " + item.getName() + " to "
+                + (container == null ? "container" : container.getName())
+                + " (" + count + " item" + (count == 1 ? "" : "s") + ").";
+    }
+
+    private StaticContainer findContainerAt(int row, int col) {
+        GridCell cell = editor.getMap().getCell(row, col);
+        if (cell == null) {
+            return null;
+        }
+        for (GameObject obj : cell.getObjects()) {
+            if (obj instanceof StaticContainer) {
+                return (StaticContainer) obj;
             }
-            return new Consumable(name, "Restores health", 20, 0, 0);
         }
-        if (n.contains("key")) {
-            return new Key(name, "Unlocks something", "key");
-        }
-        if (n.contains("ring") || n.contains("amulet")) {
-            return new Wearable(name, "A magical trinket (+1 DEF)", 1);
-        }
-        if (n.contains("scroll") || n.contains("tome") || n.contains("book")) {
-            return new Scroll(name, "Ancient writing", "Faded arcane runes.", 5);
-        }
-        // Gems, coins, skulls, orbs, charms — treasure pickups.
-        return new Key(name, "A valuable treasure", "treasure");
+        return null;
     }
 
     private Character createCharacterFor(String name) {
@@ -690,21 +926,54 @@ public class EditorView {
             return null;
         }
         Character character;
+        String displayName = name;
         switch (kind) {
             case HERO:
-                character = new Hero("Adventurer");
+                character = new Hero(displayName);
                 break;
             case KNIGHT:
                 character = new Knight();
+                character.setName(displayName);
+                break;
+            case GUARD:
+                character = new Guard();
+                character.setName(displayName);
                 break;
             case SORCERER:
                 character = new Sorcerer();
+                character.setName(displayName);
+                break;
+            case ASSASSIN:
+                character = new Assassin();
+                character.setName(displayName);
                 break;
             default:
                 return null;
         }
+        applyVariantStats(character, displayName);
         character.setRotation(currentRotation);
         return character;
+    }
+
+    private void applyVariantStats(Character character, String displayName) {
+        String n = displayName == null ? "" : displayName.toLowerCase();
+        if (n.contains("horned guard blue")) {
+            character.setAttackPower(6);
+        } else if (n.contains("horned guard brown")) {
+            character.setAttackPower(4);
+        } else if (n.contains("hero yellow")) {
+            character.setAttackPower(8);
+        } else if (n.contains("hero blonde")) {
+            character.setAttackPower(6);
+        } else if (n.contains("sorcerer red")) {
+            character.setAttackPower(7);
+        } else if (n.contains("sorcerer purple")) {
+            character.setAttackPower(5);
+        } else if (n.contains("assassin red")) {
+            character.setAttackPower(7);
+        } else if (n.contains("assassin blue")) {
+            character.setAttackPower(5);
+        }
     }
 
     private int tileRow(double y) {
@@ -766,13 +1035,21 @@ public class EditorView {
         }
     }
 
-    /** Cycles the placement rotation 0 -> 90 -> 180 -> 270 -> 0 (button or 'R' key). */
+    private static final String ROTATE_ACTIVE =
+            "-fx-background-color:#c8a830;-fx-text-fill:#1a1610;"
+            + "-fx-font-family:Serif;-fx-font-weight:bold;-fx-font-size:13;"
+            + "-fx-background-radius:5;-fx-border-radius:5;"
+            + "-fx-border-color:#8b6914;-fx-border-width:2;-fx-cursor:hand;"
+            + "-fx-effect:dropshadow(gaussian,#ffd54f,10,0.7,0,0);";
+
     private void cycleRotation() {
-        currentRotation = (currentRotation + 90) % 360;
-        if (rotateButton != null) {
-            rotateButton.setText("Rotate \u21BB " + currentRotation + "\u00B0");
+        if (mode == EditMode.ROTATE) {
+            mode = EditMode.PLACE_OBJECT;
+            if (rotateButton != null) rotateButton.setStyle(stoneBase());
+        } else {
+            mode = EditMode.ROTATE;
+            if (rotateButton != null) rotateButton.setStyle(ROTATE_ACTIVE);
         }
-        setStatus("Rotation set to " + currentRotation + "\u00B0 (applies to assets you place next).");
     }
 
     // ---------- RENDER ----------
@@ -799,11 +1076,15 @@ public class EditorView {
                 if (occupant != null) {
                     withRotation(gc, sx, sy, occupant.getRotation(), () -> {
                         if (occupant instanceof Hero) {
-                            renderer.drawHero(gc, sx, sy);
+                            renderer.drawHeroByName(gc, sx, sy, occupant.getName());
                         } else if (occupant instanceof Knight) {
-                            renderer.drawEnemy(gc, sx, sy, "Knight");
+                            renderer.drawEnemy(gc, sx, sy, "Knight", false, occupant.getName());
+                        } else if (occupant instanceof Guard) {
+                            renderer.drawEnemy(gc, sx, sy, "Guard", false, occupant.getName());
                         } else if (occupant instanceof Sorcerer) {
-                            renderer.drawEnemy(gc, sx, sy, "Sorcerer");
+                            renderer.drawEnemy(gc, sx, sy, "Sorcerer", false, occupant.getName());
+                        } else if (occupant instanceof Assassin) {
+                            renderer.drawEnemy(gc, sx, sy, "Assassin", false, occupant.getName());
                         }
                     });
                 }
@@ -836,7 +1117,11 @@ public class EditorView {
         }
         withRotation(gc, sx, sy, so.getRotation(), () -> {
             String name = so.getName();
-            if (renderer.isWallName(name) && !so.isSearchable()) {
+            if (so instanceof MapPortal) {
+                MapPortal portal = (MapPortal) so;
+                renderer.drawFloor(gc, sx, sy);
+                renderer.drawPortalOrNavSprite(gc, sx, sy, portal);
+            } else if (renderer.isWallName(name) && !so.isSearchable()) {
                 renderer.drawWallByName(gc, sx, sy, name);
             } else if (renderer.isFloorName(name)) {
                 renderer.drawFloorByName(gc, sx, sy, name);
@@ -853,27 +1138,34 @@ public class EditorView {
     private void drawObject(GraphicsContext gc, GameObject obj, int sx, int sy) {
         withRotation(gc, sx, sy, obj.getRotation(), () -> {
             if (obj instanceof StaticContainer) {
-                renderer.drawContainerByName(gc, sx, sy, obj.getName());
+                StaticContainer container = (StaticContainer) obj;
+                renderer.drawContainerByName(gc, sx, sy, container.getSpriteName());
+                drawContainerLootBadge(gc, sx, sy, container);
             } else if (obj instanceof Item) {
                 renderer.drawItemObject(gc, sx, sy, (Item) obj);
             }
         });
     }
 
-    /** Runs {@code draw} with the canvas rotated clockwise around the tile's centre. */
-    private void withRotation(GraphicsContext gc, int sx, int sy, int rot, Runnable draw) {
-        if (rot % 360 == 0) {
-            draw.run();
+    private void drawContainerLootBadge(GraphicsContext gc, int sx, int sy, StaticContainer container) {
+        int count = container.getContents().size();
+        if (count <= 0) {
             return;
         }
+        String text = String.valueOf(count);
         gc.save();
-        double cx = sx + TILE_SIZE / 2.0;
-        double cy = sy + TILE_SIZE / 2.0;
-        gc.translate(cx, cy);
-        gc.rotate(rot);
-        gc.translate(-cx, -cy);
-        draw.run();
+        gc.setFill(Color.web("#17130c", 0.88));
+        gc.fillRoundRect(sx + TILE_SIZE - 19, sy + 3, 16, 14, 5, 5);
+        gc.setStroke(Color.web(GOLD_BRIGHT));
+        gc.strokeRoundRect(sx + TILE_SIZE - 19, sy + 3, 16, 14, 5, 5);
+        gc.setFill(Color.web(GOLD_BRIGHT));
+        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 9));
+        gc.fillText(text, sx + TILE_SIZE - 14, sy + 13);
         gc.restore();
+    }
+
+    private void withRotation(GraphicsContext gc, int sx, int sy, int rot, Runnable draw) {
+        renderer.applyRotation(gc, sx, sy, rot, draw);
     }
 
     private void drawDungeonBackground(Canvas bg, double w, double h) {
