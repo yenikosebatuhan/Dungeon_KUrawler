@@ -291,6 +291,16 @@ public class GameView {
         } else if (x >= btnX && x < btnX + btnSize + 8 && y >= pad + 4 + btnSize + 4 && y < HUD_HEIGHT - pad) {
             AudioManager.getInstance().play("button");
             showInGameMenu();
+        } else {
+            GameSession session = controller.getSession();
+            if (session.isEditorTestPlay()) {
+                double edBtnX = btnX + (btnSize + 8) + 8;
+                if (x >= edBtnX && x < edBtnX + 76 && y >= pad + 4 && y < HUD_HEIGHT - pad - 4) {
+                    AudioManager.getInstance().play("button");
+                    shutdown();
+                    screenManager.returnToEditorAfterTest(session.getMap(), "Returned to editor.");
+                }
+            }
         }
     }
 
@@ -1650,6 +1660,14 @@ public class GameView {
         double menuBtnW = btnSize + 8;
         drawGoldPanel(gc, btnX, menuBtnY, menuBtnW, btnSize);
         drawMenuButtonIcon(gc, btnX, menuBtnY, menuBtnW, btnSize);
+
+        if (session.isEditorTestPlay()) {
+            double edBtnX = btnX + menuBtnW + 8;
+            drawGoldPanel(gc, edBtnX, pad + 4, 76, h - pad * 2 - 8);
+            gc.setFont(Font.font("Serif", FontWeight.BOLD, 11));
+            gc.setFill(Color.web("#e8c84a"));
+            gc.fillText("Back to Editor", edBtnX + 8, h / 2.0 + 5);
+        }
     }
 
     /** Three-line menu glyph + MENU label for the HUD menu control. */

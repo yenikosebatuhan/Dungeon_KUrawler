@@ -49,6 +49,7 @@ public class ScreenManager {
     private String pendingEditorStatus;
     private String lastGameType = "Default";
     private String lastDifficulty = "Normal";
+    private String prePlayMapSnapshot;
 
     public ScreenManager(Stage stage) {
         this.stage = stage;
@@ -235,10 +236,19 @@ public class ScreenManager {
     /** After Play This Map — return to editor without game-over overlay on editor UI. */
     public void returnToEditorAfterTest(com.kurawler.model.Map map, String statusMessage) {
         shutdownActiveGameView();
-        restoreHeroForEditor(map);
-        currentSession = new GameSession(map);
+        com.kurawler.model.Map restored = null;
+        if (prePlayMapSnapshot != null) {
+            restored = deserializer.loadMapFromJson(prePlayMapSnapshot);
+            prePlayMapSnapshot = null;
+        }
+        if (restored == null) {
+            restored = map;
+        }
+        currentSession = new GameSession(restored);
         pendingEditorStatus = statusMessage;
-        new EditorView(this, currentSession).show(stage);
+        EditorView editorView = new EditorView(this, currentSession);
+        editorView.show(stage);
+        editorView.applyLoadedMap(restored);
     }
 
     public boolean saveEditedMap(com.kurawler.model.Map map, String filename) {
@@ -322,10 +332,28 @@ public class ScreenManager {
         if (map == null) {
             return;
         }
+        prePlayMapSnapshot = serializer.mapToJson(map);
         GameSession session = new GameSession(map);
         session.setEditorTestPlay(true);
         prepareSessionForPlay(session);
         showPlayMode(session);
+    }
+
+    public void playEditedMapAsTeamMatch(com.kurawler.model.Map map) {
+        if (map == null) {
+            return;
+        }
+        prePlayMapSnapshot = serializer.mapToJson(map);
+        TeamMatchSession tmSession = new TeamMatchSession(map);
+        if (!tmSession.validateMap()) {
+            EditorStyledDialog.showMessage(stage, "Team Match Error",
+                    "Map does not have enough open space for Team Match.");
+            return;
+        }
+        tmSession.initializeMatch();
+        tmSession.setEditorTestPlay(true);
+        prepareSessionForPlay(tmSession);
+        showPlayMode(tmSession);
     }
 
     private void restoreHeroForEditor(com.kurawler.model.Map map) {
