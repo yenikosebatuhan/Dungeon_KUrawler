@@ -5,6 +5,7 @@ import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Key;
 import com.kurawler.model.object.Scroll;
 import com.kurawler.model.object.Weapon;
+import com.kurawler.model.WeaponCatalog;
 import com.kurawler.model.object.Wearable;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
@@ -236,7 +237,8 @@ public class TileRenderer {
         });
         Image weaponsSheet = loadImg("/assets/weapons_x3.png");
         if (weaponsSheet != null) {
-            addWeaponSheetCells(weaponsSheet);
+            registerWeaponsFromAtlas(weaponsSheet);
+            registerWeaponNameAliases();
         }
         // --- Items: clean 6x4 grid, exact names per cell.
         addSlicedSheet(itemsAtlas, "Items", AssetKind.ITEM, (c, r) -> gridName(ITEM_GRID, c, r, "Relic"));
@@ -289,73 +291,46 @@ public class TileRenderer {
     }
 
 
-    /**
-     * Registers each weapon with row-aware expanded crops on weapons_x3.png so blades that
-     * bleed past the 48px grid are fully captured without neighbouring-cell fragments.
-     */
-    private void addWeaponSheetCells(Image sheet) {
-        if (sheet == null) {
+    private void registerWeaponsFromAtlas(Image sheet) {
+        for (String[] row : WeaponCatalog.ENTRIES) {
+            if (row == null || row.length < 5) {
+                continue;
+            }
+            addWeaponCrop(sheet, row[0],
+                    Integer.parseInt(row[1]), Integer.parseInt(row[2]),
+                    Integer.parseInt(row[3]), Integer.parseInt(row[4]));
+        }
+    }
+
+    private void addWeaponCrop(Image sheet, String name, int bx, int by, int bw, int bh) {
+        Image crop = trimTileCrop(cropPx(sheet, bx, by, bw, bh));
+        if (crop == null || crop.getWidth() * crop.getHeight() < 120) {
             return;
         }
-        final int tile = SPRITE_SIZE;
-        int cols = (int) (sheet.getWidth() / tile);
-        int rows = (int) (sheet.getHeight() / tile);
-        for (int r = 0; r < rows && r < WEAPON_GRID.length; r++) {
-            for (int c = 0; c < cols && c < WEAPON_GRID[r].length; c++) {
-                String label = WEAPON_GRID[r][c];
-                if (label == null || label.isEmpty()) {
-                    continue;
-                }
-                Image crop = cropWeaponCell(sheet, c, r, tile);
-                if (crop == null || crop.getWidth() * crop.getHeight() < 120) {
-                    continue;
-                }
-                String name = registerUnique(label);
-                atlasRegistry.put(name, crop);
-                editorAssets.add(new EditorAsset(name, "Weapons", AssetKind.WEAPON));
-            }
+        if (atlasRegistry.containsKey(name)) {
+            return;
         }
+        atlasRegistry.put(name, crop);
+        editorAssets.add(new EditorAsset(name, "Weapons", AssetKind.WEAPON));
     }
 
-    /**
-     * Per-cell crop on weapons_x3: measure art inside the 48px cell, then expand only
-     * toward edges where pixels touch the cell boundary (avoids neighbour bleed).
-     */
-    private Image cropWeaponCell(Image sheet, int col, int row, int tile) {
-        int cx = col * tile;
-        int cy = row * tile;
-        int[] bb = SpriteAtlas.opaqueBounds(cropSheetPx(sheet, cx, cy, tile, tile));
-        if (bb == null) {
-            return null;
-        }
-        boolean touchLeft = bb[0] <= 1;
-        boolean touchTop = bb[1] <= 1;
-        boolean touchRight = bb[2] >= tile - 2;
-        boolean touchBottom = bb[3] >= tile - 2;
-
-        int pl = touchLeft && col > 0 ? 14 : 4;
-        int pr = touchRight && col < 9 ? 14 : 4;
-        int pt = touchTop ? (row > 0 ? 14 : 6) : 4;
-        int pb = touchBottom ? bottomPadForWeaponRow(row) : (row >= 3 ? 12 : 4);
-
-        int x0 = Math.max(0, cx - pl);
-        int y0 = Math.max(0, cy - pt);
-        int x1 = Math.min((int) sheet.getWidth(), cx + tile + pr);
-        int y1 = Math.min((int) sheet.getHeight(), cy + tile + pb);
-        return trimTileCrop(cropSheetPx(sheet, x0, y0, x1 - x0, y1 - y0));
+    private void registerWeaponNameAliases() {
+        aliasWeapon("War Axe", "Battle Axe");
+        aliasWeapon("Rusty Dagger", "Silver Dagger");
+        aliasWeapon("Ceremonial Dagger", "Silver Dagger");
+        aliasWeapon("Chipped Sword", "Tan Sword");
+        aliasWeapon("Jeweled Sword", "Golden Sword");
+        aliasWeapon("Ornate Sword", "Ornate Golden Sword");
     }
 
-    private static int bottomPadForWeaponRow(int row) {
-        if (row == 0) {
-            return 22;
+    private void aliasWeapon(String alias, String source) {
+        if (alias == null || source == null || atlasRegistry.containsKey(alias)) {
+            return;
         }
-        if (row == 1) {
-            return 18;
+        Image img = atlasRegistry.get(source);
+        if (img != null) {
+            atlasRegistry.put(alias, img);
         }
-        if (row <= 4) {
-            return 20;
-        }
-        return 24;
     }
 
     /** Direct pixel crop on an x3 sheet (no base-pixel scaling). */
@@ -482,19 +457,6 @@ public class TileRenderer {
             { "Open Bronze Chest", "Open Copper Chest", "Open Amber Chest", "Coin Pouch" },
     };
 
-    // weapons_x3.png (10 cols x 10 rows): predominantly blades with axes/maces/staves/bow mixed in
-    private static final String[][] WEAPON_GRID = {
-            { "Short Sword", "Sabre", "Scimitar", "Falchion", "Cutlass", "Rapier", "Estoc", "Long Sword", "Bastard Sword", "Great Sword" },
-            { "Hand Axe", "Battle Axe", "Broad Axe", "War Axe", "Double Axe", "Pick Axe", "War Pick", "Mace", "Morningstar", "Flail" },
-            { "Dagger", "Knife", "Stiletto", "Rune Dagger", "Jeweled Dagger", "Spear", "Trident", "Halberd", "Glaive", "Bardiche" },
-            { "Quarterstaff", "Staff", "Elemental Staff", "Ice Staff", "Fire Staff", "Whip", "Club", "Giant Club", "Hammer", "Great Mace" },
-            { "Short Bow", "Longbow", "Crossbow", "Sling", "Blowgun", "Boomerang", "Javelin", "Throwing Net", "Tomahawk", "Returning Boomerang" },
-            { "Katana", "Demon Blade", "Eudemon Blade", "Double Sword", "Triple Sword", "Elegant Sword", "Quick Blade", "Captain's Sword", "Falchion", "Rapier" },
-            { "Orcish Dagger", "Orcish Sword", "Orcish Great Sword", "Elven Dagger", "Elven Short Sword", "Elven Long Sword", "Dwarven Dagger", "Dwarven Sword", "Dwarven Great Sword", "Dwarven Axe" },
-            { "Blessed Blade", "Demon Trident", "Twin Blade", "Elder Club", "Giant Spiked Club", "Giant Club", "Giant Flail", "Giant Hammer", "Giant Axe", "Giant Greataxe" },
-            { "Curved Dagger", "Swift Blade", "Broad Sword", "Champion Great Sword", "Knight Long Sword", "Heavy Bastard Sword", "Claymore", "Samurai Katana", "Dual Blade", "Triple Blade" },
-            { "Lance", "Bardiche", "Trishula", "Partisan", "Glaive", "Halberd", "Scythe", "Poleaxe", "Quarterstaff", "Lajatang" },
-    };
 
     /** All placeable editor assets, in display order (grouped by category). */
     public List<EditorAsset> getEditorAssets() {
@@ -663,13 +625,12 @@ public class TileRenderer {
         }
         Image sheet = loadImg("/assets/weapons_x3.png");
         if (sheet != null) {
-            int tile = SPRITE_SIZE;
-            swordSprite = cropWeaponCell(sheet, 0, 0, tile);
-            axeSprite = cropWeaponCell(sheet, 0, 1, tile);
-            daggerSprite = cropWeaponCell(sheet, 0, 2, tile);
-            staffSprite = cropWeaponCell(sheet, 2, 3, tile);
-            hammerSprite = cropWeaponCell(sheet, 8, 3, tile);
-            bowSprite = cropWeaponCell(sheet, 0, 4, tile);
+            swordSprite = cropPx(sheet, 99, 10, 10, 21);
+            daggerSprite = cropPx(sheet, 5, 2, 6, 13);
+            axeSprite = cropPx(sheet, 53, 74, 9, 21);
+            staffSprite = cropPx(sheet, 3, 26, 10, 37);
+            hammerSprite = cropPx(sheet, 19, 39, 10, 24);
+            bowSprite = cropPx(sheet, 101, 132, 7, 25);
         }
         if (swordSprite == null) swordSprite = weapons.getSprite(0, 0);
         if (axeSprite == null) axeSprite = weapons.getSprite(0, 1);
@@ -792,9 +753,10 @@ public class TileRenderer {
 
     public void drawHeroFacing(GraphicsContext gc, int screenX, int screenY, int facingR, int facingC) {
         Image sprite;
-        if (facingR < 0) sprite = heroSpriteUp;
-        else if (facingR > 0) sprite = heroSprite;
+        if (facingC > 0) sprite = heroSpriteRight;
         else if (facingC < 0) sprite = heroSpriteLeft;
+        else if (facingR < 0) sprite = heroSpriteUp;
+        else if (facingR > 0) sprite = heroSprite;
         else sprite = heroSpriteRight;
         if (sprite == null) sprite = heroSprite;
         drawSprite(gc, sprite, screenX, screenY, Color.web("#4caf50"));
@@ -902,6 +864,25 @@ public class TileRenderer {
             String lower = weaponName.toLowerCase();
             if (lower.contains("axe")) sprite = axeSprite;
             else if (lower.contains("bow")) sprite = bowSprite;
+            else if (lower.contains("arrow")) {
+                Image arrowImg = atlasRegistry.get("Arrow");
+                if (arrowImg != null) {
+                    drawScaledFit(gc, arrowImg, screenX, screenY, tileSize, tileSize * 0.18);
+                    return;
+                }
+            } else if (lower.contains("flail ball")) {
+                Image flailImg = atlasRegistry.get("Flail Ball");
+                if (flailImg != null) {
+                    drawScaledFit(gc, flailImg, screenX, screenY, tileSize, tileSize * 0.18);
+                    return;
+                }
+            } else if (lower.contains("bomb")) {
+                Image bombImg = atlasRegistry.get("Bomb");
+                if (bombImg != null) {
+                    drawScaledFit(gc, bombImg, screenX, screenY, tileSize, tileSize * 0.18);
+                    return;
+                }
+            }
             else if (lower.contains("staff") || lower.contains("spell")) sprite = staffSprite;
             else if (lower.contains("dagger") || lower.contains("knife")) sprite = daggerSprite;
             else if (lower.contains("hammer") || lower.contains("mace")) sprite = hammerSprite;
@@ -1125,6 +1106,73 @@ public class TileRenderer {
         gc.fillOval(cx - radius * 1.4, cy - radius * 1.4, radius * 2.8, radius * 2.8);
     }
 
+    /** Staff / scepter spell — violet crystal burst, distinct from the plain hero bolt. */
+    public void drawStaffBoltProjectile(GraphicsContext gc, int screenX, int screenY) {
+        double cx = screenX + tileSize / 2.0;
+        double cy = screenY + tileSize / 2.0;
+        double radius = tileSize * 0.16;
+        gc.setFill(Color.web("#7c4dff", 0.35));
+        gc.fillOval(cx - radius * 1.8, cy - radius * 1.8, radius * 3.6, radius * 3.6);
+        gc.setFill(Color.web("#b388ff", 0.55));
+        gc.fillOval(cx - radius * 1.2, cy - radius * 1.2, radius * 2.4, radius * 2.4);
+        gc.setFill(Color.web("#e1bee7"));
+        gc.fillOval(cx - radius * 0.55, cy - radius * 0.55, radius * 1.1, radius * 1.1);
+        gc.setStroke(Color.web("#ea80fc"));
+        gc.setLineWidth(1.5);
+        gc.strokeOval(cx - radius, cy - radius, radius * 2, radius * 2);
+    }
+
+    /** Gold-themed arrow shot (dungeon HUD palette), oriented to travel direction. */
+    public void drawArrowProjectile(GraphicsContext gc, int screenX, int screenY, int dirRow, int dirCol) {
+        double cx = screenX + tileSize / 2.0;
+        double cy = screenY + tileSize / 2.0;
+        gc.save();
+        if (dirCol < 0) {
+            gc.translate(cx, cy);
+            gc.scale(-1, 1);
+            gc.translate(-cx, -cy);
+        } else if (dirRow < 0) {
+            gc.translate(cx, cy);
+            gc.rotate(-90);
+            gc.translate(-cx, -cy);
+        } else if (dirRow > 0) {
+            gc.translate(cx, cy);
+            gc.rotate(90);
+            gc.translate(-cx, -cy);
+        }
+        gc.setStroke(Color.web("#8b7530", 0.7));
+        gc.setLineWidth(2);
+        gc.strokeLine(cx - tileSize * 0.2, cy, cx + tileSize * 0.22, cy);
+        gc.setFill(Color.web("#e8c84a"));
+        gc.fillPolygon(
+                new double[]{cx + tileSize * 0.22, cx + tileSize * 0.08, cx + tileSize * 0.08},
+                new double[]{cy, cy - 5, cy + 5},
+                3);
+        gc.setFill(Color.web("#c8a840", 0.35));
+        gc.fillOval(cx - tileSize * 0.15, cy - 4, tileSize * 0.12, 8);
+        gc.restore();
+    }
+
+    public void drawArrowProjectile(GraphicsContext gc, int screenX, int screenY) {
+        drawArrowProjectile(gc, screenX, screenY, 0, 1);
+    }
+
+    /** Ember bomb toss effect. */
+    public void drawBombProjectile(GraphicsContext gc, int screenX, int screenY) {
+        double cx = screenX + tileSize / 2.0;
+        double cy = screenY + tileSize / 2.0;
+        double r = tileSize * 0.14;
+        gc.setFill(Color.web("#ff6b35", 0.35));
+        gc.fillOval(cx - r * 1.6, cy - r * 1.6, r * 3.2, r * 3.2);
+        gc.setFill(Color.web("#2a1810"));
+        gc.fillOval(cx - r, cy - r, r * 2, r * 2);
+        gc.setFill(Color.web("#e8c84a"));
+        gc.fillOval(cx - r * 0.35, cy - r * 0.55, r * 0.5, r * 0.35);
+        gc.setStroke(Color.web("#ff9f43"));
+        gc.setLineWidth(1.5);
+        gc.strokeOval(cx - r, cy - r, r * 2, r * 2);
+    }
+
     public void drawProjectile(GraphicsContext gc, int screenX, int screenY) {
         double cx = screenX + tileSize / 2.0;
         double cy = screenY + tileSize / 2.0;
@@ -1151,6 +1199,18 @@ public class TileRenderer {
             String n = item.getName().toLowerCase();
             if (n.contains("axe"))                         return axeSprite;
             if (n.contains("bow"))                         return bowSprite;
+            if (n.contains("arrow")) {
+                Image arrow = atlasRegistry.get("Arrow");
+                return arrow != null ? arrow : bowSprite;
+            }
+            if (n.contains("flail ball")) {
+                Image flail = atlasRegistry.get("Flail Ball");
+                return flail != null ? flail : hammerSprite;
+            }
+            if (n.contains("bomb")) {
+                Image bomb = atlasRegistry.get("Bomb");
+                return bomb != null ? bomb : gemSprite;
+            }
             if (n.contains("staff") || n.contains("spell")) return staffSprite;
             if (n.contains("dagger") || n.contains("knife")) return daggerSprite;
             if (n.contains("hammer") || n.contains("mace")) return hammerSprite;
