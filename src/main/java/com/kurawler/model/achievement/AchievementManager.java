@@ -19,6 +19,7 @@ public class AchievementManager implements HeroObserver {
     private Consumer<Achievement> onUnlock;
 
     private int totalMoves;
+    private int shadowCloneMoves;
     private int enemiesKilled;
     private int itemsCollected;
     private int damageTaken;
@@ -50,8 +51,12 @@ public class AchievementManager implements HeroObserver {
     @Override
     public void onHeroMoved(int newRow, int newCol, int deltaRow, int deltaCol) {
         totalMoves++;
-        if (totalMoves >= 30) unlock(shadowDancer);
         if (totalMoves >= 50) unlock(explorer);
+    }
+
+    public void onShadowCloneMoved() {
+        shadowCloneMoves++;
+        if (shadowCloneMoves >= 30) unlock(shadowDancer);
     }
 
     @Override
@@ -79,13 +84,15 @@ public class AchievementManager implements HeroObserver {
 
     public List<Achievement> getAchievements() { return new ArrayList<>(achievements); }
     public int getTotalMoves() { return totalMoves; }
+    public int getShadowCloneMoves() { return shadowCloneMoves; }
     public int getEnemiesKilled() { return enemiesKilled; }
     public int getItemsCollected() { return itemsCollected; }
     public int getDamageTaken() { return damageTaken; }
 
-    public void restoreProgress(int totalMoves, int enemiesKilled, int itemsCollected,
+    public void restoreProgress(int totalMoves, int shadowCloneMoves, int enemiesKilled, int itemsCollected,
                                 int damageTaken, List<String> unlockedNames) {
         this.totalMoves = Math.max(0, totalMoves);
+        this.shadowCloneMoves = Math.max(0, shadowCloneMoves);
         this.enemiesKilled = Math.max(0, enemiesKilled);
         this.itemsCollected = Math.max(0, itemsCollected);
         this.damageTaken = Math.max(0, damageTaken);
