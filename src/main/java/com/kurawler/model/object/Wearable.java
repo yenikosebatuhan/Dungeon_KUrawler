@@ -19,25 +19,23 @@ public class Wearable extends Item {
         return defenseBonus;
     }
 
-    public static final int MOD_DEF = 0;
-    public static final int MOD_ATK = 1;
-
-    public Wearable(String name, int bonus, int modType) {
-        this(name, name, bonus);
-    }
-
+    /** Shield occupies its own equip slot. */
     public boolean isShield() {
         String n = getName();
         return n != null && n.toLowerCase().contains("shield");
     }
 
+    /** Ring / amulet slot — separate from body armor. */
     public boolean isRing() {
         String n = getName();
-        if (n == null) return false;
+        if (n == null) {
+            return false;
+        }
         String lower = n.toLowerCase();
         return lower.contains("ring") || lower.contains("amulet");
     }
 
+    /** Body armor (not shield, not ring). */
     public boolean isBodyArmor() {
         return !isShield() && !isRing();
     }

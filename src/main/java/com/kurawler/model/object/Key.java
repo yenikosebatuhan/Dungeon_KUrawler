@@ -12,8 +12,4 @@ public class Key extends Item {
     public String getKeyId() {
         return keyId;
     }
-
-    public Key(String name, String keyId) {
-        this(name, name, keyId);
-    }
 }
