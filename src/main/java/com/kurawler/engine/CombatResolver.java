@@ -2,6 +2,7 @@ package com.kurawler.engine;
 
 import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Projectile;
 
 /**
@@ -21,6 +22,9 @@ public class CombatResolver {
      */
     public static void performMeleeAttack(Character attacker, Character defender) {
         if (attacker == null || defender == null || !attacker.isAlive() || !defender.isAlive()) {
+            return;
+        }
+        if (defender instanceof ShadowClone) {
             return;
         }
         
@@ -69,6 +73,9 @@ public class CombatResolver {
      */
     public static void applyProjectileDamage(Projectile projectile, Character target) {
         if (projectile == null || target == null || !target.isAlive()) {
+            return;
+        }
+        if (target instanceof ShadowClone) {
             return;
         }
         
