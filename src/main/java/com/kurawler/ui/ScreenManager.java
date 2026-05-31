@@ -1,6 +1,7 @@
 package com.kurawler.ui;
 
 import com.kurawler.controller.GameController;
+import com.kurawler.engine.AudioManager;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.MapFactory;
@@ -68,6 +69,7 @@ public class ScreenManager {
 
     public void showMainMenu() {
         shutdownActiveGameView();
+        AudioManager.getInstance().playMusic("menu", true);
         MainMenuScreen menu = new MainMenuScreen(this);
         stage.setScene(menu.createScene());
         stage.setTitle("Dungeon KUrawler");
@@ -105,6 +107,7 @@ public class ScreenManager {
 
     public void showPlayMode(GameSession session) {
         shutdownActiveGameView();
+        AudioManager.getInstance().playMusic("combat", true);
         currentSession = session;
         session.wireObservers();
         GameController controller = new GameController(session);
@@ -184,6 +187,7 @@ public class ScreenManager {
     }
 
     public void showHelp() {
+        AudioManager.getInstance().playMusic("menu", true);
         HelpScreen helpScreen = new HelpScreen(this);
         stage.setScene(helpScreen.createScene());
         stage.setTitle("Dungeon KUrawler - Help");
@@ -220,6 +224,7 @@ public class ScreenManager {
 
     public void showBuildMode() {
         shutdownActiveGameView();
+        AudioManager.getInstance().playMusic("menu", true);
         if (currentSession == null) {
             currentSession = MapFactory.createDefaultMap();
         }
@@ -382,6 +387,7 @@ public class ScreenManager {
 
     public void showDifficultyScreen(String gameType) {
         shutdownActiveGameView();
+        AudioManager.getInstance().playMusic("menu", true);
         DifficultySelectionScreen diffScreen = new DifficultySelectionScreen(this, gameType);
         stage.setScene(diffScreen.createScene());
         stage.setTitle("Select Difficulty");
