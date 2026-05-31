@@ -1,5 +1,6 @@
 package com.kurawler.model.character;
 
+import com.kurawler.engine.ShadowCloneScrollRules;
 import com.kurawler.model.GridCell;
 
 public abstract class Character {
@@ -285,6 +286,9 @@ public abstract class Character {
             newCell.setOccupyingCharacter(this);
             this.row = newCell.getRow();
             this.col = newCell.getCol();
+            if (this instanceof Enemy) {
+                ShadowCloneScrollRules.removeFromCell(newCell);
+            }
         }
     }
 

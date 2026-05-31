@@ -120,7 +120,9 @@ public class ShadowClone extends Character implements HeroObserver {
      *          reference to null when isExpired() returns true.
      */
     public void tick(long deltaMs) {
-        remainingMs -= deltaMs;
+        if (deltaMs > 0) {
+            remainingMs -= deltaMs;
+        }
     }
 
     /**
