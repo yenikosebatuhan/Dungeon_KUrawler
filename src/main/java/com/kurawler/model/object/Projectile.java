@@ -17,6 +17,9 @@ public class Projectile extends GameObject {
     private int positionRow;
     private int positionCol;
     private boolean active;
+    /** Tiles moved after spawn; compared to maxRange (0 = unlimited). */
+    private int stepsTraveled;
+    private int maxRange;
 
     /**
      * Creates a projectile with a name, description, damage, and direction.
@@ -130,6 +133,23 @@ public class Projectile extends GameObject {
      */
     public boolean isActive() {
         return active;
+    }
+
+    /** @param range max tiles to travel after spawn; 0 means no limit */
+    public void setMaxRange(int range) {
+        this.maxRange = Math.max(0, range);
+    }
+
+    public int getMaxRange() {
+        return maxRange;
+    }
+
+    public void incrementStepsTraveled() {
+        stepsTraveled++;
+    }
+
+    public boolean hasExceededRange() {
+        return maxRange > 0 && stepsTraveled >= maxRange;
     }
 
     /**

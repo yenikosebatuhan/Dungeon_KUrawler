@@ -22,9 +22,9 @@ import java.util.Random;
  */
 public class MapFactory {
 
-    /** All story maps share the single standard size so the play window never resizes. */
-    private static final int WORLD_WIDTH = 26;
-    private static final int WORLD_HEIGHT = 15;
+    /** All story maps share one size so the play window does not shrink on transition. */
+    private static final int WORLD_WIDTH = 22;
+    private static final int WORLD_HEIGHT = 16;
 
     public static GameSession createDefaultMap() {
         Map hall = buildEntryHall();
@@ -50,6 +50,11 @@ public class MapFactory {
 
         scatterDefaultLoot(hall, catacombs, vault);
 
+        Random weaponRng = new Random();
+        scatterRandomMapWeapons(hall, weaponRng, 5 + weaponRng.nextInt(2));
+        scatterRandomMapWeapons(catacombs, weaponRng, 5 + weaponRng.nextInt(2));
+        scatterRandomMapWeapons(vault, weaponRng, 3 + weaponRng.nextInt(2));
+
         placeVaultKeyInRandomBookshelf(hall, catacombs);
 
         placeTargetInRandomVaultChest(vault, session);
@@ -72,8 +77,8 @@ public class MapFactory {
     private static Map newWorldMap() {
         Map map = new Map(WORLD_WIDTH, WORLD_HEIGHT);
         fillWalls(map);
-        // One open hall filling the 26x15 interior (rows 1-13, cols 1-24); border stays wall.
-        carveRoom(map, 1, 1, 13, 24);
+        carveRoom(map, 1, 1, 14, 20);
+        carveRoom(map, 10, 2, 4, 6);
         return map;
     }
 
@@ -84,10 +89,10 @@ public class MapFactory {
                 "Ancient Bookshelf", "Dusty tomes line the shelves — try searching.", true, true));
         setFloor(map, 10, 5, new StaticObject(
                 "Gargoyle Pool", "A shallow pool — something may be hidden inside.", true, true));
-        setFloor(map, 11, 8, new StaticObject(
+        setFloor(map, 12, 8, new StaticObject(
                 "Stone Column", "A cracked pillar — search the base.", false, true));
 
-        map.getCell(7, 24).setStaticObject(new MapPortal(
+        map.getCell(7, 19).setStaticObject(new MapPortal(
                 "Wooden Door", "Leads deeper into the dungeon.",
                 "catacombs", 7, 2, null, true));
 
@@ -105,14 +110,14 @@ public class MapFactory {
         if (catacombsPool != null) {
             catacombsPool.setHiddenItem(new Consumable("Health Potion", "Restores 15 HP", 15, 0, 0));
         }
-        setFloor(map, 11, 8, new StaticObject(
+        setFloor(map, 12, 8, new StaticObject(
                 "Stone Column", "A cracked pillar — search the base.", false, true));
 
         map.getCell(7, 1).setStaticObject(new MapPortal(
                 "Wooden Door", "Back to the entry hall.",
-                "hall", 7, 23, null, true));
+                "hall", 7, 18, null, true));
 
-        map.getCell(7, 24).setStaticObject(new MapPortal(
+        map.getCell(7, 19).setStaticObject(new MapPortal(
                 "Iron Door", "A heavy door to the treasure vault.",
                 "vault", 7, 2, "gold", false));
 
@@ -127,12 +132,12 @@ public class MapFactory {
                 "Wall Shelf", "Relics rest on stone shelves — search carefully.", true, true));
         setFloor(map, 10, 6, new StaticObject(
                 "Gargoyle Pool", "A dark pool — search the water.", true, true));
-        setFloor(map, 11, 10, new StaticObject(
+        setFloor(map, 12, 10, new StaticObject(
                 "Stone Column", "Ancient carvings cover the column.", false, true));
 
         map.getCell(7, 1).setStaticObject(new MapPortal(
                 "Iron Door", "Return to the catacombs.",
-                "catacombs", 7, 23, null, true));
+                "catacombs", 7, 18, null, true));
 
         map.placeObject(6, 14, new StaticContainer("Chest", "A sealed treasure chest"));
         map.placeObject(8, 10, new StaticContainer("Chest", "An ornate chest"));
@@ -150,38 +155,30 @@ public class MapFactory {
 
   /** Floor + chest loot (similar density to the old single-map default). */
     private static void scatterDefaultLoot(Map hall, Map catacombs, Map vault) {
-        hall.placeObject(2, 2, new Weapon("Iron Sword", "A sturdy blade", 8));
         hall.placeObject(2, 12, new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
-        hall.placeObject(5, 8, new Weapon("Sword", "A sharp blade", 7));
         hall.placeObject(6, 12, new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
         hall.placeObject(8, 14, new Consumable("Energy Apple", "Restores energy", 0, 0, 25));
         hall.placeObject(9, 10, new Consumable("Mana Elixir", "Restores 25 mana", 0, 25, 0));
-        hall.placeObject(11, 6, new Weapon("Dagger", "A quick blade", 5));
-        hall.placeObject(11, 12, new Scroll("Spell Book", "Arcane tome",
+        hall.placeObject(13, 12, new Scroll("Spell Book", "Arcane tome",
                 "Runes mend your wounds.", 12));
-        hall.placeObject(11, 5, new Wearable("Armor", "Leather armor", 2));
+        hall.placeObject(14, 5, new Wearable("Armor", "Leather armor", 2));
         hall.placeObject(6, 14, new StaticContainer("Chest", "A dusty chest"));
 
-        catacombs.placeObject(3, 5, new Weapon("Sword", "A chipped sword", 6));
         catacombs.placeObject(4, 5, new Scroll("Spell Book", "Arcane tome",
                 "Runes flare and mend your wounds.", 14));
         catacombs.placeObject(5, 10, new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
-        catacombs.placeObject(7, 8, new Weapon("Dagger", "A rusted dagger", 4));
         catacombs.placeObject(8, 9, new Consumable("Mana Elixir", "Restores 25 mana", 0, 25, 0));
         catacombs.placeObject(10, 12, new Consumable("Energy Apple", "Restores energy", 0, 0, 20));
         catacombs.placeObject(3, 7, new Wearable("Armor", "Worn chain mail", 2));
         catacombs.placeObject(5, 13, new Scroll("Healing Scroll", "Glowing parchment", "Heals wounds.", 10));
 
-        vault.placeObject(2, 2, new Weapon("War Axe", "A heavy axe", 11));
         vault.placeObject(2, 12, new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
-        vault.placeObject(5, 8, new Weapon("Sword", "Jeweled sword", 10));
         vault.placeObject(6, 12, new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
         vault.placeObject(8, 14, new Consumable("Energy Apple", "Restores energy", 0, 0, 30));
         vault.placeObject(9, 10, new Consumable("Mana Elixir", "Restores 30 mana", 0, 30, 0));
-        vault.placeObject(11, 6, new Weapon("Dagger", "Ceremonial dagger", 6));
-        vault.placeObject(11, 12, new Scroll("Spell Book", "Ancient scripture",
+        vault.placeObject(13, 12, new Scroll("Spell Book", "Ancient scripture",
                 "Warm light restores your wounds.", 10));
-        vault.placeObject(11, 5, new Wearable("Armor", "Royal armor", 4));
+        vault.placeObject(14, 5, new Wearable("Armor", "Royal armor", 4));
 
         populateChest(hall, 6, 14,
                 new Consumable("Energy Apple", "Restores energy", 0, 0, 20),
@@ -190,11 +187,112 @@ public class MapFactory {
                 new Consumable("Mana Elixir", "Restores 30 mana", 0, 30, 0),
                 new Wearable("Armor", "Heavy armor", 3));
         populateChest(vault, 6, 14,
-                new Consumable("Energy Apple", "Restores energy", 0, 0, 30),
-                new Weapon("Sword", "Ornate sword", 9));
+                new Consumable("Energy Apple", "Restores energy", 0, 0, 30));
         populateChest(vault, 8, 10,
                 new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0),
                 new Scroll("Spell Book", "Faded runes", "A spark of healing.", 8));
+    }
+
+    /**
+     * Places {@code count} distinct catalog weapons on one map (random each new game).
+     * If Arrow is chosen, Bow is included on the same map.
+     */
+    private static void scatterRandomMapWeapons(Map map, Random rng, int count) {
+        List<String> pool = new ArrayList<>();
+        for (String[] row : WeaponCatalog.ENTRIES) {
+            if (row != null && row.length > 0) {
+                pool.add(row[0]);
+            }
+        }
+        Collections.shuffle(pool, rng);
+        List<String> chosen = new ArrayList<>();
+        for (String name : pool) {
+            if (chosen.size() >= count) {
+                break;
+            }
+            if (!chosen.contains(name)) {
+                chosen.add(name);
+            }
+        }
+        ensureBowWithArrow(chosen, pool, rng);
+        placeWeaponBatch(map, rng, chosen);
+    }
+
+    private static void ensureBowWithArrow(List<String> chosen, List<String> pool, Random rng) {
+        boolean hasArrow = false;
+        boolean hasBow = false;
+        for (String n : chosen) {
+            if (WeaponCatalog.isArrow(n)) {
+                hasArrow = true;
+            }
+            if (WeaponCatalog.isBow(n)) {
+                hasBow = true;
+            }
+        }
+        if (hasArrow && !hasBow) {
+            chosen.add("Bow");
+        }
+        if (!hasArrow && hasBow && chosen.size() < pool.size()) {
+            for (String n : pool) {
+                if (WeaponCatalog.isArrow(n) && !chosen.contains(n)) {
+                    chosen.add(n);
+                    break;
+                }
+            }
+        }
+    }
+
+    private static void placeWeaponBatch(Map map, Random rng, List<String> weaponNames) {
+        if (weaponNames.isEmpty()) {
+            return;
+        }
+        List<GridCell> floors = collectEmptyFloorTiles(map);
+        Collections.shuffle(floors, rng);
+        int floorIdx = 0;
+        for (String name : weaponNames) {
+            while (floorIdx < floors.size()) {
+                GridCell cell = floors.get(floorIdx++);
+                if (isNear(cell, 4, 4, 2)) {
+                    continue;
+                }
+                map.placeObject(cell.getRow(), cell.getCol(), WeaponCatalog.create(name));
+                break;
+            }
+        }
+    }
+
+    private static List<GridCell> collectEmptyFloorTiles(Map map) {
+        List<GridCell> floors = new ArrayList<>();
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int c = 0; c < map.getWidth(); c++) {
+                GridCell cell = map.getCell(r, c);
+                if (isEmptyFloorTile(cell)) {
+                    floors.add(cell);
+                }
+            }
+        }
+        return floors;
+    }
+
+    private static boolean isEmptyFloorTile(GridCell cell) {
+        if (cell == null || !cell.isWalkable() || cell.hasObjects()) {
+            return false;
+        }
+        if (cell.getOccupyingCharacter() != null) {
+            return false;
+        }
+        StaticObject so = cell.getStaticObject();
+        if (so == null || so instanceof MapPortal) {
+            return false;
+        }
+        if (so.isSearchable()) {
+            return false;
+        }
+        return "Floor".equals(so.getName());
+    }
+
+    private static boolean isNear(GridCell cell, int row, int col, int radius) {
+        return Math.abs(cell.getRow() - row) <= radius && Math.abs(cell.getCol() - col) <= radius;
     }
 
     /**
