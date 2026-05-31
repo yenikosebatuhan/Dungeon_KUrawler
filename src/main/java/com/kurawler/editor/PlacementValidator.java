@@ -24,15 +24,10 @@ public class PlacementValidator {
         }
 
         if (obj instanceof StaticObject) {
-            StaticObject existing = cell.getStaticObject();
-            StaticObject placing = (StaticObject) obj;
-            if (placing.isPassable()) {
-                return cell.getOccupyingCharacter() == null
-                        && !cell.hasObjects()
-                        && (existing == null || existing.isPassable());
-            }
-            return existing == null
-                    && cell.getOccupyingCharacter() == null
+            // Terrain & props replace whatever terrain is already in the cell — the map
+            // is paved with floor by default, so a wall/prop must be able to overwrite it.
+            // We only refuse to cover an existing item or character.
+            return cell.getOccupyingCharacter() == null
                     && !cell.hasObjects();
         }
 
