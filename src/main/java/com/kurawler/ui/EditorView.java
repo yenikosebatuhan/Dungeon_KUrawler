@@ -248,6 +248,9 @@ public class EditorView {
         Button play = stoneButton("Play", 70);
         play.setOnAction(e -> screenManager.playEditedMap(editor.getMap()));
 
+        Button teamMatch = stoneButton("Team Match", 104);
+        teamMatch.setOnAction(e -> screenManager.playEditedMapAsTeamMatch(editor.getMap()));
+
         Button random = stoneButton("Random", 84);
         random.setOnAction(e -> {
             com.kurawler.editor.RandomItemGenerator.PopulateResult result =
@@ -284,7 +287,7 @@ public class EditorView {
         Button back = stoneButton("Main Menu", 104);
         back.setOnAction(e -> screenManager.showMainMenu());
 
-        HBox bar = new HBox(7, title, spacer, save, load, play, random, rotateButton, clear, undo, back);
+        HBox bar = new HBox(7, title, spacer, save, load, play, teamMatch, random, rotateButton, clear, undo, back);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(8, 12, 8, 12));
         bar.setMinHeight(TOOLBAR_HEIGHT);
