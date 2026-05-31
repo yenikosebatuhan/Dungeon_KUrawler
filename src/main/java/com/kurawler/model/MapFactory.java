@@ -55,7 +55,7 @@ public class MapFactory {
         scatterRandomMapWeapons(catacombs, weaponRng, 5 + weaponRng.nextInt(2));
         scatterRandomMapWeapons(vault, weaponRng, 3 + weaponRng.nextInt(2));
 
-        placeVaultKeyInRandomBookshelf(hall, catacombs);
+        populateStoryBookshelfLoot(hall, catacombs);
 
         placeTargetInRandomVaultChest(vault, session);
 
@@ -85,8 +85,8 @@ public class MapFactory {
     private static Map buildEntryHall() {
         Map map = newWorldMap();
 
-        setFloor(map, 3, 3, new StaticObject(
-                "Ancient Bookshelf", "Dusty tomes line the shelves — try searching.", true, true));
+        placeBookshelf(map, 3, 3,
+                "Ancient Bookshelf", "Dusty tomes line the shelves — press E to browse.");
         setFloor(map, 10, 5, new StaticObject(
                 "Gargoyle Pool", "A shallow pool — something may be hidden inside.", true, true));
         setFloor(map, 12, 8, new StaticObject(
@@ -102,8 +102,8 @@ public class MapFactory {
     private static Map buildCatacombs() {
         Map map = newWorldMap();
 
-        setFloor(map, 4, 4, new StaticObject(
-                "Wall Shelf", "Empty ledges along the wall.", true, true));
+        placeBookshelf(map, 4, 4,
+                "Wall Shelf", "Ledges along the wall — press E to browse.");
         setFloor(map, 10, 5, new StaticObject(
                 "Gargoyle Pool", "Stagnant water glistens.", true, true));
         StaticObject catacombsPool = map.getCell(10, 5).getStaticObject();
@@ -128,8 +128,8 @@ public class MapFactory {
     private static Map buildTreasureVault() {
         Map map = newWorldMap();
 
-        setFloor(map, 3, 4, new StaticObject(
-                "Wall Shelf", "Relics rest on stone shelves — search carefully.", true, true));
+        placeBookshelf(map, 3, 4,
+                "Wall Shelf", "Relics rest on stone shelves — press E to browse.");
         setFloor(map, 10, 6, new StaticObject(
                 "Gargoyle Pool", "A dark pool — search the water.", true, true));
         setFloor(map, 12, 10, new StaticObject(
@@ -296,31 +296,118 @@ public class MapFactory {
     }
 
     /**
-     * Golden Key (vault door) is hidden in exactly one searchable shelf —
-     * Entry Hall bookshelf or Catacombs wall shelf (random each new game).
+     * Bookshelf prop + loot container on the same tile (opened with E like a chest).
      */
-    private static void placeVaultKeyInRandomBookshelf(Map hall, Map catacombs) {
+    private static void placeBookshelf(Map map, int row, int col, String propName, String description) {
+        setFloor(map, row, col, new StaticObject(propName, description, true, true));
+        GridCell cell = map.getCell(row, col);
+        if (cell != null) {
+            cell.addObject(new StaticContainer("Bookshelf", description));
+        }
+    }
+
+    private static StaticContainer findBookshelfContainer(Map map, int row, int col) {
+        GridCell cell = map.getCell(row, col);
+        if (cell == null) {
+            return null;
+        }
+        for (GameObject obj : cell.getObjects()) {
+            if (obj instanceof StaticContainer && ((StaticContainer) obj).isShelfLike()) {
+                return (StaticContainer) obj;
+            }
+        }
+        return null;
+    }
+
+    public static boolean isShelfStaticObject(StaticObject so) {
+        if (so == null) {
+            return false;
+        }
+        String n = so.getName().toLowerCase();
+        return n.contains("bookshelf") || n.contains("shelf");
+    }
+
+    /**
+     * Ensures a bookshelf on this tile has a {@link StaticContainer}; migrates any legacy hidden item.
+     */
+    public static StaticContainer resolveBookshelfContainer(Map map, int row, int col) {
+        GridCell cell = map.getCell(row, col);
+        if (cell == null) {
+            return null;
+        }
+        StaticContainer existing = findBookshelfContainer(map, row, col);
+        if (existing != null) {
+            return existing;
+        }
+        StaticObject so = cell.getStaticObject();
+        if (!isShelfStaticObject(so)) {
+            return null;
+        }
+        StaticContainer shelf = new StaticContainer("Bookshelf", so.getDescription());
+        Item hidden = so.revealHiddenItem();
+        if (hidden != null) {
+            shelf.addItem(hidden);
+        }
+        cell.addObject(shelf);
+        return shelf;
+    }
+
+    /**
+     * Each story bookshelf holds 1–2 items. The Golden Key (vault iron door) is in either
+     * the Entry Hall bookshelf or the Catacombs shelf (random each new game).
+     */
+    private static void populateStoryBookshelfLoot(Map hall, Map catacombs) {
         Random rng = new Random();
-        Key vaultKey = new Key("Golden Key", "Opens the iron vault door", "gold");
+        boolean keyInHall = rng.nextBoolean();
+        fillBookshelfLoot(hall, 3, 3, rng, keyInHall);
+        fillBookshelfLoot(catacombs, 4, 4, rng, !keyInHall);
+    }
 
-        int hallRow = 3;
-        int hallCol = 3;
-        int catRow = 4;
-        int catCol = 4;
+    private static void fillBookshelfLoot(Map map, int row, int col, Random rng, boolean withVaultKey) {
+        StaticContainer shelf = findBookshelfContainer(map, row, col);
+        if (shelf == null) {
+            return;
+        }
+        if (withVaultKey) {
+            shelf.addItem(new Key("Golden Key", "Opens the iron vault door", "gold"));
+        }
+        int lootCount = 1 + rng.nextInt(2);
+        java.util.HashSet<String> placed = new java.util.HashSet<>();
+        for (Item existing : shelf.getContents()) {
+            if (existing != null) {
+                placed.add(existing.getName());
+            }
+        }
+        for (int i = 0; i < lootCount; i++) {
+            for (int attempt = 0; attempt < 8; attempt++) {
+                Item item = createBookshelfLootItem(rng);
+                if (!placed.contains(item.getName())) {
+                    shelf.addItem(item);
+                    placed.add(item.getName());
+                    break;
+                }
+            }
+        }
+    }
 
-        Map chosenMap = rng.nextBoolean() ? hall : catacombs;
-        int row = chosenMap == hall ? hallRow : catRow;
-        int col = chosenMap == hall ? hallCol : catCol;
-
-        GridCell cell = chosenMap.getCell(row, col);
-        if (cell != null && cell.getStaticObject() != null && cell.getStaticObject().isSearchable()) {
-            cell.getStaticObject().setHiddenItem(vaultKey);
+    private static Item createBookshelfLootItem(Random rng) {
+        switch (rng.nextInt(5)) {
+            case 0:
+                return new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0);
+            case 1:
+                return new Consumable("Mana Elixir", "Restores 25 mana", 0, 25, 0);
+            case 2:
+                return new Consumable("Energy Apple", "Restores energy", 0, 0, 20);
+            case 3:
+                return new Scroll("Spell Book", "Arcane tome", "Runes mend your wounds.", 10);
+            default:
+                return new Scroll("Healing Scroll", "Glowing parchment", "Heals wounds.", 10);
         }
     }
 
     /**
      * Win target (objective key) inside a random chest on the treasure vault.
-     * Golden Key for the vault door is separate — see {@link #placeVaultKeyInRandomBookshelf}.
+     * Golden Key for the vault door is in a story bookshelf — see {@link #populateStoryBookshelfLoot}.
      */
     private static void placeTargetInRandomVaultChest(Map vault, GameSession session) {
         placeTargetInRandomChest(vault, session, collectChests(vault));
