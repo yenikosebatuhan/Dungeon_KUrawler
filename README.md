@@ -19,7 +19,7 @@ bash run.sh
 | **Team Match** | 4v4 AI arena — watch two teams fight to elimination |
 | **Save / Load** | Named save files with timestamp, stored in `saves/` |
 | **Inventory** | 2×4 grid — click items to EQUIP, WEAR, EAT, READ, or DISCARD |
-| **Combat** | Melee attack (`Space` in facing direction or click adjacent enemy) + ranged projectile (`F` key, costs 10 MP) |
+| **Combat** | Weapon-aware `Space` attacks in facing direction + mana projectile (`F`) + click interactions |
 | **Enemies** | Knights chase; Sorcerers teleport and fire projectiles with line-of-sight |
 | **Shadow Clone** | Mirrors hero movement via Observer pattern |
 | **Achievements** | Badge system tracking milestones |
@@ -35,9 +35,9 @@ bash run.sh
 | A / ← | Move left |
 | S / ↓ | Move down |
 | D / → | Move right |
-| Space | Melee attack in facing direction |
+| Space | Attack in facing direction with the equipped weapon |
 | E | Interact with adjacent target; use first consumable as fallback |
-| F | Shoot ranged projectile (10 MP) |
+| F | Shoot mana projectile; equipped staff strengthens the spell |
 | ESC | Open in-game menu |
 | Mouse click | Interact with adjacent tiles (3×3 range) |
 
