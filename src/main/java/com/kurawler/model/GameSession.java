@@ -101,6 +101,40 @@ public class GameSession {
     public void setDifficulty(String difficulty) {
         this.difficulty = difficulty != null ? difficulty : "Normal";
     }
+
+    public static int maxEnergyForDifficulty(String difficulty) {
+        if ("Easy".equals(difficulty)) {
+            return 150;
+        }
+        if ("Hard".equals(difficulty)) {
+            return 75;
+        }
+        return 100;
+    }
+
+    /** New game: sets max energy from difficulty and fills current energy to that cap. */
+    public void applyDifficultyHeroStats() {
+        applyDifficultyHeroStats(true);
+    }
+
+    /**
+     * @param fillToMax true for a new game (e.g. Easy → 150/150); false only adjusts max
+     *                  and clamps overflow without refilling.
+     */
+    public void applyDifficultyHeroStats(boolean fillToMax) {
+        Hero hero = getHero();
+        if (hero == null) {
+            return;
+        }
+        int cap = maxEnergyForDifficulty(difficulty);
+        hero.setMaxEnergy(cap);
+        if (fillToMax) {
+            hero.setEnergy(cap);
+        } else if (hero.getEnergy() > cap) {
+            hero.setEnergy(hero.getEnergy());
+        }
+    }
+
     public boolean isTeamMatch() { return "TeamMatch".equals(currentMode); }
     public int getPlayDurationTimer() { return playDurationTimer; }
     public void setPlayDurationTimer(int timer) { this.playDurationTimer = Math.max(0, timer); }
@@ -256,10 +290,13 @@ public class GameSession {
     }
     public int getEnemiesDefeatedCount() { return enemiesDefeatedCount; }
     public void incrementEnemiesDefeated() { this.enemiesDefeatedCount++; }
+    public void setEnemiesDefeatedCount(int count) { this.enemiesDefeatedCount = Math.max(0, count); }
 
     public int getItemsCollectedCount() { return itemsCollectedCount; }
     public void incrementItemsCollected() { this.itemsCollectedCount++; }
+    public void setItemsCollectedCount(int count) { this.itemsCollectedCount = Math.max(0, count); }
 
     public int getFloorsClearedCount() { return floorsClearedCount; }
     public void incrementFloorsCleared() { this.floorsClearedCount++; }
+    public void setFloorsClearedCount(int count) { this.floorsClearedCount = Math.max(0, count); }
 }

@@ -87,7 +87,8 @@ public class MapDeserializer {
             Map map = new Map(width, height);
 
             @SuppressWarnings("unchecked")
-            List<Object> cells = (List<Object>) root.get("cells");
+            List<Object> cells = root.containsKey("cells") && root.get("cells") != null
+                    ? (List<Object>) root.get("cells") : new ArrayList<>();
             for (Object cellObj : cells) {
                 @SuppressWarnings("unchecked")
                 LinkedHashMap<String, Object> cell = (LinkedHashMap<String, Object>) cellObj;
@@ -110,6 +111,9 @@ public class MapDeserializer {
         } catch (IOException e) {
             e.printStackTrace();
             return false;
+        } catch (Exception e) {
+            System.out.println("[Persistence] Failed to parse save file: " + filename);
+            return false;
         }
     }
 
@@ -120,6 +124,18 @@ public class MapDeserializer {
         }
         if (root.containsKey("currentMode")) {
             session.setCurrentMode((String) root.get("currentMode"));
+        }
+        if (root.containsKey("difficulty")) {
+            session.setDifficulty((String) root.get("difficulty"));
+        }
+        if (root.containsKey("enemiesDefeatedCount")) {
+            session.setEnemiesDefeatedCount((int) root.get("enemiesDefeatedCount"));
+        }
+        if (root.containsKey("itemsCollectedCount")) {
+            session.setItemsCollectedCount((int) root.get("itemsCollectedCount"));
+        }
+        if (root.containsKey("floorsClearedCount")) {
+            session.setFloorsClearedCount((int) root.get("floorsClearedCount"));
         }
         if (root.containsKey("targetObjective") && root.get("targetObjective") != null) {
             GameObject target = deserializeObject(
@@ -146,8 +162,16 @@ public class MapDeserializer {
             hero.setCurrentCell(heroCell);
             heroCell.setOccupyingCharacter(hero);
         }
+        if (heroJson.containsKey("maxHp")) {
+            hero.setMaxHealth((int) heroJson.get("maxHp"));
+        }
         hero.setHealth((int) heroJson.get("hp"));
         hero.setMana((int) heroJson.get("mana"));
+        if (heroJson.containsKey("maxEnergy")) {
+            hero.setMaxEnergy((int) heroJson.get("maxEnergy"));
+        } else {
+            hero.setMaxEnergy(GameSession.maxEnergyForDifficulty(session.getDifficulty()));
+        }
         hero.setEnergy((int) heroJson.get("energy"));
         hero.setStrength((int) heroJson.get("str"));
         int savedDefense = (int) heroJson.get("def");
@@ -260,6 +284,9 @@ public class MapDeserializer {
                 (int) cloneJson.get("col"), session.getMap());
         if (cloneJson.containsKey("hp")) {
             shadowClone.setHealth((int) cloneJson.get("hp"));
+        }
+        if (cloneJson.containsKey("remainingMs")) {
+            shadowClone.setRemainingMs(((Number) cloneJson.get("remainingMs")).longValue());
         }
         session.setShadowClone(shadowClone);
     }
