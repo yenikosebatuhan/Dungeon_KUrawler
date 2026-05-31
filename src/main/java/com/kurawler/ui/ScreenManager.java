@@ -14,9 +14,6 @@ import com.kurawler.model.object.Item;
 import com.kurawler.model.object.StaticContainer;
 import com.kurawler.persistence.MapDeserializer;
 import com.kurawler.persistence.MapSerializer;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ChoiceDialog;
-import javafx.scene.control.TextInputDialog;
 import javafx.stage.Stage;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,8 +37,8 @@ public class ScreenManager {
     private static final Path LEGACY_MAP_SAVE = Paths.get("map_save.json");
     private static final DateTimeFormatter SAVE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-    public static final int WINDOW_W = 1280;
-    public static final int WINDOW_H = 720;
+    public static final int WINDOW_W = 1248;
+    public static final int WINDOW_H = 810;
 
     private final Stage stage;
     private final MapSerializer serializer = new MapSerializer();
@@ -131,13 +128,11 @@ public class ScreenManager {
     }
 
     public boolean showSaveDialog() {
-        TextInputDialog dialog = new TextInputDialog(defaultSaveName());
-        dialog.setTitle("Save Game");
-        dialog.setHeaderText("Save current game");
-        dialog.setContentText("Save name:");
-        dialog.initOwner(stage);
-
-        Optional<String> result = dialog.showAndWait();
+        Optional<String> result = EditorStyledDialog.promptText(
+                stage,
+                "Save Game",
+                "Name your save — it goes in the saves/ folder.",
+                defaultSaveName());
         if (!result.isPresent() || result.get().trim().isEmpty()) {
             return false;
         }
@@ -160,17 +155,19 @@ public class ScreenManager {
             return false;
         }
 
-        ChoiceDialog<SaveEntry> dialog = new ChoiceDialog<>(saves.get(0), saves);
-        dialog.setTitle("Load Game");
-        dialog.setHeaderText("Choose a saved game");
-        dialog.setContentText("Save:");
-        dialog.initOwner(stage);
-
-        Optional<SaveEntry> result = dialog.showAndWait();
-        if (!result.isPresent()) {
+        List<String> labels = new ArrayList<>();
+        for (SaveEntry entry : saves) {
+            labels.add(entry.toString());
+        }
+        Optional<Integer> picked = EditorStyledDialog.chooseIndex(
+                stage,
+                "Load Game",
+                "Choose a saved game to continue.",
+                labels);
+        if (!picked.isPresent()) {
             return false;
         }
-        return loadSavedGame(result.get().path);
+        return loadSavedGame(saves.get(picked.get()).path);
     }
 
     public boolean loadSavedGame(Path path) {
@@ -213,11 +210,8 @@ public class ScreenManager {
 
         TeamMatchSession tmSession = new TeamMatchSession(map);
         if (!tmSession.validateMap()) {
-            Alert alert = new Alert(Alert.AlertType.ERROR,
+            EditorStyledDialog.showMessage(stage, "Team Match Error",
                     "Map does not have enough open space for Team Match.");
-            alert.setTitle("Team Match Error");
-            alert.initOwner(stage);
-            alert.showAndWait();
             return;
         }
 
@@ -554,11 +548,7 @@ public class ScreenManager {
     }
 
     private void showInfo(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION, message);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.initOwner(stage);
-        alert.showAndWait();
+        EditorStyledDialog.showMessage(stage, title, message);
     }
 
     private static class MapFileEntry {

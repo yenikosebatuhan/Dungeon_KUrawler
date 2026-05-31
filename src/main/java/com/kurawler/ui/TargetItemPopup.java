@@ -72,8 +72,15 @@ public class TargetItemPopup {
         } catch (Exception ignore) {
             // sprite sheet not found — plain background is fine
         }
-        gc.setFill(Color.web(bgTint, 0.78));
+        gc.setFill(new javafx.scene.paint.RadialGradient(
+                0, 0, W / 2.0, H * 0.4, Math.max(W, H) * 0.7, false,
+                javafx.scene.paint.CycleMethod.NO_CYCLE,
+                new javafx.scene.paint.Stop(0, Color.web(bgTint, 0.55)),
+                new javafx.scene.paint.Stop(1, Color.web("#000000", 0.9))));
         gc.fillRect(0, 0, W, H);
+        gc.setStroke(Color.web("#8b7530", 0.5));
+        gc.setLineWidth(1);
+        gc.strokeRoundRect(7, 7, W - 14, H - 14, 8, 8);
 
         // --- title: YOUR QUEST ---
         Label titleLabel = new Label("☠  YOUR QUEST  ☠");
