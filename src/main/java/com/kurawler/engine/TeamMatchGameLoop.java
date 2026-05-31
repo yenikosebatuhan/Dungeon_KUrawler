@@ -16,9 +16,11 @@ import java.util.List;
 /**
  * Team Match game loop.
  *
- * Enemy AI is intentionally delegated to each enemy's own decideAction() so
- * that combat dynamics stay in sync with classic mode automatically.
- * Only weapon-pickup (a Team Match-specific mechanic) lives here.
+ * Sorcerer AI is delegated to Sorcerer.decideAction() (classic path).
+ * Knight AI is handled here to satisfy Team Match rules:
+ *   - Weaponless Knight steps toward the nearest available weapon; picks it up on arrival.
+ *   - Armed Knight chases and attacks the nearest opponent with no sight-radius limit.
+ * Classic Knight.decideAction() (5-cell sight radius) is never called in Team Match.
  */
 public class TeamMatchGameLoop {
 
@@ -93,29 +95,116 @@ public class TeamMatchGameLoop {
     }
 
     /**
-     * For every non-hero character on both teams:
-     * 1. If it's a Knight without a weapon, try to pick one up first.
-     * 2. Delegate AI entirely to enemy.decideAction(nearestOpponent) —
-     *    the same code path used by classic GameLoop.
+     * For every non-hero enemy on both teams:
+     * - Knight: handled by teamMatchKnightTick (weapon-seek or armed-chase, no sight limit).
+     * - Other enemies (Sorcerer): classic decideAction with projectile team-tagging.
      */
     private void updateAllEnemies() {
         for (Character member : getAllCharacters()) {
             if (!member.isAlive() || !(member instanceof Enemy)) continue;
             Enemy enemy = (Enemy) member;
 
-            // TeamMatch-specific: Knight weapon pickup (classic mode has no weapons on ground)
             if (enemy instanceof Knight) {
-                maybePickUpWeapon((Knight) enemy);
-            }
-
-            Character target = session.findNearestEnemy(member);
-            if (target != null && target.isAlive()) {
-                enemy.decideAction(target, session.getMap(), session);
+                teamMatchKnightTick((Knight) enemy);
+            } else {
+                int queueBefore = session.getProjectiles().size();
+                Character target = session.findNearestEnemy(member);
+                if (target != null && target.isAlive()) {
+                    enemy.decideAction(target, session.getMap(), session);
+                }
+                Team enemyTeam = session.getTeamForCharacter(member);
+                List<Projectile> queue = session.getProjectiles();
+                for (int i = queueBefore; i < queue.size(); i++) {
+                    queue.get(i).setOwnerTeam(enemyTeam);
+                }
             }
         }
     }
 
-    /** Picks up a weapon from the Knight's current cell if available. */
+    /**
+     * Team Match Knight AI for one tick:
+     * - No weapon: step toward nearest available weapon, then pick up if arrived.
+     * - Armed: step toward nearest opponent and attack when adjacent.
+     *   No sight-radius cap (unlike classic Knight.decideAction).
+     */
+    private void teamMatchKnightTick(Knight knight) {
+        if (!knight.isAlive()) return;
+        maybePickUpWeapon(knight);
+
+        if (knight.getEquippedMatchWeapon() == null) {
+            GridCell weaponCell = findNearestWeaponCell(knight);
+            if (weaponCell != null) {
+                stepToward(knight, weaponCell.getRow(), weaponCell.getCol());
+                maybePickUpWeapon(knight);
+            } else {
+                attackNearestEnemy(knight);
+            }
+        } else {
+            attackNearestEnemy(knight);
+        }
+    }
+
+    /** Move toward and attack (when adjacent) the nearest opposing team member. */
+    private void attackNearestEnemy(Knight knight) {
+        Character target = session.findNearestEnemy(knight);
+        if (target == null || !target.isAlive()) return;
+        int dRow = target.getRow() - knight.getRow();
+        int dCol = target.getCol() - knight.getCol();
+        if (Math.abs(dRow) + Math.abs(dCol) == 1) {
+            CombatResolver.performMeleeAttack(knight, target);
+        } else {
+            stepToward(knight, target.getRow(), target.getCol());
+        }
+    }
+
+    /** Returns the nearest map cell that still holds a Weapon object, or null. */
+    GridCell findNearestWeaponCell(Knight knight) {
+        com.kurawler.model.Map map = session.getMap();
+        GridCell nearest = null;
+        double minDist = Double.MAX_VALUE;
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int c = 0; c < map.getWidth(); c++) {
+                GridCell cell = map.getCell(r, c);
+                if (cell == null) continue;
+                for (GameObject obj : cell.getObjects()) {
+                    if (obj instanceof Weapon) {
+                        double dist = Math.sqrt(
+                            Math.pow(r - knight.getRow(), 2) + Math.pow(c - knight.getCol(), 2));
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearest = cell;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        return nearest;
+    }
+
+    /** Step one cell toward (targetRow, targetCol), preferring the dominant axis. */
+    private void stepToward(Character mover, int targetRow, int targetCol) {
+        com.kurawler.model.Map map = session.getMap();
+        int dRow = targetRow - mover.getRow();
+        int dCol = targetCol - mover.getCol();
+        if (dRow == 0 && dCol == 0) return;
+        if (Math.abs(dRow) >= Math.abs(dCol)) {
+            if (!stepTo(mover, mover.getRow() + Integer.signum(dRow), mover.getCol(), map))
+                stepTo(mover, mover.getRow(), mover.getCol() + Integer.signum(dCol), map);
+        } else {
+            if (!stepTo(mover, mover.getRow(), mover.getCol() + Integer.signum(dCol), map))
+                stepTo(mover, mover.getRow() + Integer.signum(dRow), mover.getCol(), map);
+        }
+    }
+
+    private boolean stepTo(Character mover, int nr, int nc, com.kurawler.model.Map map) {
+        GridCell cell = map.getCell(nr, nc);
+        if (cell == null || cell.isBlocked()) return false;
+        mover.moveToCell(cell);
+        return true;
+    }
+
+    /** Picks up a weapon from the Knight's current cell if unarmed. */
     private void maybePickUpWeapon(Knight knight) {
         if (knight.getEquippedMatchWeapon() != null) return;
         GridCell cell = session.getMap().getCell(knight.getRow(), knight.getCol());
@@ -135,7 +224,12 @@ public class TeamMatchGameLoop {
      * moves each projectile one step, applying damage on hit.
      */
     private void updateProjectiles() {
-        // Drain session queue — same as classic GameLoop
+        // Any projectile in the session queue without an owner was fired by the Hero (Team B).
+        for (Projectile p : session.getProjectiles()) {
+            if (p.getOwnerTeam() == null) {
+                p.setOwnerTeam(session.getTeamB());
+            }
+        }
         activeProjectiles.addAll(session.getProjectiles());
         session.getProjectiles().clear();
 
@@ -159,11 +253,10 @@ public class TeamMatchGameLoop {
 
             Character occupant = cell.getOccupyingCharacter();
             if (occupant != null && occupant.isAlive()) {
-                // Determine which team fired this projectile
-                Team firingTeam = findFiringTeam(p);
+                Team firingTeam = p.getOwnerTeam();
                 Team targetTeam = session.getTeamForCharacter(occupant);
-                // Only damage opponents
-                if (firingTeam == null || !firingTeam.equals(targetTeam)) {
+                // Damage only when both teams are known and they differ — no friendly fire.
+                if (firingTeam != null && targetTeam != null && !firingTeam.equals(targetTeam)) {
                     CombatResolver.applyProjectileDamage(p, occupant);
                     activeProjectiles.remove(p);
                     if (!occupant.isAlive()) {
@@ -172,22 +265,6 @@ public class TeamMatchGameLoop {
                 }
             }
         }
-    }
-
-    /**
-     * Best-effort: find which team fired a projectile by checking position proximity
-     * to team members. Falls back to null (hits anyone) if undetermined.
-     */
-    private Team findFiringTeam(Projectile p) {
-        // "Hero Bolt" is always Team B
-        if ("Hero Bolt".equals(p.getName()) || "Arrow".equals(p.getName()) || "Bomb".equals(p.getName())
-                || "Staff Bolt".equals(p.getName())) {
-            return session.getTeamB();
-        }
-        // Arcane Bolt — identify by which sorcerer is closest to the origin
-        // Since we can't store the owner in Projectile easily, treat all Arcane Bolts as
-        // coming from "the other team" relative to Hero (conservative — hits anyone not Hero).
-        return null;
     }
 
     private void cleanUpDead() {
@@ -213,6 +290,9 @@ public class TeamMatchGameLoop {
      * @modifies none
      * @effects Returns true if the loop is currently running.
      */
+    private static final long MS_PER_ENERGY_REGEN = 1000;
+    private long energyRegenAccumulatorMs = 0;
+
     private void updatePlayTimer(long deltaMs) {
         if (deltaMs <= 0) return;
         playTimeAccumulatorMs += deltaMs;
@@ -220,6 +300,18 @@ public class TeamMatchGameLoop {
             int elapsed = (int) (playTimeAccumulatorMs / 1000);
             session.setPlayDurationTimer(session.getPlayDurationTimer() + elapsed);
             playTimeAccumulatorMs %= 1000;
+        }
+        updateEnergyRegen(deltaMs);
+    }
+
+    private void updateEnergyRegen(long deltaMs) {
+        com.kurawler.model.character.Hero hero = session.getHero();
+        if (hero == null || !hero.isAlive() || hero.getEnergy() >= hero.getMaxEnergy()) return;
+        energyRegenAccumulatorMs += deltaMs;
+        while (energyRegenAccumulatorMs >= MS_PER_ENERGY_REGEN
+                && hero.getEnergy() < hero.getMaxEnergy()) {
+            energyRegenAccumulatorMs -= MS_PER_ENERGY_REGEN;
+            hero.restoreEnergy(1);
         }
     }
 
