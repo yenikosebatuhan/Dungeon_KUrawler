@@ -160,7 +160,7 @@ public class GameSession {
         this.currentMapId = mapId;
         clearEnemies();
         if (shadowClone != null) {
-            shadowClone = null;
+            setShadowClone(null);
         }
         if (hero != null) {
             hero.moveToCell(dest);
@@ -186,10 +186,30 @@ public class GameSession {
     public Hero getHero() { return hero; }
     public void setHero(Hero hero) { this.hero = hero; }
     public ShadowClone getShadowClone() { return shadowClone; }
-    public void setShadowClone(ShadowClone shadowClone) { this.shadowClone = shadowClone; }
+    public void setShadowClone(ShadowClone shadowClone) {
+        if (this.shadowClone != null) {
+            this.shadowClone.setOnMove(null);
+            if (hero != null) {
+                hero.removeObserver(this.shadowClone);
+            }
+        }
+        this.shadowClone = shadowClone;
+        wireShadowClone();
+    }
     public AchievementManager getAchievementManager() { return achievementManager; }
     public void setAchievementManager(AchievementManager achievementManager) {
         this.achievementManager = achievementManager;
+        wireShadowClone();
+    }
+
+    private void wireShadowClone() {
+        if (shadowClone == null) return;
+        shadowClone.setOnMove(achievementManager != null
+                ? achievementManager::onShadowCloneMoved
+                : null);
+        if (hero != null) {
+            hero.addObserver(shadowClone);
+        }
     }
 
     public void wireObservers() {

@@ -19,6 +19,7 @@ public class ShadowClone extends Character implements HeroObserver {
 
     private final Map map;
     private long remainingMs;
+    private Runnable onMove;
 
     /**
      * @requires map != null && startRow >= 0 && startCol >= 0
@@ -59,7 +60,19 @@ public class ShadowClone extends Character implements HeroObserver {
         GridCell cell = map.getCell(targetRow, targetCol);
         if (cell != null && !isWall(cell)) {
             setPosition(targetRow, targetCol);
+            if (onMove != null) {
+                onMove.run();
+            }
         }
+    }
+
+    /**
+     * @requires none
+     * @modifies this.onMove
+     * @effects Sets the callback invoked after each successful clone movement.
+     */
+    public void setOnMove(Runnable onMove) {
+        this.onMove = onMove;
     }
 
     /**
