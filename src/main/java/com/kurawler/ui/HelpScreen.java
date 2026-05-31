@@ -24,8 +24,8 @@ import javafx.scene.text.TextAlignment;
  */
 public class HelpScreen {
 
-    private static final int W = ScreenManager.WINDOW_W;
-    private static final int H = ScreenManager.WINDOW_H;
+    private static final int W = 560;
+    private static final int H = 680;
     private static final int BG_TILE = 48;
 
     private final ScreenManager screenManager;
@@ -68,12 +68,15 @@ public class HelpScreen {
                 "W / A / S / D  or  Arrow Keys — move one tile\n"
                 + "Each step costs energy.");
         addSection(contentBox, "COMBAT",
-                "Space — melee attack in facing direction\n"
-                + "E or click adjacent enemy — ATTACK (item menu)\n"
-                + "F — ranged bolt (costs mana)");
+                "Space — attack facing direction (melee, bow, bomb)\n"
+                + "Bow + arrows: equipping arrows gives 3 shots; flies in facing direction\n"
+                + "Bomb: up to 5 tiles; adjacent blast hurts you too\n"
+                + "Flail Ball: melee gürz — 1 tile in facing direction (Space)\n"
+                + "Staff / scepter: F — mana spell (20 MP, stronger bolt); no other weapon while equipped\n"
+                + "F — mana bolt without staff (10 MP)");
         addSection(contentBox, "INVENTORY",
                 "I — open inventory popup\n"
-                + "E — attack foe, door, chest, take item, or use potion (priority order)\n"
+                + "E — door, chest, take item, or use potion (priority order)\n"
                 + "Click ground tile (adjacent) — TAKE / OPEN / SEARCH / BREAK / ATTACK");
         addSection(contentBox, "SPECIAL ABILITIES",
                 "C — character sheet (stats & equipment)\n"

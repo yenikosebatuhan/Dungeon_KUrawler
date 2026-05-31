@@ -1,7 +1,9 @@
 package com.kurawler.effect;
 
 import com.kurawler.model.GameSession;
+import com.kurawler.model.WeaponCatalog;
 import com.kurawler.model.object.Item;
+import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.PortableContainer;
 import com.kurawler.model.object.StaticContainer;
 
@@ -26,18 +28,23 @@ public class TakeFromContainerEffect implements Effect {
         if (session.getHero().getInventory().isFull()) {
             return;
         }
+        if (!session.getHero().getInventory().addItem(item)) {
+            return;
+        }
 
         if (container instanceof StaticContainer) {
             ((StaticContainer) container).removeItem(item);
         } else if (container instanceof PortableContainer) {
             ((PortableContainer) container).removeItem(item);
         } else {
+            session.getHero().getInventory().removeItem(item);
             return;
         }
 
-        if (session.getHero().getInventory().addItem(item)) {
-            session.getHero().notifyItemCollected();
+        if (item instanceof Weapon && WeaponCatalog.isArrow(item.getName())) {
+            session.getHero().onArrowPickedUp();
         }
+        session.getHero().notifyItemCollected();
     }
 
     @Override

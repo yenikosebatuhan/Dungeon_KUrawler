@@ -14,6 +14,7 @@ import com.kurawler.effect.RemoveFromCellEffect;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Inventory;
+import com.kurawler.model.WeaponCatalog;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
@@ -185,23 +186,164 @@ public class GameController {
      * Creates a TakeAction and runs it through the pipeline.
      */
     public boolean interactWithObject(int row, int col, Item item) {
-        if (session.getHero().getInventory().isFull()) {
+        if (item == null || session.getHero().getInventory().isFull()) {
             return false;
         }
+        GridCell cell = session.getMap().getCell(row, col);
+        if (cell == null) {
+            return false;
+        }
+        boolean onCell = false;
+        for (GameObject obj : cell.getObjects()) {
+            if (obj == item) {
+                onCell = true;
+                break;
+            }
+        }
+        if (!onCell) {
+            return false;
+        }
+        if (!session.getHero().getInventory().addItem(item)) {
+            return false;
+        }
+        if (item instanceof Weapon && WeaponCatalog.isArrow(item.getName())) {
+            session.getHero().onArrowPickedUp();
+        }
         new RemoveFromCellEffect(row, col, item).apply(session);
-        new AddToInventoryEffect(item).apply(session);
+        session.getHero().notifyItemCollected();
         session.advanceTurn();
         return true;
     }
 
-    public boolean heroShoot() {
+    public String heroShoot() {
         Hero hero = session.getHero();
-        if (hero == null) return false;
+        if (hero == null) {
+            return "";
+        }
+        int cost = hero.getMagicManaCost();
+        if (hero.getMana() < cost) {
+            if (hero.hasStaffEquipped()) {
+                return "Not enough mana to cast! (Need " + cost + " MP)";
+            }
+            return "Not enough mana to shoot!";
+        }
         Projectile p = hero.shootProjectile();
-        if (p == null) return false;
+        if (p == null) {
+            return "Not enough mana to shoot!";
+        }
         session.addProjectile(p);
         session.advanceTurn();
-        return true;
+        if (hero.hasStaffEquipped()) {
+            return "Staff spell! (MP -" + cost + ")";
+        }
+        return "Fired a bolt! (MP -" + cost + ")";
+    }
+
+    /**
+     * Space: attack with the equipped weapon toward the first enemy in the facing direction.
+     * Bow → arrow; bomb → throw; staff → use F (mana); everything else → melee.
+     *
+     * @return status message for the HUD (empty if nothing happened)
+     */
+    public String trySpaceWeaponAttack() {
+        Hero hero = session.getHero();
+        if (hero == null || session.getMap() == null) {
+            return "";
+        }
+
+        Weapon weapon = hero.getEquippedWeapon();
+
+        if (hero.hasEquippedBomb()) {
+            String bombResult = tryBombThrow(hero);
+            if (bombResult != null) {
+                return bombResult;
+            }
+        }
+
+        if (weapon != null && WeaponCatalog.isBow(weapon.getName())) {
+            String bowResult = tryBowAttack(hero);
+            if (bowResult != null) {
+                return bowResult;
+            }
+        }
+
+        if (weapon != null && WeaponCatalog.isStaffLike(weapon.getName())) {
+            return "Cast with F — staves use mana, not Space.";
+        }
+
+        return tryMeleeFacingAttack(hero);
+    }
+
+    private String tryBombThrow(Hero hero) {
+        Projectile projectile = hero.throwBomb(session);
+        if (projectile != null) {
+            session.addProjectile(projectile);
+            session.advanceTurn();
+            return "Threw a bomb!";
+        }
+        if (hero.canBombMeleeFacingEnemy(session)) {
+            return tryBombMeleeAttack(hero);
+        }
+        int[] dir = hero.attackDirection();
+        GridCell launch = session.getMap().getCell(
+                hero.getRow() + dir[0], hero.getCol() + dir[1]);
+        if (launch == null || (launch.getStaticObject() != null
+                && !launch.getStaticObject().isPassable())) {
+            return "Cannot throw — blocked in that direction.";
+        }
+        return "Not enough energy to throw!";
+    }
+
+    private String tryBombMeleeAttack(Hero hero) {
+        int selfDamage = hero.bombMeleeDetonate(session);
+        if (selfDamage < 0) {
+            if (!hero.canBombMeleeFacingEnemy(session)) {
+                return "No enemy adjacent for a bomb blast.";
+            }
+            return "Not enough energy to detonate!";
+        }
+        session.advanceTurn();
+        return "Bomb detonated! You took " + selfDamage + " damage.";
+    }
+
+    private String tryBowAttack(Hero hero) {
+        if (hero.canUseArrowWeapon()) {
+            Projectile projectile = hero.shootArrow();
+            if (projectile != null) {
+                session.addProjectile(projectile);
+                session.advanceTurn();
+                return "Loosed an arrow! (" + hero.getArrowAmmo() + "/" + hero.getArrowAmmoMax() + ")";
+            }
+            return "Not enough energy to shoot!";
+        }
+        if (hero.canMeleeFacingEnemy(session)) {
+            return tryMeleeFacingAttack(hero);
+        }
+        return "Equip arrows with your bow (I).";
+    }
+
+    private String tryMeleeFacingAttack(Hero hero) {
+        if (!hero.canMeleeFacingEnemy(session)) {
+            if (hero.getEquippedWeapon() == null && hasWeaponInInventory(hero)) {
+                return "Equip a weapon first (I), or face an enemy.";
+            }
+            return "No enemy in that direction.";
+        }
+        if (!hero.attackFacingEnemy(session)) {
+            return "Not enough energy to attack!";
+        }
+        session.advanceTurn();
+        return "attack_melee";
+    }
+
+    private static boolean hasWeaponInInventory(Hero hero) {
+        for (Item item : hero.getInventory().getItems()) {
+            if (item instanceof Weapon
+                    && !WeaponCatalog.isArrow(item.getName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public GameSession getSession() {
