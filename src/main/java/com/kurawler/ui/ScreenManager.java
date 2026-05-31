@@ -233,6 +233,7 @@ public class ScreenManager {
         editorView.show(stage);
     }
 
+    /** After Play This Map — return to editor without game-over overlay on editor UI. */
     public void returnToEditorAfterTest(com.kurawler.model.Map map, String statusMessage) {
         shutdownActiveGameView();
         restoreHeroForEditor(map);
@@ -245,13 +246,23 @@ public class ScreenManager {
         return map != null && serializer.saveMapToFile(map, filename);
     }
 
+    /** Save editor map to {@code maps/<name>.json} (PDF §4.2). */
     public boolean showSaveMapDialog(com.kurawler.model.Map map) {
-        if (map == null) return false;
+        if (map == null) {
+            return false;
+        }
         Optional<String> result = EditorStyledDialog.promptText(
-                stage, "Save Map", "Store your dungeon as JSON in the maps/ folder.", "my_dungeon");
-        if (!result.isPresent()) return false;
+                stage,
+                "Save Map",
+                "Store your dungeon as JSON in the maps/ folder.",
+                "my_dungeon");
+        if (!result.isPresent()) {
+            return false;
+        }
         String name = result.get().replaceAll("[^a-zA-Z0-9._-]", "_");
-        if (!name.endsWith(".json")) name += ".json";
+        if (!name.endsWith(".json")) {
+            name += ".json";
+        }
         try {
             Files.createDirectories(MAPS_DIR);
         } catch (IOException e) {
@@ -261,6 +272,7 @@ public class ScreenManager {
         return serializer.saveMapToFile(map, MAPS_DIR.resolve(name).toString());
     }
 
+    /** Load a map JSON into the level editor (PDF §4.2). */
     public com.kurawler.model.Map showLoadMapDialog() {
         List<MapFileEntry> maps = listMapFiles();
         if (maps.isEmpty()) {
@@ -268,32 +280,49 @@ public class ScreenManager {
                     "No map files found.\nSave a map first — it goes in the maps/ folder.");
             return null;
         }
+
         List<String> labels = new ArrayList<>();
-        for (MapFileEntry entry : maps) labels.add(entry.label);
+        for (MapFileEntry entry : maps) {
+            labels.add(entry.label);
+        }
         Optional<Integer> picked = EditorStyledDialog.chooseIndex(
-                stage, "Load Map", "Pick a saved dungeon to open in the editor.", labels);
-        if (!picked.isPresent()) return null;
+                stage,
+                "Load Map",
+                "Pick a saved dungeon to open in the editor.",
+                labels);
+        if (!picked.isPresent()) {
+            return null;
+        }
         MapFileEntry chosen = maps.get(picked.get());
         com.kurawler.model.Map loaded = deserializer.loadMapFromFile(chosen.path.toString());
-        if (loaded == null) EditorStyledDialog.showMessage(stage, "Load Map", "Could not load the selected map.");
+        if (loaded == null) {
+            EditorStyledDialog.showMessage(stage, "Load Map", "Could not load the selected map.");
+        }
         return loaded;
     }
 
     private List<MapFileEntry> listMapFiles() {
         List<MapFileEntry> entries = new ArrayList<>();
-        if (Files.isRegularFile(LEGACY_MAP_SAVE)) entries.add(new MapFileEntry(LEGACY_MAP_SAVE, "map_save.json (project root)"));
+        if (Files.isRegularFile(LEGACY_MAP_SAVE)) {
+            entries.add(new MapFileEntry(LEGACY_MAP_SAVE, "map_save.json (project root)"));
+        }
         if (Files.isDirectory(MAPS_DIR)) {
             try (Stream<Path> paths = Files.list(MAPS_DIR)) {
-                paths.filter(p -> p.getFileName().toString().endsWith(".json"))
+                paths
+                        .filter(p -> p.getFileName().toString().endsWith(".json"))
                         .sorted(Comparator.comparing(this::lastModifiedSafe).reversed())
                         .forEach(p -> entries.add(new MapFileEntry(p, p.getFileName().toString())));
-            } catch (IOException ignored) {}
+            } catch (IOException ignored) {
+                // empty list
+            }
         }
         return entries;
     }
 
     public void playEditedMap(com.kurawler.model.Map map) {
-        if (map == null) return;
+        if (map == null) {
+            return;
+        }
         GameSession session = new GameSession(map);
         session.setEditorTestPlay(true);
         prepareSessionForPlay(session);
@@ -329,12 +358,18 @@ public class ScreenManager {
                 }
             }
         }
+
         if (hero == null) {
             hero = new Hero("Adventurer");
             GridCell spawnCell = firstWalkableCell(map);
-            if (spawnCell != null) hero.moveToCell(spawnCell);
+            if (spawnCell != null) {
+                hero.moveToCell(spawnCell);
+            }
             session.setHero(hero);
         }
+
+        // PDF Phase II: Shadow Clone appears only after READing a Shadow Clone
+        // Scroll (auto-spawned every 15 s), not at game start.
         session.setAchievementManager(new AchievementManager());
         session.wireObservers();
     }
@@ -343,7 +378,9 @@ public class ScreenManager {
         for (int row = 0; row < map.getHeight(); row++) {
             for (int col = 0; col < map.getWidth(); col++) {
                 GridCell cell = map.getCell(row, col);
-                if (cell != null && !cell.isBlocked()) return cell;
+                if (cell != null && !cell.isBlocked()) {
+                    return cell;
+                }
             }
         }
         return null;
@@ -361,17 +398,25 @@ public class ScreenManager {
     public void launchGameWithDifficulty(String gameType, String difficulty) {
         lastGameType = gameType;
         lastDifficulty = difficulty;
+
         if ("Random".equals(gameType)) {
-            currentSession = new com.kurawler.model.ProceduralMapGenerator().generate();
+            com.kurawler.model.ProceduralMapGenerator generator =
+                    new com.kurawler.model.ProceduralMapGenerator();
+            currentSession = generator.generate();
         } else if ("TeamMatch".equals(gameType)) {
-            com.kurawler.model.Map map = (currentSession != null && currentSession.getMap() != null)
-                    ? currentSession.getMap() : MapFactory.createDefaultMap().getMap();
+            com.kurawler.model.Map map;
+            if (currentSession != null && currentSession.getMap() != null) {
+                map = currentSession.getMap();
+            } else {
+                map = MapFactory.createDefaultMap().getMap();
+            }
             TeamMatchSession tmSession = new TeamMatchSession(map);
             tmSession.initializeMatch();
             currentSession = tmSession;
         } else {
             currentSession = MapFactory.createDefaultMap();
         }
+
         applyDifficultyToSession(currentSession, difficulty);
         showPlayMode(currentSession);
     }
@@ -379,45 +424,67 @@ public class ScreenManager {
     private void applyDifficultyToSession(GameSession session, String difficulty) {
         session.setDifficulty(difficulty);
         Hero hero = session.getHero();
+
         if (hero != null) {
-            if ("Easy".equals(difficulty)) { hero.setMaxEnergy(150); hero.setEnergy(150); }
-            else if ("Hard".equals(difficulty)) { hero.setMaxEnergy(75); hero.setEnergy(75); }
+            if ("Easy".equals(difficulty)) {
+                hero.setMaxEnergy(150);
+                hero.setEnergy(150);
+            } else if ("Hard".equals(difficulty)) {
+                hero.setMaxEnergy(75);
+                hero.setEnergy(75);
+            }
         }
+
         List<com.kurawler.model.Map> mapsToCheck = new ArrayList<>();
         mapsToCheck.add(session.getMap());
-        if (session.getWorldMaps() != null) mapsToCheck.addAll(session.getWorldMaps().values());
+        if (session.getWorldMaps() != null) {
+            mapsToCheck.addAll(session.getWorldMaps().values());
+        }
+
         for (com.kurawler.model.Map m : mapsToCheck) {
-            if (m == null) continue;
+            if (m == null) {
+                continue;
+            }
             for (int r = 0; r < m.getHeight(); r++) {
                 for (int c = 0; c < m.getWidth(); c++) {
                     GridCell cell = m.getCell(r, c);
-                    if (cell == null) continue;
+                    if (cell == null) {
+                        continue;
+                    }
+
                     if (cell.getOccupyingCharacter() instanceof Enemy) {
                         Enemy enemy = (Enemy) cell.getOccupyingCharacter();
                         if ("Easy".equals(difficulty)) {
-                            enemy.setMaxHealth((int)(enemy.getMaxHealth() * 0.7));
-                            enemy.setHealth((int)(enemy.getHealth() * 0.7));
-                            enemy.setStrength((int)(enemy.getStrength() * 0.7));
+                            enemy.setMaxHealth((int) (enemy.getMaxHealth() * 0.7));
+                            enemy.setHealth((int) (enemy.getHealth() * 0.7));
+                            enemy.setStrength((int) (enemy.getStrength() * 0.7));
                         } else if ("Hard".equals(difficulty)) {
-                            enemy.setMaxHealth((int)(enemy.getMaxHealth() * 1.3));
-                            enemy.setHealth((int)(enemy.getHealth() * 1.3));
-                            enemy.setStrength((int)(enemy.getStrength() * 1.3));
+                            enemy.setMaxHealth((int) (enemy.getMaxHealth() * 1.3));
+                            enemy.setHealth((int) (enemy.getHealth() * 1.3));
+                            enemy.setStrength((int) (enemy.getStrength() * 1.3));
                         }
                     }
+
                     if ("Hard".equals(difficulty)) {
                         List<GameObject> toRemove = new ArrayList<>();
                         for (GameObject obj : cell.getObjects()) {
-                            if (obj instanceof Consumable && "Health Potion".equals(obj.getName())) toRemove.add(obj);
-                            else if (obj instanceof StaticContainer) {
+                            if (obj instanceof Consumable && "Health Potion".equals(obj.getName())) {
+                                toRemove.add(obj);
+                            } else if (obj instanceof StaticContainer) {
                                 StaticContainer sc = (StaticContainer) obj;
                                 List<Item> chestItems = new ArrayList<>(sc.getContents());
                                 sc.getContents().clear();
                                 for (Item item : chestItems) {
-                                    if (!(item instanceof Consumable && "Health Potion".equals(item.getName()))) sc.addItem(item);
+                                    if (!(item instanceof Consumable
+                                            && "Health Potion".equals(item.getName()))) {
+                                        sc.addItem(item);
+                                    }
                                 }
                             }
                         }
-                        for (GameObject obj : toRemove) cell.removeObject(obj);
+                        for (GameObject obj : toRemove) {
+                            cell.removeObject(obj);
+                        }
                     }
                 }
             }

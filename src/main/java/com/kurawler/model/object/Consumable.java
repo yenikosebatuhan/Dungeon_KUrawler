@@ -20,14 +20,6 @@ public class Consumable extends Item {
         this.energyAmount = energyAmount;
     }
 
-    public static final int STAT_HP = 0;
-    public static final int STAT_MP = 1;
-    public static final int STAT_EN = 2;
-
-    public Consumable(String name, int amount, int statType) {
-        this(name, name, amount);
-    }
-
     public int getHealAmount() { return healAmount; }
     public int getManaAmount() { return manaAmount; }
     public int getEnergyAmount() { return energyAmount; }

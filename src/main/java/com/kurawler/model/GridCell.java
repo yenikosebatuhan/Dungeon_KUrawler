@@ -48,13 +48,4 @@ public class GridCell {
         return !isBlocked();
     }
     public void setWalkable(boolean walkable) { /* Kept so MapFactory doesn't crash, but handled via StaticObjects */ }
-
-    public boolean isEmpty() {
-        return objects.isEmpty() && staticObject == null && occupyingCharacter == null;
-    }
-
-    // Aliases used by editor classes
-    public List<GameObject> getGameObjects() { return getObjects(); }
-    public void addGameObject(GameObject obj) { addObject(obj); }
-    public boolean removeGameObject(GameObject obj) { return removeObject(obj); }
 }
