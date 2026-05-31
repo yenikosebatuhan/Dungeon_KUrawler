@@ -233,7 +233,28 @@ public class ScreenManager {
         editorView.show(stage);
     }
 
-    /** After Play This Map — return to editor without game-over overlay on editor UI. */
+    /** After Play This Map — return to editor, restoring all world maps from the session. */
+    public void returnToEditorAfterTest(GameSession session, String statusMessage) {
+        com.kurawler.model.Map map = session.getMap();
+        shutdownActiveGameView();
+        restoreHeroForEditor(map);
+        pendingEditorStatus = statusMessage;
+        java.util.Map<String, com.kurawler.model.Map> world = session.getWorldMaps();
+        EditorView ev;
+        if (world != null && !world.isEmpty()) {
+            java.util.LinkedHashMap<String, com.kurawler.model.Map> linked = new java.util.LinkedHashMap<>(world);
+            String startId = session.getCurrentMapId();
+            String resolvedStart = (startId != null && linked.containsKey(startId))
+                    ? startId : linked.keySet().iterator().next();
+            ev = new EditorView(this, linked, resolvedStart);
+        } else {
+            ev = new EditorView(this, null);
+            ev.loadMap(map);
+        }
+        ev.show(stage);
+    }
+
+    /** Backwards-compatible single-map overload. */
     public void returnToEditorAfterTest(com.kurawler.model.Map map, String statusMessage) {
         shutdownActiveGameView();
         com.kurawler.model.Map restored = null;
@@ -329,9 +350,7 @@ public class ScreenManager {
     }
 
     public void playEditedMap(com.kurawler.model.Map map) {
-        if (map == null) {
-            return;
-        }
+        if (map == null) return;
         prePlayMapSnapshot = serializer.mapToJson(map);
         GameSession session = new GameSession(map);
         session.setEditorTestPlay(true);
@@ -340,9 +359,7 @@ public class ScreenManager {
     }
 
     public void playEditedMapAsTeamMatch(com.kurawler.model.Map map) {
-        if (map == null) {
-            return;
-        }
+        if (map == null) return;
         prePlayMapSnapshot = serializer.mapToJson(map);
         TeamMatchSession tmSession = new TeamMatchSession(map);
         if (!tmSession.validateMap()) {
@@ -354,6 +371,63 @@ public class ScreenManager {
         tmSession.setEditorTestPlay(true);
         prepareSessionForPlay(tmSession);
         showPlayMode(tmSession);
+    }
+
+    /** Play a full multi-map world from the editor. */
+    public void playEditedWorld(java.util.LinkedHashMap<String, com.kurawler.model.Map> maps, String startMapId) {
+        if (maps == null || maps.isEmpty()) return;
+        com.kurawler.model.Map startMap = maps.containsKey(startMapId)
+                ? maps.get(startMapId) : maps.values().iterator().next();
+        String resolvedStart = maps.containsKey(startMapId) ? startMapId : maps.keySet().iterator().next();
+        GameSession session = new GameSession(startMap);
+        session.setEditorTestPlay(true);
+        for (java.util.Map.Entry<String, com.kurawler.model.Map> e : maps.entrySet()) {
+            session.registerWorldMap(e.getKey(), e.getValue());
+        }
+        session.setCurrentMapId(resolvedStart);
+        prepareSessionForPlay(session);
+        showPlayMode(session);
+    }
+
+    /** Save world JSON (all editor maps) to maps/<name>.world.json. */
+    public boolean showSaveWorldDialog(java.util.LinkedHashMap<String, com.kurawler.model.Map> maps, String startMapId) {
+        if (maps == null || maps.isEmpty()) return false;
+        Optional<String> result = EditorStyledDialog.promptText(
+                stage, "Save World", "Name for your multi-map world file.", "my_world");
+        if (!result.isPresent()) return false;
+        String name = result.get().replaceAll("[^a-zA-Z0-9._-]", "_");
+        if (!name.endsWith(".world.json")) name += ".world.json";
+        return serializer.saveWorldToFile(maps, startMapId, name);
+    }
+
+    /** Load a world JSON file into the editor. Returns null on cancel/failure. */
+    public MapDeserializer.WorldData showLoadWorldDialog() {
+        List<MapFileEntry> files = listWorldFiles();
+        if (files.isEmpty()) {
+            EditorStyledDialog.showMessage(stage, "Load World",
+                    "No world files found.\nSave a world first — files end in .world.json.");
+            return null;
+        }
+        List<String> labels = new ArrayList<>();
+        for (MapFileEntry e : files) labels.add(e.label);
+        Optional<Integer> picked = EditorStyledDialog.chooseIndex(stage, "Load World",
+                "Pick a world file to open.", labels);
+        if (!picked.isPresent()) return null;
+        MapDeserializer.WorldData data = deserializer.loadWorldFromFile(files.get(picked.get()).path.toString());
+        if (data == null) EditorStyledDialog.showMessage(stage, "Load World", "Could not load the world file.");
+        return data;
+    }
+
+    private List<MapFileEntry> listWorldFiles() {
+        List<MapFileEntry> entries = new ArrayList<>();
+        if (Files.isDirectory(MAPS_DIR)) {
+            try (Stream<Path> paths = Files.list(MAPS_DIR)) {
+                paths.filter(p -> p.getFileName().toString().endsWith(".world.json"))
+                     .sorted(Comparator.comparing(this::lastModifiedSafe).reversed())
+                     .forEach(p -> entries.add(new MapFileEntry(p, p.getFileName().toString())));
+            } catch (IOException ignored) {}
+        }
+        return entries;
     }
 
     private void restoreHeroForEditor(com.kurawler.model.Map map) {
