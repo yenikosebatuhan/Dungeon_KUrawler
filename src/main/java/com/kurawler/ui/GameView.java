@@ -722,21 +722,26 @@ public class GameView {
         String result = controller.trySpaceWeaponAttack();
         if ("attack_melee".equals(result)) {
             Hero hero = controller.getSession().getHero();
-            com.kurawler.model.Map map = controller.getSession().getMap();
-            int[] dir = hero.attackDirection();
-            int row = hero.getRow() + dir[0];
-            int col = hero.getCol() + dir[1];
-            GridCell cell = map.getCell(row, col);
-            if (cell != null && cell.getOccupyingCharacter() instanceof Enemy enemy) {
+            GameSession session = controller.getSession();
+            Enemy enemy = hero.findFirstEnemyInDirection(session, hero.meleeFacingReach());
+            if (enemy != null) {
+                com.kurawler.model.Map map = session.getMap();
+                GridCell cell = map.getCell(enemy.getRow(), enemy.getCol());
                 if (!enemy.isAlive()) {
-                    cell.setOccupyingCharacter(null);
-                    controller.getSession().decrementEnemyCount();
+                    if (cell != null) {
+                        cell.setOccupyingCharacter(null);
+                    }
+                    session.decrementEnemyCount();
                     AudioManager.getInstance().play("enemyDown");
                     showGameMessage(enemy.getName() + " defeated!");
                 } else {
                     AudioManager.getInstance().play("attack");
-                    showGameMessage("Hit " + enemy.getName() + "! HP:" + enemy.getHealth());
+                    String verb = hero.getEquippedWeapon() == null ? "Punched" : "Hit";
+                    showGameMessage(verb + " " + enemy.getName() + "! HP:" + enemy.getHealth());
                 }
+            } else {
+                AudioManager.getInstance().play("attack");
+                showGameMessage(hero.getEquippedWeapon() == null ? "Punch!" : "Strike!");
             }
         } else if (result != null && !result.isEmpty()) {
             if (result.contains("arrow") || result.contains("bomb") || result.contains("Loosed")
@@ -1414,7 +1419,8 @@ public class GameView {
                 if (occupant != null && occupant.isAlive() && !(occupant instanceof Hero)) {
                     double[] pos = lerpPosition(occupant, c * TILE_SIZE, r * TILE_SIZE);
                     String type = (occupant instanceof Knight) ? "Knight" : "Sorcerer";
-                    renderer.drawEnemy(gc, (int) pos[0], (int) pos[1], type);
+                    boolean mirrorKnight = occupant instanceof Knight && occupant.getCol() > hero.getCol();
+                    renderer.drawEnemy(gc, (int) pos[0], (int) pos[1], type, mirrorKnight);
                     renderer.drawHpBar(gc, (int) pos[0], (int) pos[1],
                             occupant.getHealth(), occupant.getMaxHealth());
 
@@ -1536,9 +1542,8 @@ public class GameView {
         // ── SECTION 1: Hero portrait (pad, pad) ──
         double portraitSize = h - pad * 2;
         drawGoldPanel(gc, pad, pad, portraitSize, portraitSize);
-        renderer.drawHeroFacing(gc, (int)(pad + (portraitSize - TILE_SIZE) / 2),
-                (int)(pad + (portraitSize - TILE_SIZE) / 2),
-                hero.getFacingRow(), hero.getFacingCol());
+        renderer.drawHero(gc, (int)(pad + (portraitSize - TILE_SIZE) / 2),
+                (int)(pad + (portraitSize - TILE_SIZE) / 2));
 
         // ── SECTION 2: Stat bars ──
         double barStartX = pad + portraitSize + 8;

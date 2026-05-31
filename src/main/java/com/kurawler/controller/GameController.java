@@ -268,7 +268,10 @@ public class GameController {
         }
 
         if (weapon != null && WeaponCatalog.isStaffLike(weapon.getName())) {
-            return "Cast with F — staves use mana, not Space.";
+            if (hero.canMeleeFacingEnemy(session)) {
+                return tryMeleeFacingAttack(hero);
+            }
+            return "Cast with F — staves use mana at range.";
         }
 
         return tryMeleeFacingAttack(hero);
@@ -324,9 +327,6 @@ public class GameController {
 
     private String tryMeleeFacingAttack(Hero hero) {
         if (!hero.canMeleeFacingEnemy(session)) {
-            if (hero.getEquippedWeapon() == null && hasWeaponInInventory(hero)) {
-                return "Equip a weapon first (I), or face an enemy.";
-            }
             return "No enemy in that direction.";
         }
         if (!hero.attackFacingEnemy(session)) {
@@ -334,16 +334,6 @@ public class GameController {
         }
         session.advanceTurn();
         return "attack_melee";
-    }
-
-    private static boolean hasWeaponInInventory(Hero hero) {
-        for (Item item : hero.getInventory().getItems()) {
-            if (item instanceof Weapon
-                    && !WeaponCatalog.isArrow(item.getName())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public GameSession getSession() {

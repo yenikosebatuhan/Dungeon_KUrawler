@@ -15,7 +15,6 @@ import com.kurawler.model.observer.HeroSubject;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
 public class Hero extends Character implements HeroSubject {
     private final Inventory inventory;
@@ -36,7 +35,7 @@ public class Hero extends Character implements HeroSubject {
     private static final int ARROW_AMMO_ON_EQUIP = 3;
     private static final int BOMB_MAX_RANGE = 5;
     private static final int STAFF_STRIKE_RANGE = 6;
-    private static final Random RNG = new Random();
+    private static final int STARTING_STRENGTH = 10;
     private final List<HeroObserver> observers = new ArrayList<>();
     private int facingRow = 0;
     private int facingCol = 1;
@@ -44,7 +43,7 @@ public class Hero extends Character implements HeroSubject {
     private int arrowAmmoMax;
 
     public Hero(String name) {
-        super(name, 17, 0, 2, 8 + RNG.nextInt(8), 80, 100);
+        super(name, 17, 0, 2, STARTING_STRENGTH, 80, 100);
         this.inventory = new Inventory();
     }
 
