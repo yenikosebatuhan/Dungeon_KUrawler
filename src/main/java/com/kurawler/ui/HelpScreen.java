@@ -68,7 +68,7 @@ public class HelpScreen {
                 "W / A / S / D  or  Arrow Keys — move one tile\n"
                 + "Each step costs energy.");
         addSection(contentBox, "COMBAT",
-                "Space — attack facing direction (melee, bow, bomb)\n"
+                "Space — attack facing direction (melee, bow, bomb; unarmed punch if no weapon)\n"
                 + "Bow + arrows: equipping arrows gives 3 shots; flies in facing direction\n"
                 + "Bomb: up to 5 tiles; adjacent blast hurts you too\n"
                 + "Flail Ball: melee gürz — 1 tile in facing direction (Space)\n"
