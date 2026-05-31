@@ -52,6 +52,8 @@ public class CombatResolver {
             Hero hero = (Hero) attacker;
             if (hero.getEquippedWeapon() != null) {
                 atk += hero.getEquippedWeapon().getDamage();
+            } else {
+                atk = 1; // unarmed — low base damage
             }
         }
 
