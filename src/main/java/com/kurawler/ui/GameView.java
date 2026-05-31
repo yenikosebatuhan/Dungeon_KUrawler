@@ -1,4 +1,4 @@
-﻿package com.kurawler.ui;
+package com.kurawler.ui;
 
 import com.kurawler.controller.GameController;
 import com.kurawler.engine.AudioManager;
