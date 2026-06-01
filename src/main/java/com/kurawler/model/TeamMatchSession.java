@@ -4,6 +4,7 @@ import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.Sorcerer;
+import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.Weapon;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,9 +34,24 @@ public class TeamMatchSession extends GameSession {
 
     public void initializeMatch() {
         clearMapEnemies();
+        clearMapWeapons();
         createTeams();
         placeTeams();
         placeWeapons();
+    }
+
+    private void clearMapWeapons() {
+        Map map = getMap();
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int c = 0; c < map.getWidth(); c++) {
+                GridCell cell = map.getCell(r, c);
+                if (cell == null) continue;
+                cell.getObjects().stream()
+                    .filter(obj -> obj instanceof Weapon)
+                    .toList()
+                    .forEach(cell::removeObject);
+            }
+        }
     }
 
     private void clearMapEnemies() {
@@ -56,7 +72,9 @@ public class TeamMatchSession extends GameSession {
         sorcA.setHealth(10);
         teamA.addMember(sorcA);
         for (int i = 0; i < 3; i++) {
-            teamA.addMember(new Knight());
+            Knight k = new Knight();
+            k.setUnlimitedVision(true);
+            teamA.addMember(k);
         }
 
         Hero hero = new Hero("Hero");
@@ -67,7 +85,9 @@ public class TeamMatchSession extends GameSession {
         sorcB.setHealth(10);
         teamB.addMember(sorcB);
         for (int i = 0; i < 2; i++) {
-            teamB.addMember(new Knight());
+            Knight k = new Knight();
+            k.setUnlimitedVision(true);
+            teamB.addMember(k);
         }
     }
 
@@ -120,9 +140,10 @@ public class TeamMatchSession extends GameSession {
         }
         Collections.shuffle(free, RNG);
 
+        String[] names = {"Dagger", "Axe", "Hammer", "Staff", "Bow", "Sword"};
         for (int i = 0; i < WEAPON_COUNT && i < free.size(); i++) {
             int atk = MIN_ATK + i;
-            Weapon w = new Weapon("Sword +" + atk, "A weapon with ATK " + atk, atk);
+            Weapon w = new Weapon(names[i], "ATK " + atk, atk);
             free.get(i).addObject(w);
             matchWeapons.add(w);
         }
@@ -144,10 +165,6 @@ public class TeamMatchSession extends GameSession {
             return true;
         }
         if (teamB.isEliminated()) {
-            matchResult = "Team A Wins!";
-            return true;
-        }
-        if (getHero() != null && !getHero().isAlive()) {
             matchResult = "Team A Wins!";
             return true;
         }
@@ -183,6 +200,52 @@ public class TeamMatchSession extends GameSession {
             if (dist < minDist) {
                 minDist = dist;
                 nearest = enemy;
+            }
+        }
+        return nearest;
+    }
+
+    public GridCell findNearestWeaponCell(Character c) {
+        Map map = getMap();
+        GridCell nearest = null;
+        double minDist = Double.MAX_VALUE;
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int col = 0; col < map.getWidth(); col++) {
+                GridCell cell = map.getCell(r, col);
+                if (cell == null) continue;
+                for (var obj : cell.getObjects()) {
+                    if (obj instanceof Weapon) {
+                        double dist = Math.sqrt(
+                            Math.pow(r - c.getRow(), 2) + Math.pow(col - c.getCol(), 2));
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearest = cell;
+                        }
+                    }
+                }
+            }
+        }
+        return nearest;
+    }
+
+    public GridCell findNearestHealPotionCell(Character c) {
+        Map map = getMap();
+        GridCell nearest = null;
+        double minDist = Double.MAX_VALUE;
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int col = 0; col < map.getWidth(); col++) {
+                GridCell cell = map.getCell(r, col);
+                if (cell == null) continue;
+                for (var obj : cell.getObjects()) {
+                    if (obj instanceof Consumable cons && cons.getHealAmount() > 0) {
+                        double dist = Math.sqrt(
+                            Math.pow(r - c.getRow(), 2) + Math.pow(col - c.getCol(), 2));
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearest = cell;
+                        }
+                    }
+                }
             }
         }
         return nearest;
