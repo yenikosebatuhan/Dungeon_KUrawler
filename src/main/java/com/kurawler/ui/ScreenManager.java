@@ -512,6 +512,8 @@ public class ScreenManager {
             } else {
                 map = MapFactory.createDefaultMap().getMap();
             }
+            // Snapshot the pristine map so "Play Again" / "Restart Level" can rebuild it cleanly.
+            prePlayMapSnapshot = serializer.mapToJson(map);
             TeamMatchSession tmSession = new TeamMatchSession(map);
             tmSession.initializeMatch();
             currentSession = tmSession;
@@ -520,6 +522,26 @@ public class ScreenManager {
         }
 
         applyDifficultyToSession(currentSession, difficulty);
+        showPlayMode(currentSession);
+    }
+
+    /**
+     * Restarts the Team Match directly (used by "Play Again" and the in-game
+     * "Restart Level" button) without routing back through the difficulty screen.
+     * Rebuilds a fresh match on a pristine copy of the original map.
+     */
+    public void restartTeamMatch() {
+        com.kurawler.model.Map map = null;
+        if (prePlayMapSnapshot != null) {
+            map = deserializer.loadMapFromJson(prePlayMapSnapshot);
+        }
+        if (map == null) {
+            map = MapFactory.createDefaultMap().getMap();
+        }
+        TeamMatchSession tmSession = new TeamMatchSession(map);
+        tmSession.initializeMatch();
+        currentSession = tmSession;
+        applyDifficultyToSession(currentSession, lastDifficulty);
         showPlayMode(currentSession);
     }
 

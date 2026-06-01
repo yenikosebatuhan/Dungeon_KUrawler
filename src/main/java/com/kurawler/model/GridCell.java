@@ -39,20 +39,32 @@ public class GridCell {
     public void setOccupyingCharacter(Character character) { this.occupyingCharacter = character; }
 
     public boolean isBlocked() {
-        if (staticObject != null && !staticObject.isPassable()) return true;
+        if (blockingStatic(staticObject)) return true;
         if (occupyingCharacter != null && occupyingCharacter.isAlive()) return true;
         return false;
     }
 
-    /** Enemies cannot stand on walls, doors/portals, or occupied tiles. */
+    /** Enemies cannot stand on walls, doors/portals, furniture, or occupied tiles. */
     public boolean isEnemyWalkable() {
         if (staticObject instanceof MapPortal) {
             return false;
         }
-        if (staticObject != null && !staticObject.isPassable()) {
+        if (blockingStatic(staticObject)) {
             return false;
         }
         return occupyingCharacter == null;
+    }
+
+    /**
+     * A static blocks character movement if it is impassable (walls, columns) or
+     * is searchable/decorative furniture (bookshelves, pools, statues, pedestals,
+     * crates, ...) — even when flagged passable. Plain floor, rugs, candles, stairs
+     * and portals stay walkable. Items dropped in {@code objects} never block.
+     */
+    private static boolean blockingStatic(StaticObject so) {
+        if (so == null) return false;
+        if (!so.isPassable()) return true;
+        return so.isSearchable() || so.wasSearched();
     }
 
     // Alias for teammates

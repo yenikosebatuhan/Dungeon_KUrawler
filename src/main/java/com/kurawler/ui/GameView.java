@@ -640,7 +640,7 @@ public class GameView {
             popup.close();
             playActive = false;
             shutdown();
-            screenManager.startTeamMatch();
+            screenManager.restartTeamMatch();
         });
 
         Button menuBtn = new Button("Return to Menu");
@@ -951,7 +951,7 @@ public class GameView {
 
     private boolean tryHeroMove(int dRow, int dCol) {
         Hero hero = controller.getSession().getHero();
-        if (hero == null) {
+        if (hero == null || !hero.isAlive()) {
             return false;
         }
         hero.setFacingFromDelta(dRow, dCol);
@@ -1644,6 +1644,14 @@ public class GameView {
         });
         restartBtn.setOnAction(e -> {
             AudioManager.getInstance().play("button");
+            if (controller.getSession() instanceof TeamMatchSession) {
+                // Team Match has no "floor" to restart in place — rebuild the whole match.
+                leavePlay[0] = true;
+                closePopup.run();
+                shutdown();
+                screenManager.restartTeamMatch();
+                return;
+            }
             leavePlay[0] = false;
             closePopup.run();
             boolean ok = com.kurawler.model.MapFactory.restartCurrentFloor(controller.getSession());
@@ -1863,6 +1871,10 @@ public class GameView {
                     }
 
                     renderer.drawEnemy(gc, (int) pos[0], (int) pos[1], type, mirrorKnight, occupant.getName(), enemyWalkFrame);
+                    if (occupant instanceof Knight tmKnight && tmKnight.getEquippedMatchWeapon() != null) {
+                        renderer.drawEquippedWeaponInHand(gc, (int) pos[0], (int) pos[1],
+                                0, mirrorKnight ? -1 : 1, tmKnight.getEquippedMatchWeapon().getName());
+                    }
                     renderer.drawHpBar(gc, (int) pos[0], (int) pos[1],
                             occupant.getHealth(), occupant.getMaxHealth());
 
@@ -1884,39 +1896,41 @@ public class GameView {
             renderer.drawShadowClone(gc, (int) clonePos[0], (int) clonePos[1]);
         }
 
-        double heroTargetX = hero.getCol() * TILE_SIZE, heroTargetY = hero.getRow() * TILE_SIZE;
-        double[] heroPos = lerpPosition(hero, heroTargetX, heroTargetY);
-        int heroSx = (int) heroPos[0];
-        int heroSy = (int) heroPos[1];
-        boolean heroMoving = Math.abs(heroPos[0] - heroTargetX) > 1.5
-                || Math.abs(heroPos[1] - heroTargetY) > 1.5;
-        // Walk frame is driven by lerp state, not a clock — character is in walk
-        // pose exactly while visually moving, idle the moment it arrives.
-        boolean wearingArmor = hero.getEquippedArmor() != null;
-        boolean wearingShield = hero.getEquippedShield() != null;
-        renderer.drawHeroFacing(gc, heroSx, heroSy, hero.getFacingRow(), hero.getFacingCol(),
-                heroMoving ? 1 : 0, wearingArmor);
-        if (wearingShield) {
-            renderer.drawEquippedShieldOnHero(gc, heroSx, heroSy,
-                    hero.getFacingRow(), hero.getFacingCol(),
-                    hero.getEquippedShield().getName());
-        }
-        drawHeroEquippedWeapon(gc, heroSx, heroSy, hero);
-        renderer.drawHpBar(gc, heroSx, heroSy, hero.getHealth(), hero.getMaxHealth());
+        if (hero.isAlive()) {
+            double heroTargetX = hero.getCol() * TILE_SIZE, heroTargetY = hero.getRow() * TILE_SIZE;
+            double[] heroPos = lerpPosition(hero, heroTargetX, heroTargetY);
+            int heroSx = (int) heroPos[0];
+            int heroSy = (int) heroPos[1];
+            boolean heroMoving = Math.abs(heroPos[0] - heroTargetX) > 1.5
+                    || Math.abs(heroPos[1] - heroTargetY) > 1.5;
+            // Walk frame is driven by lerp state, not a clock — character is in walk
+            // pose exactly while visually moving, idle the moment it arrives.
+            boolean wearingArmor = hero.getEquippedArmor() != null;
+            boolean wearingShield = hero.getEquippedShield() != null;
+            renderer.drawHeroFacing(gc, heroSx, heroSy, hero.getFacingRow(), hero.getFacingCol(),
+                    heroMoving ? 1 : 0, wearingArmor);
+            if (wearingShield) {
+                renderer.drawEquippedShieldOnHero(gc, heroSx, heroSy,
+                        hero.getFacingRow(), hero.getFacingCol(),
+                        hero.getEquippedShield().getName());
+            }
+            drawHeroEquippedWeapon(gc, heroSx, heroSy, hero);
+            renderer.drawHpBar(gc, heroSx, heroSy, hero.getHealth(), hero.getMaxHealth());
 
-        int currentHp = hero.getHealth();
-        if (lastHeroHp != Integer.MAX_VALUE && currentHp < lastHeroHp) {
-            spawnHitParticles(heroSx, heroSy);
+            int currentHp = hero.getHealth();
+            if (lastHeroHp != Integer.MAX_VALUE && currentHp < lastHeroHp) {
+                spawnHitParticles(heroSx, heroSy);
+            }
+            lastHeroHp = currentHp;
+
+            if (session instanceof TeamMatchSession) {
+                gc.setFill(Color.rgb(0, 60, 200, 0.15));
+                gc.fillRect(heroSx, heroSy, TILE_SIZE, TILE_SIZE);
+                drawTeamNameplate(gc, heroSx, heroSy, "HERO", Team.TeamColor.BLUE);
+                drawTeamIndicator(gc, heroSx, heroSy, Team.TeamColor.BLUE);
+            }
         }
-        lastHeroHp = currentHp;
         updateAndDrawHitParticles(gc);
-
-        if (session instanceof TeamMatchSession) {
-            gc.setFill(Color.rgb(0, 60, 200, 0.15));
-            gc.fillRect(heroSx, heroSy, TILE_SIZE, TILE_SIZE);
-            drawTeamNameplate(gc, heroSx, heroSy, "HERO", Team.TeamColor.BLUE);
-            drawTeamIndicator(gc, heroSx, heroSy, Team.TeamColor.BLUE);
-        }
 
         java.util.List<com.kurawler.model.object.Projectile> activeProjs =
                 (teamMatchGameLoop != null) ? teamMatchGameLoop.getActiveProjectiles()

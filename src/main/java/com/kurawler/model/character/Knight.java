@@ -11,6 +11,7 @@ public class Knight extends Enemy {
     private static final Random RNG = new Random();
 
     private Weapon equippedMatchWeapon;
+    private boolean unlimitedVision = false;
 
     /**
      * @effects Creates a Knight with 20 HP, ATK 4 (PDF §2.5.1), DEF 1, STR 1, 80 energy.
@@ -31,6 +32,7 @@ public class Knight extends Enemy {
     }
 
     public Weapon getEquippedMatchWeapon() { return equippedMatchWeapon; }
+    public void setUnlimitedVision(boolean v) { this.unlimitedVision = v; }
 
     /**
      * PDF §2.5.1: Knight melee deals 4 HP before DEF (via attackPower, not STR stack).
@@ -58,7 +60,7 @@ public class Knight extends Enemy {
         }
 
         double euclid = Math.sqrt(dRow * dRow + dCol * dCol);
-        if (euclid <= SIGHT_RADIUS) {
+        if (unlimitedVision || euclid <= SIGHT_RADIUS) {
             if (Math.abs(dRow) >= Math.abs(dCol)) {
                 if (!tryStep(Integer.signum(dRow), 0, map)) {
                     tryStep(0, Integer.signum(dCol), map);
@@ -82,6 +84,8 @@ public class Knight extends Enemy {
         int nr = getRow() + dRow;
         int nc = getCol() + dCol;
         GridCell cell = map.getCell(nr, nc);
+        // isBlocked() rejects walls, columns and furniture/props (searchable statics)
+        // but not dropped items, so knights can still step onto weapon/potion tiles.
         if (cell == null || cell.isBlocked()) {
             return false;
         }
