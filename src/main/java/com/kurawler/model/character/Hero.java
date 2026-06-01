@@ -19,6 +19,8 @@ import java.util.List;
 public class Hero extends Character implements HeroSubject {
     private final Inventory inventory;
     private Weapon equippedWeapon;
+    /** Second melee weapon — at most two melee weapons stack for ATK (+3..+10 each). */
+    private Weapon secondaryMeleeWeapon;
     private Weapon equippedArrow;
     private Wearable equippedArmor;
     private Wearable equippedShield;
@@ -35,7 +37,9 @@ public class Hero extends Character implements HeroSubject {
     private static final int ARROW_AMMO_ON_EQUIP = 3;
     private static final int BOMB_MAX_RANGE = 5;
     private static final int STAFF_STRIKE_RANGE = 6;
-    private static final int STARTING_STRENGTH = 10;
+    /** PDF spec: STR is chosen randomly in [8, 15] each new hero. */
+    private static final int STARTING_STRENGTH_MIN = 8;
+    private static final int STARTING_STRENGTH_MAX = 15;
     private final List<HeroObserver> observers = new ArrayList<>();
     private int facingRow = 0;
     private int facingCol = 1;
@@ -43,8 +47,13 @@ public class Hero extends Character implements HeroSubject {
     private int arrowAmmoMax;
 
     public Hero(String name) {
-        super(name, 17, 0, 2, STARTING_STRENGTH, 80, 100);
+        super(name, 17, 0, 2, rollRandomStartingStrength(), 80, 100);
         this.inventory = new Inventory();
+    }
+
+    private static int rollRandomStartingStrength() {
+        return STARTING_STRENGTH_MIN + new java.util.Random().nextInt(
+                STARTING_STRENGTH_MAX - STARTING_STRENGTH_MIN + 1);
     }
 
     @Override
@@ -100,9 +109,28 @@ public class Hero extends Character implements HeroSubject {
      */
     @Override
     public int calculateDamage() {
-        // Logic: STR + Weapon ATK
-        int weaponDmg = (equippedWeapon != null) ? equippedWeapon.getDamage() : 0;
-        return getStrength() + weaponDmg;
+        return getStrength() + getTotalMeleeWeaponDamage();
+    }
+
+    /** Sum of equipped melee weapon bonuses (primary + optional secondary, max 2). */
+    public int getTotalMeleeWeaponDamage() {
+        int total = 0;
+        if (equippedWeapon != null && countsTowardMeleeStack(equippedWeapon)) {
+            total += equippedWeapon.getDamage();
+        }
+        if (secondaryMeleeWeapon != null) {
+            total += secondaryMeleeWeapon.getDamage();
+        }
+        return total;
+    }
+
+    private static boolean countsTowardMeleeStack(Weapon weapon) {
+        if (weapon == null) {
+            return false;
+        }
+        String name = weapon.getName();
+        return !WeaponCatalog.isBow(name) && !WeaponCatalog.isArrow(name)
+                && !WeaponCatalog.isBomb(name);
     }
 
     /**
@@ -226,6 +254,7 @@ public class Hero extends Character implements HeroSubject {
         }
         Wearable current = getWearableInSlot(wearable);
         if (wearable == current) {
+            unequipWearable(wearable);
             return;
         }
         if (current != null) {
@@ -292,11 +321,27 @@ public class Hero extends Character implements HeroSubject {
         }
     }
 
+    /** Applies potion/food effects without requiring the item to be in inventory. */
+    public void consumeConsumable(Consumable consumable) {
+        if (consumable == null) {
+            return;
+        }
+        if (consumable.getHealAmount() > 0) {
+            heal(consumable.getHealAmount());
+        }
+        if (consumable.getManaAmount() > 0) {
+            restoreMana(consumable.getManaAmount());
+        }
+        if (consumable.getEnergyAmount() > 0) {
+            restoreEnergy(consumable.getEnergyAmount());
+        }
+    }
+
     public boolean useConsumable(Consumable consumable) {
-        if (consumable == null || !inventory.removeItem(consumable)) return false;
-        if (consumable.getHealAmount() > 0) heal(consumable.getHealAmount());
-        if (consumable.getManaAmount() > 0) restoreMana(consumable.getManaAmount());
-        if (consumable.getEnergyAmount() > 0) restoreEnergy(consumable.getEnergyAmount());
+        if (consumable == null || !inventory.removeItem(consumable)) {
+            return false;
+        }
+        consumeConsumable(consumable);
         return true;
     }
 
@@ -567,27 +612,38 @@ public class Hero extends Character implements HeroSubject {
         }
         if (equippedWeapon == weapon) {
             equippedWeapon = null;
+            secondaryMeleeWeapon = null;
             if (WeaponCatalog.isBow(name)) {
                 equippedArrow = null;
             }
             return "";
         }
-        if (WeaponCatalog.isArrow(name)) {
-            return "Equip a bow before arrows.";
+        if (secondaryMeleeWeapon == weapon) {
+            secondaryMeleeWeapon = null;
+            return "";
         }
-        if (equippedWeapon != null && WeaponCatalog.isStaffLike(equippedWeapon.getName())
-                && !WeaponCatalog.isStaffLike(name)) {
-            return "Unequip your staff before using another weapon.";
+
+        // Equipping a new weapon replaces whatever was equipped (one weapon at a time).
+        secondaryMeleeWeapon = null;
+        if (equippedWeapon != null && WeaponCatalog.isBow(equippedWeapon.getName())) {
+            equippedArrow = null;
         }
-        equippedWeapon = weapon;
-        equippedArrow = null;
-        if (WeaponCatalog.isBow(name)) {
-            Weapon arrow = findArrowInInventory();
-            if (arrow != null) {
-                equippedArrow = arrow;
-                grantArrowAmmo(ARROW_AMMO_ON_EQUIP);
+
+        if (WeaponCatalog.isBow(name) || WeaponCatalog.isBomb(name)
+                || WeaponCatalog.isStaffLike(name)) {
+            equippedWeapon = weapon;
+            equippedArrow = null;
+            if (WeaponCatalog.isBow(name)) {
+                Weapon arrow = findArrowInInventory();
+                if (arrow != null) {
+                    equippedArrow = arrow;
+                    grantArrowAmmo(ARROW_AMMO_ON_EQUIP);
+                }
             }
+            return "";
         }
+
+        equippedWeapon = weapon;
         return "";
     }
 
@@ -665,6 +721,7 @@ public class Hero extends Character implements HeroSubject {
 
     public Inventory getInventory() { return inventory; }
     public Weapon getEquippedWeapon() { return equippedWeapon; }
+    public Weapon getSecondaryMeleeWeapon() { return secondaryMeleeWeapon; }
     public Weapon getEquippedArrow() { return equippedArrow; }
 
     public void setEquippedWeapon(Weapon weapon) {
@@ -672,6 +729,13 @@ public class Hero extends Character implements HeroSubject {
         if (weapon == null || !WeaponCatalog.isBow(weapon.getName())) {
             equippedArrow = null;
         }
+        if (weapon != null && !countsTowardMeleeStack(weapon)) {
+            secondaryMeleeWeapon = null;
+        }
+    }
+
+    public void setSecondaryMeleeWeapon(Weapon weapon) {
+        this.secondaryMeleeWeapon = weapon;
     }
 
     public void setEquippedArrow(Weapon arrow) {

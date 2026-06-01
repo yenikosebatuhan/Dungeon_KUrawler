@@ -8,55 +8,101 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * PDF §2.5.2 — 10 HP, no armor (DEF 0). Fires a line projectile at the hero every 5 s;
+ * moves only by teleport (7 s, 50% chance to a random empty floor cell). Always knows
+ * the hero's position for aiming; walls and large floor objects block the bolt in flight.
+ */
 public class Sorcerer extends Enemy {
     private static final float TELEPORT_CHANCE = 0.5f;
-    private static final int ATTACK_COOLDOWN = 5;
+    /** Every 7 seconds, 50% chance to teleport to a random empty walkable tile. */
+    private static final long TELEPORT_INTERVAL_MS = 7000L;
+    /** Magical projectile at most once every 5 real-world seconds. */
+    public static final long SPELL_ATTACK_INTERVAL_MS = 5000L;
     private static final int SPELL_DAMAGE = 8;
+    /** Max tiles the bolt travels after leaving the sorcerer's cell. */
     private static final int SPELL_RANGE = 5;
+    private static final long CAST_ANIM_DURATION_MS = 450L;
     private static final Random RNG = new Random();
 
-    private int ticksSinceLastAttack = 0;
+    private long spellAttackTimerMs = 0;
+    private long teleportTimerMs = 0;
+    private long castAnimUntilMs = 0;
     private Projectile lastSpell;
 
     /** PDF §2.5.2: marks whether this Sorcerer has already dropped its ring upon defeat. */
     private boolean ringDropped = false;
 
+    /** 10 HP, ATK 8 (bolt damage), DEF 0, STR 0 per spec. */
     public Sorcerer() {
-        super("Sorcerer", 10, 8, 0, 5, 60, 40);
+        super("Sorcerer", 10, 8, 0, 0, 60, 40);
     }
 
     public boolean isRingDropped() { return ringDropped; }
 
     public void markRingDropped() { this.ringDropped = true; }
 
+    public boolean isCastAnimActive() {
+        return System.currentTimeMillis() < castAnimUntilMs;
+    }
+
+    private void triggerCastAnim() {
+        castAnimUntilMs = System.currentTimeMillis() + CAST_ANIM_DURATION_MS;
+    }
+
+    /**
+     * §2.5.2: Sorcerer does not walk. Spell fire and teleport are driven by
+     * {@link #tickSpellAttack} and {@link #tickTeleport} from the game loop.
+     */
     @Override
     public void decideAction(Character target, Map map, GameSession session) {
-        if (target == null || map == null || !isAlive() || !target.isAlive()) {
+        // No movement — teleport-only.
+    }
+
+    /**
+     * §2.5.2: launch a bolt toward the hero every {@link #SPELL_ATTACK_INTERVAL_MS}.
+     * Hero position is always known; line-of-sight is not required to start a cast.
+     */
+    public void tickSpellAttack(long deltaMs, Character target, Map map, GameSession session) {
+        if (deltaMs <= 0 || target == null || map == null || session == null
+                || !isAlive() || !target.isAlive()) {
             return;
         }
-
-        ticksSinceLastAttack++;
-
-        int dist = Math.abs(target.getRow() - getRow()) + Math.abs(target.getCol() - getCol());
-        boolean teleported = false;
-        if (dist <= 1 && RNG.nextFloat() < TELEPORT_CHANCE) {
-            teleported = teleportToRandomWalkable(map, target);
+        spellAttackTimerMs += deltaMs;
+        if (spellAttackTimerMs < SPELL_ATTACK_INTERVAL_MS) {
+            return;
         }
+        spellAttackTimerMs -= SPELL_ATTACK_INTERVAL_MS;
 
-        if (!teleported && ticksSinceLastAttack >= ATTACK_COOLDOWN && hasLineOfSight(target, map)) {
-            Projectile p = castSpell(target, map);
-            if (p != null && session != null) {
-                session.addProjectile(p);
-            }
-            ticksSinceLastAttack = 0;
+        Projectile p = castSpellToward(target);
+        if (p != null) {
+            session.addProjectile(p);
+            triggerCastAnim();
         }
     }
 
-    public Projectile castSpell(Character target, Map map) {
-        if (target == null || !target.isAlive() || map == null) {
-            return null;
+    /**
+     * §2.5.2: every 7 s, 50% chance to teleport to a random empty floor cell.
+     */
+    public void tickTeleport(long deltaMs, Map map, Character avoid) {
+        if (deltaMs <= 0 || map == null || !isAlive()) {
+            return;
         }
-        if (!hasLineOfSight(target, map)) {
+        teleportTimerMs += deltaMs;
+        while (teleportTimerMs >= TELEPORT_INTERVAL_MS) {
+            teleportTimerMs -= TELEPORT_INTERVAL_MS;
+            if (RNG.nextFloat() < TELEPORT_CHANCE) {
+                teleportToRandomEmptyCell(map, avoid);
+            }
+        }
+    }
+
+    /**
+     * Aims at the hero's known position (8-direction). Walls/objects block the bolt in
+     * {@link com.kurawler.engine.GameLoop#updateProjectiles()}.
+     */
+    public Projectile castSpellToward(Character target) {
+        if (target == null || !target.isAlive()) {
             return null;
         }
         int dr = Integer.signum(target.getRow() - getRow());
@@ -71,41 +117,12 @@ public class Sorcerer extends Enemy {
         return p;
     }
 
-    private boolean hasLineOfSight(Character target, Map map) {
-        int r = getRow();
-        int c = getCol();
-        int dr = Integer.signum(target.getRow() - r);
-        int dc = Integer.signum(target.getCol() - c);
-        if (dr == 0 && dc == 0) {
-            return false;
-        }
-        if (dr != 0 && dc != 0
-                && Math.abs(target.getRow() - r) != Math.abs(target.getCol() - c)) {
-            return false;
-        }
-        r += dr;
-        c += dc;
-        while (r != target.getRow() || c != target.getCol()) {
-            GridCell cell = map.getCell(r, c);
-            if (cell == null) {
-                return false;
-            }
-            if (cell.getStaticObject() != null && !cell.getStaticObject().isPassable()) {
-                return false;
-            }
-            r += dr;
-            c += dc;
-        }
-        return true;
-    }
-
-    /** @return true only if the sorcerer actually moved to a new cell */
-    private boolean teleportToRandomWalkable(Map map, Character avoid) {
+    private void teleportToRandomEmptyCell(Map map, Character avoid) {
         List<GridCell> candidates = new ArrayList<>();
         for (int r = 0; r < map.getHeight(); r++) {
             for (int c = 0; c < map.getWidth(); c++) {
                 GridCell cell = map.getCell(r, c);
-                if (cell == null || cell.isBlocked()) {
+                if (cell == null || !cell.isEnemyWalkable()) {
                     continue;
                 }
                 if (avoid != null && avoid.getRow() == r && avoid.getCol() == c) {
@@ -115,15 +132,16 @@ public class Sorcerer extends Enemy {
             }
         }
         if (candidates.isEmpty()) {
-            return false;
+            return;
         }
         moveToCell(candidates.get(RNG.nextInt(candidates.size())));
-        return true;
     }
 
     public float getTeleportChance() { return TELEPORT_CHANCE; }
 
-    public int getAttackCooldown() { return ATTACK_COOLDOWN; }
+    public int getAttackCooldownSeconds() {
+        return (int) (SPELL_ATTACK_INTERVAL_MS / 1000L);
+    }
 
     public int getSpellDamage() { return SPELL_DAMAGE; }
 

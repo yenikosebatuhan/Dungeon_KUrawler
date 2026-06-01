@@ -9,6 +9,7 @@ import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Key;
 import com.kurawler.model.object.PortableContainer;
 import com.kurawler.model.object.Scroll;
+import com.kurawler.model.object.ShadowCloneScroll;
 import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
@@ -41,6 +42,7 @@ public class ObjectPalette {
         availableObjects.add(createObjectByName("Golden Key"));
         availableObjects.add(createObjectByName("Chest"));
         availableObjects.add(createObjectByName("Pouch"));
+        availableObjects.add(createObjectByName("Shadow Clone Scroll"));
 
         availableCharacters.add(new Hero("Adventurer"));
         availableCharacters.add(new Knight());
@@ -110,6 +112,8 @@ public class ObjectPalette {
                 return new StaticContainer("Chest", "A wooden chest");
             case "Pouch":
                 return new PortableContainer("Pouch", "A small pouch", 4);
+            case "Shadow Clone Scroll":
+                return new ShadowCloneScroll();
             default:
                 return null;
         }

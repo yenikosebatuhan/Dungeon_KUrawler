@@ -11,6 +11,7 @@ import com.kurawler.model.object.Wearable;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelReader;
+import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
 import java.util.ArrayList;
@@ -96,6 +97,9 @@ public class TileRenderer {
     // Wearable
     private Image armorSprite;
     private Image shieldSprite;
+
+    /** Cached hero sprites with tunic recolored to gray (armor equipped). */
+    private final java.util.Map<Image, Image> heroArmoredTunicCache = new java.util.HashMap<>();
 
     // Containers
     private Image chestSprite;
@@ -874,7 +878,12 @@ public class TileRenderer {
     // ---------- CHARACTERS ----------
 
     public void drawHero(GraphicsContext gc, int screenX, int screenY) {
-        drawCharacterSprite(gc, heroSprite, screenX, screenY, Color.web("#4caf50"));
+        drawHero(gc, screenX, screenY, false);
+    }
+
+    public void drawHero(GraphicsContext gc, int screenX, int screenY, boolean wearingBodyArmor) {
+        Image sprite = wearingBodyArmor ? heroWithArmoredTunic(heroSprite) : heroSprite;
+        drawCharacterSprite(gc, sprite, screenX, screenY, Color.web("#4caf50"));
     }
 
     public void drawHeroByName(GraphicsContext gc, int screenX, int screenY, String name) {
@@ -883,24 +892,248 @@ public class TileRenderer {
     }
 
     public void drawHeroFacing(GraphicsContext gc, int screenX, int screenY, int facingR, int facingC) {
-        drawHeroFacing(gc, screenX, screenY, facingR, facingC, 0);
+        drawHeroFacing(gc, screenX, screenY, facingR, facingC, 0, false);
     }
 
     /** walkFrame 0 = idle, 1 = alternate walk frame. */
     public void drawHeroFacing(GraphicsContext gc, int screenX, int screenY,
                                int facingR, int facingC, int walkFrame) {
+        drawHeroFacing(gc, screenX, screenY, facingR, facingC, walkFrame, false);
+    }
+
+    /** When {@code wearingBodyArmor}, olive tunic pixels are drawn as cool gray (armor look). */
+    public void drawHeroFacing(GraphicsContext gc, int screenX, int screenY,
+                               int facingR, int facingC, int walkFrame, boolean wearingBodyArmor) {
         Image idle = heroSprite != null ? heroSprite : heroSpriteRight;
         Image walk;
         if (facingC < 0) {
             walk = walkFrame == 1 && heroSpriteLeft != null ? heroSpriteLeft : idle;
-            drawCharacterSpriteMirrored(gc, walk, screenX, screenY, true, false);
+            drawCharacterSpriteMirrored(gc, resolveHeroSprite(walk, wearingBodyArmor), screenX, screenY, true, false);
         } else if (facingR < 0) {
             walk = walkFrame == 1 && heroSpriteUp != null ? heroSpriteUp : idle;
-            drawCharacterSprite(gc, walk, screenX, screenY, Color.web("#4caf50"));
+            drawCharacterSprite(gc, resolveHeroSprite(walk, wearingBodyArmor), screenX, screenY, Color.web("#4caf50"));
         } else {
             walk = walkFrame == 1 && heroSpriteRight != null ? heroSpriteRight : idle;
-            drawCharacterSprite(gc, walk, screenX, screenY, Color.web("#4caf50"));
+            drawCharacterSprite(gc, resolveHeroSprite(walk, wearingBodyArmor), screenX, screenY, Color.web("#4caf50"));
         }
+    }
+
+    private Image resolveHeroSprite(Image base, boolean wearingBodyArmor) {
+        return wearingBodyArmor ? heroWithArmoredTunic(base) : base;
+    }
+
+    private Image heroWithArmoredTunic(Image base) {
+        if (base == null) {
+            return null;
+        }
+        return heroArmoredTunicCache.computeIfAbsent(base, this::recolorHeroTunicToArmor);
+    }
+
+    /** Replaces olive/yellow-green tunic pixels with gray; keeps face, hair, eyes, outline. */
+    private Image recolorHeroTunicToArmor(Image src) {
+        int w = (int) src.getWidth();
+        int h = (int) src.getHeight();
+        if (w <= 0 || h <= 0) {
+            return src;
+        }
+        PixelReader reader = src.getPixelReader();
+        if (reader == null) {
+            return src;
+        }
+        WritableImage out = new WritableImage(w, h);
+        PixelWriter writer = out.getPixelWriter();
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                Color c = reader.getColor(x, y);
+                writer.setColor(x, y, isHeroTunicPixel(c) ? mapTunicToArmorGray(c) : c);
+            }
+        }
+        return out;
+    }
+
+    private static boolean isHeroTunicPixel(Color c) {
+        if (c.getOpacity() < 0.18) {
+            return false;
+        }
+        double r = c.getRed();
+        double g = c.getGreen();
+        double b = c.getBlue();
+        // Skin, blonde hair, blue eyes.
+        if (r > 0.72 && g > 0.62) {
+            return false;
+        }
+        if (b > r && b > g && g > 0.42) {
+            return false;
+        }
+        // Olive / yellow-green tunic (not near-black outline).
+        return g >= r && r >= b && g > 0.32 && b < 0.52;
+    }
+
+    private static Color mapTunicToArmorGray(Color c) {
+        double lum = 0.299 * c.getRed() + 0.587 * c.getGreen() + 0.114 * c.getBlue();
+        double gray = Math.min(1.0, lum * 0.95 + 0.12);
+        return new Color(gray * 0.90, gray, gray * 0.96, c.getOpacity());
+    }
+
+    /** Off-hand shield (opposite side from weapon). Drawn after body, before weapon. */
+    public void drawEquippedShieldOnHero(GraphicsContext gc, int screenX, int screenY,
+            int facingR, int facingC, String shieldName) {
+        Image img = resolveWearableImage(shieldName, true);
+        if (img == null) {
+            return;
+        }
+        HandPose pose = offHandPose(facingR, facingC);
+        double size = tileSize * 0.46;
+        double cx = screenX + tileSize * 0.50;
+        double cy = screenY + tileSize * 0.50;
+
+        gc.save();
+        gc.setImageSmoothing(false);
+        gc.translate(cx + pose.offsetX, cy + pose.offsetY);
+        if (pose.mirror) {
+            gc.scale(-1, 1);
+        }
+        gc.rotate(pose.rotationDeg);
+        drawScaledFit(gc, img, -size * 0.5, -size * 0.5, size, size * 0.05);
+        gc.restore();
+    }
+
+    /** Main-hand weapon held by the hero on the map (not arrows). */
+    public void drawEquippedWeaponInHand(GraphicsContext gc, int screenX, int screenY,
+            int facingR, int facingC, String weaponName) {
+        if (weaponName == null || weaponName.isBlank() || WeaponCatalog.isArrow(weaponName)) {
+            return;
+        }
+        Image img = resolveWeaponImage(weaponName);
+        if (img == null) {
+            return;
+        }
+
+        HandPose pose = mainHandPose(facingR, facingC);
+        double size = tileSize * 0.54;
+        double cx = screenX + tileSize * 0.50;
+        double cy = screenY + tileSize * 0.54;
+        double offsetX = pose.offsetX;
+        double offsetY = pose.offsetY;
+        double rotDeg = pose.rotationDeg;
+        boolean mirror = pose.mirror;
+
+        if (WeaponCatalog.isBow(weaponName)) {
+            size = tileSize * 0.50;
+            rotDeg = facingC < 0 ? 168 : 12;
+            offsetY = tileSize * 0.0;
+        } else if (WeaponCatalog.isStaffLike(weaponName)) {
+            size = tileSize * 0.64;
+            rotDeg = facingC < 0 ? 195 : 345;
+            offsetX = facingC < 0 ? -tileSize * 0.14 : tileSize * 0.14;
+            offsetY = -tileSize * 0.10;
+        } else if (WeaponCatalog.isBomb(weaponName) || WeaponCatalog.isFlailBall(weaponName)) {
+            size = tileSize * 0.40;
+            offsetY += tileSize * 0.08;
+        }
+
+        gc.save();
+        gc.setImageSmoothing(false);
+        gc.translate(cx + offsetX, cy + offsetY);
+        if (mirror) {
+            gc.scale(-1, 1);
+        }
+        gc.rotate(rotDeg);
+        drawScaledFit(gc, img, -size * 0.5, -size * 0.5, size, size * 0.05);
+        gc.restore();
+    }
+
+    private static final class HandPose {
+        final double offsetX;
+        final double offsetY;
+        final double rotationDeg;
+        final boolean mirror;
+
+        HandPose(double offsetX, double offsetY, double rotationDeg, boolean mirror) {
+            this.offsetX = offsetX;
+            this.offsetY = offsetY;
+            this.rotationDeg = rotationDeg;
+            this.mirror = mirror;
+        }
+    }
+
+    /** Main hand — weapon side (right when facing east). */
+    private HandPose mainHandPose(int facingR, int facingC) {
+        double t = tileSize;
+        if (facingC < 0) {
+            return new HandPose(-t * 0.30, t * 0.04, 158, true);
+        }
+        if (facingR < 0) {
+            return new HandPose(t * 0.24, -t * 0.18, 248, false);
+        }
+        if (facingR > 0) {
+            return new HandPose(t * 0.26, t * 0.14, 112, false);
+        }
+        return new HandPose(t * 0.30, t * 0.04, 118, false);
+    }
+
+    /** Off-hand — shield side (left when facing east). */
+    private HandPose offHandPose(int facingR, int facingC) {
+        double t = tileSize;
+        if (facingC < 0) {
+            return new HandPose(t * 0.30, t * 0.06, 22, true);
+        }
+        if (facingR < 0) {
+            return new HandPose(-t * 0.28, -t * 0.10, 290, false);
+        }
+        if (facingR > 0) {
+            return new HandPose(-t * 0.28, t * 0.10, 68, false);
+        }
+        return new HandPose(-t * 0.30, t * 0.06, 72, false);
+    }
+
+    private Image resolveWearableImage(String name, boolean shield) {
+        if (name != null && !name.isBlank()) {
+            Image named = spriteForAsset(name);
+            if (named != null) {
+                return named;
+            }
+        }
+        return shield ? shieldSprite : armorSprite;
+    }
+
+    private Image resolveWeaponImage(String weaponName) {
+        if (weaponName == null) {
+            return swordSprite;
+        }
+        Image atlas = atlasRegistry.get(weaponName);
+        if (atlas != null) {
+            return atlas;
+        }
+        String lower = weaponName.toLowerCase();
+        if (lower.contains("axe")) {
+            return axeSprite;
+        }
+        if (lower.contains("bow")) {
+            return bowSprite;
+        }
+        if (lower.contains("arrow")) {
+            Image arrowImg = atlasRegistry.get("Arrow");
+            return arrowImg != null ? arrowImg : bowSprite;
+        }
+        if (lower.contains("flail ball")) {
+            Image flailImg = atlasRegistry.get("Flail Ball");
+            return flailImg != null ? flailImg : hammerSprite;
+        }
+        if (lower.contains("bomb")) {
+            Image bombImg = atlasRegistry.get("Bomb");
+            return bombImg != null ? bombImg : hammerSprite;
+        }
+        if (lower.contains("staff") || lower.contains("scepter") || lower.contains("spell")) {
+            return staffSprite;
+        }
+        if (lower.contains("dagger") || lower.contains("knife")) {
+            return daggerSprite;
+        }
+        if (lower.contains("hammer") || lower.contains("mace") || lower.contains("club")) {
+            return hammerSprite;
+        }
+        return swordSprite;
     }
 
     public void drawShadowClone(GraphicsContext gc, int screenX, int screenY) {

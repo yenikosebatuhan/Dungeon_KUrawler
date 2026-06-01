@@ -25,12 +25,15 @@ public class AudioManager {
     private boolean musicEnabled = true;
 
     private AudioManager() {
-        sounds.put("button",   "button.wav");
+        sounds.put("button",   "click.wav");
         sounds.put("attack",   "attack.wav");
         sounds.put("item",     "item.wav");
         sounds.put("enemyDown","enemy_down.wav");
         sounds.put("gameOver", "game_over.wav");
         sounds.put("victory",  "victory.wav");
+        sounds.put("interact", "click.wav");
+        sounds.put("error",    "click.wav");
+        sounds.put("break",    "attack.wav");
 
         // Looping/background tracks (separate channel from short sound effects).
         music.put("menu",     "menu_loop.wav");
