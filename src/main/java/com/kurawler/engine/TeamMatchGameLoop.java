@@ -28,9 +28,9 @@ public class TeamMatchGameLoop {
     private boolean running;
 
     /** Match classic GameLoop.ENEMY_TICK_INTERVAL exactly. */
-    private static final int ENEMY_TICK_INTERVAL     = 30;
+    private static final int ENEMY_TICK_INTERVAL     = 42;
     /** Match classic GameLoop.PROJECTILE_TICK_INTERVAL exactly. */
-    private static final int PROJECTILE_TICK_INTERVAL = 8;
+    private static final int PROJECTILE_TICK_INTERVAL = 11;
 
     private int enemyTickCounter       = 0;
     private int projectileTickCounter  = 0;
