@@ -8,8 +8,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Action: Hero discards an Item from the inventory, dropping it on the
- * current map cell.
+ * Action: Hero discards an Item from the inventory (permanently lost, §2.4.2).
  *
  * @requires item != null
  * @modifies none (delegates all state changes to DiscardEffect)

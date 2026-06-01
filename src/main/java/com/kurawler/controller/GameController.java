@@ -9,10 +9,12 @@ import com.kurawler.action.WearAction;
 import com.kurawler.action.MoveAction;
 import com.kurawler.action.TakeAction;
 import com.kurawler.effect.AddToInventoryEffect;
+import com.kurawler.effect.BreakObjectEffect;
 import com.kurawler.effect.Effect;
 import com.kurawler.effect.RemoveFromCellEffect;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
+import com.kurawler.model.MapFactory;
 import com.kurawler.model.Inventory;
 import com.kurawler.model.WeaponCatalog;
 import com.kurawler.model.character.Hero;
@@ -160,7 +162,15 @@ public class GameController {
             return false;
         }
         executeAction(new ReadAction(scroll));
+        showPortalMessageIfAny();
         return true;
+    }
+
+    private void showPortalMessageIfAny() {
+        String msg = session.consumeLastPortalMessage();
+        if (msg != null && !msg.isEmpty()) {
+            System.out.println("[Scroll] " + msg);
+        }
     }
 
     public boolean searchObject(StaticObject object) {
@@ -171,14 +181,13 @@ public class GameController {
         return true;
     }
 
-    public boolean breakObject(int row, int col) {
-        GridCell cell = session.getMap().getCell(row, col);
-        if (cell == null || cell.getStaticObject() == null
-                || !cell.getStaticObject().isSearchable()) {
-            return false;
+    public BreakAction.BreakRoll breakObject(int row, int col) {
+        BreakAction.BreakRoll roll = BreakAction.attempt(session, row, col);
+        if (roll.succeeded()) {
+            new BreakObjectEffect(row, col).apply(session);
+            session.advanceTurn();
         }
-        executeAction(new BreakAction(row, col));
-        return true;
+        return roll;
     }
 
     /**

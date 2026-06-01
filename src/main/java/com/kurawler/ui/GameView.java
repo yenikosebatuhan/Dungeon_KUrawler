@@ -1,5 +1,6 @@
 package com.kurawler.ui;
 
+import com.kurawler.action.BreakAction;
 import com.kurawler.controller.GameController;
 import com.kurawler.engine.AudioManager;
 import com.kurawler.engine.GameLoop;
@@ -85,6 +86,9 @@ public class GameView {
     private static final int TILE_SIZE = 48;
     /** Taller HUD so the stats panel fits timer + ATK + DEF + WPN + weapon name (ref. image 2). */
     private static final int HUD_HEIGHT = 104;
+    /** Fixed icon column so STR / ATK / DEF labels start on the same x. */
+    private static final double HUD_STAT_ICON_COL_W = 16.0;
+    private static final Color HUD_STAT_TEXT = Color.web("#ffffff", 0.92);
     private static final int INFO_BAR_HEIGHT = 40;
     private static final double LERP_SPEED = 0.20;
     /** Fraction of flexible width given to the resource bars panel (rest = stats). */
@@ -117,6 +121,8 @@ public class GameView {
     private Scene playScene;
     private boolean playActive;
     private boolean endScreenShown;
+    /** Open chest/shelf/container popup — closed on victory, game over, or leaving play. */
+    private Stage activeContainerPopup;
 
     private final java.util.Map<Object, double[]> smoothPositions = new java.util.HashMap<>();
     private long animTick = 0;
@@ -482,6 +488,7 @@ public class GameView {
     public void shutdown() {
         playActive = false;
         endScreenShown = true;
+        closeActiveContainerPopup();
         if (animationTimer != null) {
             animationTimer.stop();
             animationTimer = null;
@@ -491,6 +498,15 @@ public class GameView {
             teamMatchGameLoop = null;
         }
         gameLoop = null;
+    }
+
+    /** Dismisses an open chest/shelf popup (e.g. before victory or returning to menu). */
+    private void closeActiveContainerPopup() {
+        Stage popup = activeContainerPopup;
+        activeContainerPopup = null;
+        if (popup != null && popup.isShowing()) {
+            popup.close();
+        }
     }
 
     private boolean isPlaySceneActive() {
@@ -523,11 +539,13 @@ public class GameView {
             return;
         }
         endScreenShown = true;
+        closeActiveContainerPopup();
         AudioManager.getInstance().playMusic("gameover", false);
         Platform.runLater(() -> {
             if (!isPlaySceneActive()) {
                 return;
             }
+            closeActiveContainerPopup();
             showEndScreen(
                     "\u2620 YOU DIED \u2620",
                     "Your hero has fallen in the dungeon.\nThe darkness claims another soul...",
@@ -540,6 +558,7 @@ public class GameView {
             return;
         }
         endScreenShown = true;
+        closeActiveContainerPopup();
         AudioManager.getInstance().playMusic("victory", false);
         GameSession session = controller.getSession();
         String itemName = session.getTargetObjective() != null
@@ -549,6 +568,7 @@ public class GameView {
             if (!isPlaySceneActive()) {
                 return;
             }
+            closeActiveContainerPopup();
             showEndScreen(
                     "\u2605 VICTORY \u2605",
                     "You found the " + itemName + "!\n"
@@ -751,6 +771,7 @@ public class GameView {
         okBtn.setOnMouseEntered(e -> okBtn.setStyle(hover));
         okBtn.setOnMouseExited(e -> okBtn.setStyle(base));
         okBtn.setOnAction(e -> {
+            closeActiveContainerPopup();
             popup.close();
             playActive = false;
             shutdown();
@@ -768,6 +789,7 @@ public class GameView {
         popup.setTitle(title);
 
         popup.setOnShown(e -> {
+            closeActiveContainerPopup();
             popup.setX(stage.getX() + (stage.getWidth() - 420) / 2);
             popup.setY(stage.getY() + (stage.getHeight() - 300) / 2);
         });
@@ -1003,6 +1025,9 @@ public class GameView {
                     break;
                 }
                 if (tryOpenAdjacentBookshelf()) {
+                    break;
+                }
+                if (tryBreakAdjacent()) {
                     break;
                 }
                 if (tryOpenAdjacentContainer()) {
@@ -1277,6 +1302,61 @@ public class GameView {
         return false;
     }
 
+    /** E key: attempt to break an adjacent chest/crate (STR-based chance). */
+    private boolean tryBreakAdjacent() {
+        GameSession session = controller.getSession();
+        Hero hero = session.getHero();
+        com.kurawler.model.Map map = session.getMap();
+        int hr = hero.getRow();
+        int hc = hero.getCol();
+
+        int[][] offsets = {
+                {0, 0}, {-1, 0}, {1, 0}, {0, -1}, {0, 1},
+                {-1, -1}, {-1, 1}, {1, -1}, {1, 1}
+        };
+
+        for (int[] off : offsets) {
+            int row = hr + off[0];
+            int col = hc + off[1];
+            GridCell cell = map.getCell(row, col);
+            if (cell == null || !MapFactory.hasBreakableTarget(cell)) {
+                continue;
+            }
+            handleBreakAt(row, col, session);
+            render();
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleBreakAt(int row, int col, GameSession session) {
+        BreakAction.BreakRoll roll = controller.breakObject(row, col);
+        if (roll.getKind() == BreakAction.BreakRoll.Kind.NO_TARGET) {
+            return false;
+        }
+        showGameMessage(roll.message());
+        if (roll.getKind() == BreakAction.BreakRoll.Kind.NO_ENERGY || !roll.succeeded()) {
+            AudioManager.getInstance().play("error");
+            return false;
+        }
+        AudioManager.getInstance().play("interact");
+        openContainerPopupAfterBreak(row, col, session);
+        return true;
+    }
+
+    private void openContainerPopupAfterBreak(int row, int col, GameSession session) {
+        GridCell cell = session.getMap().getCell(row, col);
+        if (cell == null) {
+            return;
+        }
+        for (GameObject obj : cell.getObjects()) {
+            if (obj instanceof StaticContainer sc && sc.isOpened()) {
+                Platform.runLater(() -> showContainerContentsPopup(sc, session));
+                return;
+            }
+        }
+    }
+
     private boolean tryOpenAdjacentContainer() {
         GameSession session = controller.getSession();
         Hero hero = session.getHero();
@@ -1303,6 +1383,9 @@ public class GameView {
                     showGameMessage("It is locked. You need a specific key.");
                     AudioManager.getInstance().play("error");
                     return true;
+                }
+                if (!sc.isOpened()) {
+                    continue;
                 }
                 if (!sc.isShelfLike() && sc.isEmpty()) {
                     sc.removeFromMapIfLooted(map);
@@ -1342,11 +1425,11 @@ public class GameView {
             if (obj instanceof StaticContainer) {
                 StaticContainer sc = (StaticContainer) obj;
                 if (sc.isLocked()) {
-                    // Check if Hero has the required key
                     boolean hasKey = false;
                     for (Item invItem : hero.getInventory().getItems()) {
-                        if (invItem instanceof com.kurawler.model.object.Key && 
-                           ((com.kurawler.model.object.Key) invItem).getKeyId().equals(sc.getRequiredKeyId())) {
+                        if (invItem instanceof com.kurawler.model.object.Key
+                                && ((com.kurawler.model.object.Key) invItem).getKeyId()
+                                        .equals(sc.getRequiredKeyId())) {
                             hasKey = true;
                             break;
                         }
@@ -1356,11 +1439,18 @@ public class GameView {
                     } else {
                         actionList.add(new String[]{"LOCKED", sc.getName(), "locked_info"});
                     }
-                } else {
+                    if (sc.isBreakable() && !sc.isBroken()) {
+                        actionList.add(new String[]{"BREAK", sc.getName(), "break"});
+                    }
+                } else if (sc.isOpened()) {
                     actionList.add(new String[]{"OPEN", sc.getName(), "open_container"});
+                } else if (sc.isBreakable()) {
+                    actionList.add(new String[]{"BREAK", sc.getName(), "break"});
                 }
-            } else if (obj instanceof Item) {
-                actionList.add(new String[]{"TAKE", obj.getName(), "take"});
+            } else if (obj instanceof Item item) {
+                for (com.kurawler.model.object.ItemAction itemAction : item.getActions()) {
+                    actionList.add(itemAction.toMenuRow(item.getName()));
+                }
             }
         }
         StaticObject staticObj = cell.getStaticObject();
@@ -1377,7 +1467,9 @@ public class GameView {
                 actionList.add(new String[]{"OPEN", staticObj.getName(), "open_bookshelf"});
             }
             actionList.add(new String[]{"SEARCH", staticObj.getName(), "search"});
-            actionList.add(new String[]{"BREAK", staticObj.getName(), "break"});
+            if (MapFactory.isBreakableStaticObject(staticObj)) {
+                actionList.add(new String[]{"BREAK", staticObj.getName(), "break"});
+            }
         }
         if (cell.getOccupyingCharacter() instanceof Enemy) {
             Enemy enemy = (Enemy) cell.getOccupyingCharacter();
@@ -1416,7 +1508,11 @@ public class GameView {
             String color = "#e8c84a";
             if ("attack".equals(type)) color = "#e74c3c";
             else if ("search".equals(type)) color = "#5dade2";
-            else if ("break".equals(type)) color = "#e67e22";
+            else if ("break".equals(type) || "break_item".equals(type)) color = "#e67e22";
+            else if ("eat".equals(type)) color = "#55efc4";
+            else if ("wear".equals(type) || "equip".equals(type)) color = "#5dade2";
+            else if ("read".equals(type)) color = "#a29bfe";
+            else if ("open_item".equals(type)) color = "#f39c12";
 
             Button btn = popupButton(verb + " " + target, color);
             
@@ -1491,9 +1587,7 @@ public class GameView {
                 }
                 break;
             case "break":
-                boolean broken = controller.breakObject(row, col);
-                showGameMessage(broken ? "Broke it!" : "Cannot break.");
-                AudioManager.getInstance().play("interact"); // Added interact sound
+                handleBreakAt(row, col, session);
                 break;
             case "attack":
                 if (cell.getOccupyingCharacter() instanceof Enemy) {
@@ -1528,10 +1622,14 @@ public class GameView {
                         StaticContainer sc = (StaticContainer) obj;
                         if ("open_locked".equals(type)) {
                             sc.unlock();
+                            sc.markBroken();
                             showGameMessage("Unlocked " + target + "!");
+                        } else if (!sc.isOpened()) {
+                            showGameMessage("Break the container open first!");
+                            AudioManager.getInstance().play("error");
+                            break;
                         }
                         AudioManager.getInstance().play("interact");
-                        // Wait for any previous popup to close, then open contents
                         Platform.runLater(() -> showContainerContentsPopup(sc, session));
                         break;
                     }
@@ -1541,8 +1639,156 @@ public class GameView {
                 showGameMessage("It is locked. You need a specific key.");
                 AudioManager.getInstance().play("error"); // Optional error sound
                 break;
+            case "eat": {
+                Item floorItem = findItemOnCell(cell, target);
+                if (!(floorItem instanceof Consumable cons)) {
+                    break;
+                }
+                if (hero.getInventory().hasItem(cons)) {
+                    com.kurawler.action.Action action = new com.kurawler.action.EatAction(cons);
+                    for (com.kurawler.effect.Effect eff : action.resolve(session)) {
+                        eff.apply(session);
+                    }
+                } else if (cell.removeObject(cons)) {
+                    hero.consumeConsumable(cons);
+                } else {
+                    break;
+                }
+                AudioManager.getInstance().play("interact");
+                showGameMessage("Used " + cons.getName());
+                break;
+            }
+            case "wear": {
+                Item floorItem = findItemOnCell(cell, target);
+                if (!(floorItem instanceof Wearable wearable)) {
+                    break;
+                }
+                wearable = resolveInventoryItem(cell, wearable, hero, row, col);
+                if (wearable == null) {
+                    showGameMessage("Inventory full");
+                    AudioManager.getInstance().play("error");
+                    break;
+                }
+                controller.wearItem(wearable);
+                AudioManager.getInstance().play("interact");
+                showGameMessage("Wearing " + wearable.getName());
+                break;
+            }
+            case "read": {
+                Item floorItem = findItemOnCell(cell, target);
+                if (!(floorItem instanceof Scroll scroll)) {
+                    break;
+                }
+                scroll = resolveInventoryItem(cell, scroll, hero, row, col);
+                if (scroll == null) {
+                    showGameMessage("Inventory full");
+                    AudioManager.getInstance().play("error");
+                    break;
+                }
+                if (controller.readScroll(scroll)) {
+                    AudioManager.getInstance().play("interact");
+                    String msg = session.consumeLastPortalMessage();
+                    showGameMessage(msg != null && !msg.isEmpty()
+                            ? msg : "Read " + scroll.getName());
+                } else {
+                    AudioManager.getInstance().play("error");
+                    showGameMessage("Could not read that scroll.");
+                }
+                break;
+            }
+            case "equip": {
+                Item floorItem = findItemOnCell(cell, target);
+                if (!(floorItem instanceof Weapon weapon)) {
+                    break;
+                }
+                weapon = resolveInventoryItem(cell, weapon, hero, row, col);
+                if (weapon == null) {
+                    showGameMessage("Inventory full");
+                    AudioManager.getInstance().play("error");
+                    break;
+                }
+                boolean equipFailed = false;
+                com.kurawler.action.EquipAction equipAction = new com.kurawler.action.EquipAction(weapon);
+                for (com.kurawler.effect.Effect eff : equipAction.resolve(session)) {
+                    eff.apply(session);
+                    if (eff instanceof com.kurawler.effect.EquipEffect equipEff) {
+                        String msg = equipEff.getLastMessage();
+                        if (msg != null && !msg.isEmpty()) {
+                            showGameMessage(msg);
+                            AudioManager.getInstance().play("error");
+                            equipFailed = true;
+                        }
+                    }
+                }
+                if (!equipFailed) {
+                    AudioManager.getInstance().play("interact");
+                    showGameMessage("Equipped " + weapon.getName());
+                }
+                break;
+            }
+            case "break_item": {
+                Item floorItem = findItemOnCell(cell, target);
+                if (floorItem == null) {
+                    break;
+                }
+                if (cell.removeObject(floorItem)) {
+                    showGameMessage("Broke " + floorItem.getName());
+                    AudioManager.getInstance().play("interact");
+                }
+                break;
+            }
+            case "open_item":
+                for (GameObject obj : cell.getObjects()) {
+                    if (obj instanceof com.kurawler.model.object.PortableContainer bag
+                            && obj.getName().equals(target)) {
+                        AudioManager.getInstance().play("interact");
+                        Platform.runLater(() -> showContainerContentsPopup(bag, session));
+                        break;
+                    }
+                }
+                break;
         }
         render();
+    }
+
+    private static Item findItemOnCell(GridCell cell, String name) {
+        if (cell == null || name == null) {
+            return null;
+        }
+        for (GameObject obj : cell.getObjects()) {
+            if (obj instanceof Item item && name.equals(item.getName())) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the inventory instance for a floor item, picking it up first when needed.
+     */
+    private <T extends Item> T resolveInventoryItem(GridCell cell, T floorItem, Hero hero,
+            int row, int col) {
+        for (Item inv : hero.getInventory().getItems()) {
+            if (inv == floorItem || inv.getName().equals(floorItem.getName())) {
+                @SuppressWarnings("unchecked")
+                T match = (T) inv;
+                return match;
+            }
+        }
+        if (hero.getInventory().isFull()) {
+            return null;
+        }
+        if (!controller.interactWithObject(row, col, floorItem)) {
+            return null;
+        }
+        for (Item inv : hero.getInventory().getItems()) {
+            if (inv.getName().equals(floorItem.getName())) {
+                @SuppressWarnings("unchecked")
+                T match = (T) inv;
+                return match;
+            }
+        }
+        return null;
     }
 
     private void showInGameMenu() {
@@ -1620,11 +1866,13 @@ public class GameView {
             AudioManager.getInstance().play("button");
             leavePlay[0] = true;
             closePopup.run();
+            closeActiveContainerPopup();
             GameSession s = controller.getSession();
             if (s.isEditorTestPlay()) {
                 shutdown();
                 screenManager.returnToEditorAfterTest(s, "Returned to level editor.");
             } else {
+                shutdown();
                 screenManager.showMainMenu();
             }
         });
@@ -1636,9 +1884,12 @@ public class GameView {
             AudioManager.getInstance().play("button");
             leavePlay[0] = false;
             closePopup.run();
-            boolean ok = com.kurawler.model.MapFactory.restartCurrentFloor(controller.getSession());
+            boolean ok = MapFactory.restartCurrentFloor(controller.getSession());
             if (ok) {
-                if (gameLoop != null) gameLoop.refreshMap();
+                if (gameLoop != null) {
+                    gameLoop.refreshMap();
+                    gameLoop.resetEnemySpawner();
+                }
                 render();
                 showGameMessage("Level restarted.");
             }
@@ -1835,6 +2086,9 @@ public class GameView {
                     boolean enemyMoving = Math.abs(pos[0] - targetX) > 1.5
                             || Math.abs(pos[1] - targetY) > 1.5;
                     int enemyWalkFrame = enemyMoving ? (int)(animTick / 5) % 2 : 0;
+                    if (occupant instanceof Sorcerer sorcerer && sorcerer.isCastAnimActive()) {
+                        enemyWalkFrame = 1;
+                    }
                     String type = (occupant instanceof Knight) ? "Knight"
                             : (occupant instanceof Guard) ? "Guard"
                             : (occupant instanceof Assassin) ? "Assassin" : "Sorcerer";
@@ -1880,10 +2134,16 @@ public class GameView {
         int heroSy = (int) heroPos[1];
         boolean heroMoving = Math.abs(heroPos[0] - heroTargetX) > 1.5
                 || Math.abs(heroPos[1] - heroTargetY) > 1.5;
-        // Walk frame is driven by lerp state, not a clock — character is in walk
-        // pose exactly while visually moving, idle the moment it arrives.
+        boolean wearingArmor = hero.getEquippedArmor() != null;
+        boolean wearingShield = hero.getEquippedShield() != null;
         renderer.drawHeroFacing(gc, heroSx, heroSy, hero.getFacingRow(), hero.getFacingCol(),
-                heroMoving ? 1 : 0);
+                heroMoving ? 1 : 0, wearingArmor);
+        if (wearingShield) {
+            renderer.drawEquippedShieldOnHero(gc, heroSx, heroSy,
+                    hero.getFacingRow(), hero.getFacingCol(),
+                    hero.getEquippedShield().getName());
+        }
+        drawHeroEquippedWeapon(gc, heroSx, heroSy, hero);
         renderer.drawHpBar(gc, heroSx, heroSy, hero.getHealth(), hero.getMaxHealth());
 
         int currentHp = hero.getHealth();
@@ -1954,6 +2214,18 @@ public class GameView {
 
     private javafx.scene.image.Image bagIconImg;
 
+    private void drawHeroEquippedWeapon(GraphicsContext gc, int screenX, int screenY, Hero hero) {
+        if (hero == null) {
+            return;
+        }
+        Weapon equipped = hero.getEquippedWeapon();
+        if (equipped == null || WeaponCatalog.isArrow(equipped.getName())) {
+            return;
+        }
+        renderer.drawEquippedWeaponInHand(
+                gc, screenX, screenY, hero.getFacingRow(), hero.getFacingCol(), equipped.getName());
+    }
+
     private void drawHud(GameSession session) {
         Hero hero = session.getHero();
         GraphicsContext gc = hudCanvas.getGraphicsContext2D();
@@ -1980,9 +2252,14 @@ public class GameView {
 
         // Portrait
         drawOrnateHudPanel(gc, L.portraitX, L.panelY, L.portraitW, L.panelH);
-        renderer.drawHero(gc,
-                (int) (L.portraitX + (L.portraitW - TILE_SIZE) / 2),
-                (int) (L.panelY + (L.panelH - TILE_SIZE) / 2));
+        int portraitHeroX = (int) (L.portraitX + (L.portraitW - TILE_SIZE) / 2);
+        int portraitHeroY = (int) (L.panelY + (L.panelH - TILE_SIZE) / 2);
+        Wearable portraitShield = hero.getEquippedShield();
+        renderer.drawHeroPortrait(gc, portraitHeroX, portraitHeroY,
+                hero.getEquippedArmor() != null,
+                portraitShield != null,
+                portraitShield != null ? portraitShield.getName() : null);
+        drawHeroEquippedWeapon(gc, portraitHeroX, portraitHeroY, hero);
 
         // HEALTH / ENERGY / MANA — bars fill panel height
         drawOrnateHudPanel(gc, L.barsX, L.panelY, L.barsW, L.panelH);
@@ -2006,7 +2283,7 @@ public class GameView {
         drawOrnateHudPanel(gc, L.statsX, L.panelY, L.statsW, L.panelH);
         double tx = L.statsX + 12;
         double innerW = L.statsW - 24;
-        double lineStep = (L.panelH - 20) / 5.0;
+        double lineStep = (L.panelH - 20) / 6.0;
         double ty = L.panelY + 18;
         gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
         if (session instanceof TeamMatchSession) {
@@ -2020,20 +2297,19 @@ public class GameView {
             gc.setFill(Color.rgb(80, 140, 255));
             gc.fillText("\u25A0 B: " + tmHud.getTeamB().aliveCount() + "/4", tx, ty);
         } else {
-            gc.setFill(Color.web("#ffffff", 0.92));
-            gc.fillText("\u23F1  " + formatTime(session.getPlayDurationTimer()), tx, ty);
+            double labelX = tx + HUD_STAT_ICON_COL_W;
+            drawHudStatLine(gc, tx, ty, "\u23F1", formatTime(session.getPlayDurationTimer()), HUD_STAT_TEXT);
             ty += lineStep;
-            gc.setFill(hero.getEquippedWeapon() != null ? Color.web("#ffd54f") : Color.web("#e8c84a"));
-            gc.fillText("\u2694  ATK " + hero.calculateDamage(), tx, ty);
+            drawHudStrRow(gc, tx, ty, hero.getStrength());
             ty += lineStep;
-            gc.setFill(Color.web("#ffffff", 0.95));
-            gc.fillText("\u26E8  DEF " + hero.getDefensePower(), tx, ty);
+            drawHudStatLine(gc, tx, ty, "\u2694", "ATK " + hero.calculateDamage(), HUD_STAT_TEXT);
             ty += lineStep;
-            gc.setFill(Color.web("#ffffff", 0.88));
-            gc.fillText("\u2694  WPN", tx, ty);
+            drawHudStatLine(gc, tx, ty, "\u26E8", "DEF " + hero.getDefensePower(), HUD_STAT_TEXT);
+            ty += lineStep;
+            drawHudWpnRow(gc, tx, ty);
             gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 11));
-            gc.setFill(Color.web("#d4c8a8"));
-            gc.fillText(fitTextToWidth(gc, formatEquippedWeaponLine(hero), innerW), tx, ty + lineStep * 0.85);
+            gc.setFill(Color.web("#ffffff", 0.85));
+            gc.fillText(fitTextToWidth(gc, formatEquippedWeaponLine(hero), innerW), labelX, ty + lineStep * 0.85);
         }
 
         // Play / pause
@@ -2290,6 +2566,66 @@ public class GameView {
     }
 
     private void updateSidebar(GameSession session) {
+    }
+
+    /** Icon in a fixed-width column (monospace, white) + label so STR/ATK text aligns. */
+    private static void drawHudStatLine(GraphicsContext gc, double rowX, double rowY,
+            String icon, String label, Color color) {
+        Font font = Font.font("Monospaced", FontWeight.BOLD, 12);
+        gc.setFont(font);
+        gc.setFill(color);
+        gc.setTextAlign(TextAlignment.CENTER);
+        gc.fillText(icon, rowX + HUD_STAT_ICON_COL_W / 2.0, rowY);
+        gc.setTextAlign(TextAlignment.LEFT);
+        gc.fillText(label, rowX + HUD_STAT_ICON_COL_W, rowY);
+    }
+
+    /** STR row: vector arm icon (avoids macOS color-emoji rendering for ✊). */
+    private static void drawHudStrRow(GraphicsContext gc, double rowX, double rowY, int strength) {
+        drawHudStrengthIcon(gc, rowX, rowY);
+        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
+        gc.setFill(HUD_STAT_TEXT);
+        gc.setTextAlign(TextAlignment.LEFT);
+        gc.fillText("STR " + strength, rowX + HUD_STAT_ICON_COL_W, rowY);
+    }
+
+    /** WPN row: single-sword vector icon (ATK keeps crossed-swords ⚔). */
+    private static void drawHudWpnRow(GraphicsContext gc, double rowX, double rowY) {
+        drawHudWeaponIcon(gc, rowX, rowY);
+        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
+        gc.setFill(HUD_STAT_TEXT);
+        gc.setTextAlign(TextAlignment.LEFT);
+        gc.fillText("WPN", rowX + HUD_STAT_ICON_COL_W, rowY);
+    }
+
+    /** Small white single-sword silhouette for equipped-weapon row. */
+    private static void drawHudWeaponIcon(GraphicsContext gc, double rowX, double rowY) {
+        double cx = rowX + HUD_STAT_ICON_COL_W / 2.0;
+        double top = rowY - 7;
+        gc.save();
+        gc.setStroke(HUD_STAT_TEXT);
+        gc.setLineWidth(1.25);
+        gc.setLineCap(javafx.scene.shape.StrokeLineCap.ROUND);
+        gc.strokeLine(cx, top + 1, cx, top + 6.5);
+        gc.strokeLine(cx - 2.2, top + 6.5, cx + 2.2, top + 6.5);
+        gc.strokeLine(cx, top + 6.5, cx, top + 9);
+        gc.restore();
+    }
+
+    /** Small white flexed-arm silhouette, sized like other HUD stat glyphs. */
+    private static void drawHudStrengthIcon(GraphicsContext gc, double rowX, double rowY) {
+        double cx = rowX + HUD_STAT_ICON_COL_W / 2.0;
+        double top = rowY - 7;
+        gc.save();
+        gc.setStroke(HUD_STAT_TEXT);
+        gc.setLineWidth(1.35);
+        gc.setLineCap(javafx.scene.shape.StrokeLineCap.ROUND);
+        gc.setLineJoin(javafx.scene.shape.StrokeLineJoin.ROUND);
+        gc.strokeLine(cx - 3.5, top + 9, cx - 1.5, top + 3);
+        gc.strokeLine(cx - 1.5, top + 3, cx + 2, top + 1);
+        gc.strokeLine(cx + 2, top + 1, cx + 3.5, top + 8);
+        gc.strokeOval(cx - 0.5, top, 3.5, 3.5);
+        gc.restore();
     }
 
     private static String formatEquippedWeaponLine(Hero hero) {
@@ -2564,8 +2900,14 @@ public class GameView {
 
         boolean isSelected = (item == selected[0]);
         boolean isEquipped = (item instanceof Weapon
-                && (item == hero.getEquippedWeapon() || item == hero.getEquippedArrow()))
-                || (item instanceof Wearable && item == hero.getEquippedWearable());
+                && (item == hero.getEquippedWeapon()
+                    || item == hero.getEquippedArrow()
+                    || item == hero.getSecondaryMeleeWeapon()))
+                || (item instanceof Wearable wearable
+                    && (item == hero.getEquippedArmor()
+                        || item == hero.getEquippedShield()
+                        || item == hero.getEquippedRing()
+                        || hero.isWearableEquipped(wearable)));
 
         String selBorder = "-fx-background-color: transparent; -fx-border-color: #e8c84a; -fx-border-width: 2.5; ";
         String normBorder = "-fx-background-color: transparent; -fx-border-color: #6a502888; -fx-border-width: 1; ";
@@ -2667,7 +3009,8 @@ public class GameView {
                     && WeaponCatalog.isBow(hero.getEquippedWeapon().getName());
             boolean equipped = isArrow
                     ? weapon == hero.getEquippedArrow()
-                    : weapon == hero.getEquippedWeapon();
+                    : (weapon == hero.getEquippedWeapon()
+                        || weapon == hero.getSecondaryMeleeWeapon());
             Button btn = invActionButton(equipped ? "Unequip" : "\u2694 Equip", "#e8c84a");
             if (isArrow && !bowEquipped && !equipped) {
                 btn.setDisable(true);
@@ -2802,7 +3145,8 @@ public class GameView {
                     && WeaponCatalog.isBow(hero.getEquippedWeapon().getName());
             boolean equipped = isArrow
                     ? weapon == hero.getEquippedArrow()
-                    : weapon == hero.getEquippedWeapon();
+                    : (weapon == hero.getEquippedWeapon()
+                        || weapon == hero.getSecondaryMeleeWeapon());
             String btnLabel = isArrow
                     ? (equipped ? "Unequip arrows" : "Equip arrows (with bow)")
                     : (equipped ? "Unequip" : "Equip " + weapon.getName());
@@ -2934,6 +3278,9 @@ public class GameView {
     }
 
     private void showContainerContentsPopup(Object containerObj, GameSession session) {
+        if (!playActive || endScreenShown) {
+            return;
+        }
         if (animationTimer != null) {
             animationTimer.stop();
         }
@@ -2951,10 +3298,13 @@ public class GameView {
         String containerName = getContainerDisplayName(containerObj);
         List<Item> contents = new ArrayList<>(getContainerContentsMutable(containerObj));
 
+        closeActiveContainerPopup();
+
         Stage popup = new Stage();
         popup.initOwner(stage);
         popup.initModality(Modality.APPLICATION_MODAL);
         popup.initStyle(StageStyle.UNDECORATED);
+        activeContainerPopup = popup;
 
         int popW = 380;
         int popH = Math.max(260, 140 + contents.size() * 56);
@@ -3032,7 +3382,11 @@ public class GameView {
                             return;
                         }
                         popup.close();
-                        Platform.runLater(() -> showContainerContentsPopup(containerObj, session));
+                        Platform.runLater(() -> {
+                            if (playActive && !endScreenShown) {
+                                showContainerContentsPopup(containerObj, session);
+                            }
+                        });
                     });
                 }
 
@@ -3052,7 +3406,12 @@ public class GameView {
         popup.setScene(new Scene(root, popW, popH));
         popup.setOnShown(e -> centerPopup(popup));
         popup.setOnHidden(e -> {
-            resumeAnimationTimer();
+            if (activeContainerPopup == popup) {
+                activeContainerPopup = null;
+            }
+            if (playActive && !endScreenShown) {
+                resumeAnimationTimer();
+            }
             Platform.runLater(() -> canvas.requestFocus());
             render();
         });

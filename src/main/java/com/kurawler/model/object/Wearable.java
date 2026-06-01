@@ -1,18 +1,17 @@
 package com.kurawler.model.object;
 
+import java.util.List;
+
 public class Wearable extends Item {
 
+    /** Default body-armor DEF hint for editor palette (actual loot uses {@link com.kurawler.model.WearableCatalog}). */
     public static final int ARMOR_DEFENSE_BONUS = 5;
 
     private int defenseBonus;
 
     public Wearable(String name, String description, int defenseBonus) {
         super(name, description);
-        if (name != null && name.equalsIgnoreCase("Armor")) {
-            this.defenseBonus = ARMOR_DEFENSE_BONUS;
-        } else {
-            this.defenseBonus = defenseBonus;
-        }
+        this.defenseBonus = defenseBonus;
     }
 
     public int getDefenseBonus() {
@@ -38,5 +37,10 @@ public class Wearable extends Item {
     /** Body armor (not shield, not ring). */
     public boolean isBodyArmor() {
         return !isShield() && !isRing();
+    }
+
+    @Override
+    public List<ItemAction> getActions() {
+        return List.of(ItemAction.TAKE, ItemAction.WEAR);
     }
 }
