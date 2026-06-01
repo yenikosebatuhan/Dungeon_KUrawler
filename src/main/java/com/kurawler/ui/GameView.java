@@ -1555,7 +1555,7 @@ public class GameView {
         popup.initStyle(StageStyle.TRANSPARENT);
 
         int popupW = 440;
-        int popupH = 390; // INCREASED from 340 to fit the new button
+        int popupH = 440;
         Canvas bg = new Canvas(popupW, popupH);
         drawDungeonBg(bg, popupW, popupH);
 
@@ -1589,8 +1589,9 @@ public class GameView {
             }
         });
 
+        Button restartBtn  = popupButton("Restart Level", "#e17055");
         Button mainMenuBtn = popupButton("Main Menu", "#e8c84a");
-        Button resumeBtn = popupButton("Resume", "#a09070");
+        Button resumeBtn   = popupButton("Resume", "#a09070");
 
         Runnable closePopup = popup::close;
 
@@ -1627,9 +1628,19 @@ public class GameView {
             AudioManager.getInstance().play("button");
             closePopup.run();
         });
+        restartBtn.setOnAction(e -> {
+            AudioManager.getInstance().play("button");
+            leavePlay[0] = false;
+            closePopup.run();
+            boolean ok = com.kurawler.model.MapFactory.restartCurrentFloor(controller.getSession());
+            if (ok) {
+                if (gameLoop != null) gameLoop.refreshMap();
+                render();
+                showGameMessage("Level restarted.");
+            }
+        });
 
-        // ADDED musicBtn TO THE VBOX HERE
-        VBox panel = new VBox(12, title, subtitle, saveBtn, loadBtn, musicBtn, mainMenuBtn, resumeBtn);
+        VBox panel = new VBox(12, title, subtitle, saveBtn, loadBtn, musicBtn, restartBtn, mainMenuBtn, resumeBtn);
         panel.setAlignment(Pos.CENTER);
         panel.setPadding(new Insets(22, 28, 24, 28));
         panel.setStyle("-fx-background-color: rgba(14,12,10,0.94); "
