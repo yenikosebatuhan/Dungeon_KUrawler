@@ -24,7 +24,8 @@ public class MapPortal extends StaticObject {
     public MapPortal(String name, String description, String targetMapId,
                      int targetRow, int targetCol, String requiredKeyId,
                      boolean startsOpen, boolean stairsMode) {
-        super(name, description, true, stairsMode);
+        // Stairs are always walkable; doors/portals are only passable when unlocked.
+        super(name, description, stairsMode || startsOpen, stairsMode);
         this.targetMapId = targetMapId;
         this.targetRow = targetRow;
         this.targetCol = targetCol;
