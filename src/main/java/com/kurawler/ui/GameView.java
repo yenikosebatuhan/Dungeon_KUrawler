@@ -1356,8 +1356,16 @@ public class GameView {
                     } else {
                         actionList.add(new String[]{"LOCKED", sc.getName(), "locked_info"});
                     }
+                    // Locked: no key → only the (hard) BREAK option remains.
+                    if (sc.isBreakable()) {
+                        actionList.add(new String[]{"BREAK", sc.getName(), "break"});
+                    }
                 } else {
+                    // Unlocked: player may simply OPEN it, or choose to BREAK it open.
                     actionList.add(new String[]{"OPEN", sc.getName(), "open_container"});
+                    if (sc.isBreakable()) {
+                        actionList.add(new String[]{"BREAK", sc.getName(), "break"});
+                    }
                 }
             } else if (obj instanceof Item) {
                 actionList.add(new String[]{"TAKE", obj.getName(), "take"});
@@ -1377,7 +1385,9 @@ public class GameView {
                 actionList.add(new String[]{"OPEN", staticObj.getName(), "open_bookshelf"});
             }
             actionList.add(new String[]{"SEARCH", staticObj.getName(), "search"});
-            actionList.add(new String[]{"BREAK", staticObj.getName(), "break"});
+            if (MapFactory.isBreakableStaticObject(staticObj)) {
+                actionList.add(new String[]{"BREAK", staticObj.getName(), "break"});
+            }
         }
         if (cell.getOccupyingCharacter() instanceof Enemy) {
             Enemy enemy = (Enemy) cell.getOccupyingCharacter();
@@ -1491,9 +1501,9 @@ public class GameView {
                 }
                 break;
             case "break":
-                boolean broken = controller.breakObject(row, col);
-                showGameMessage(broken ? "Broke it!" : "Cannot break.");
-                AudioManager.getInstance().play("interact"); // Added interact sound
+                com.kurawler.action.BreakAction.BreakRoll breakRoll = controller.breakObject(row, col);
+                showGameMessage(breakRoll.message());
+                AudioManager.getInstance().play(breakRoll.succeeded() ? "break" : "error");
                 break;
             case "attack":
                 if (cell.getOccupyingCharacter() instanceof Enemy) {
@@ -1882,8 +1892,16 @@ public class GameView {
                 || Math.abs(heroPos[1] - heroTargetY) > 1.5;
         // Walk frame is driven by lerp state, not a clock — character is in walk
         // pose exactly while visually moving, idle the moment it arrives.
+        boolean wearingArmor = hero.getEquippedArmor() != null;
+        boolean wearingShield = hero.getEquippedShield() != null;
         renderer.drawHeroFacing(gc, heroSx, heroSy, hero.getFacingRow(), hero.getFacingCol(),
-                heroMoving ? 1 : 0);
+                heroMoving ? 1 : 0, wearingArmor);
+        if (wearingShield) {
+            renderer.drawEquippedShieldOnHero(gc, heroSx, heroSy,
+                    hero.getFacingRow(), hero.getFacingCol(),
+                    hero.getEquippedShield().getName());
+        }
+        drawHeroEquippedWeapon(gc, heroSx, heroSy, hero);
         renderer.drawHpBar(gc, heroSx, heroSy, hero.getHealth(), hero.getMaxHealth());
 
         int currentHp = hero.getHealth();
@@ -1997,7 +2015,7 @@ public class GameView {
                 "#3a0808", "#b71c1c", "#ef5350");
         drawReferenceResourceBar(gc, barX, barY + barH + barGap, barW, barH,
                 "ENERGY", hero.getEnergy(), hero.getMaxEnergy(),
-                "#3a3000", "#f9a825", "#ffe566");
+                "#0a2a0a", "#2e7d32", "#66bb6a");
         drawReferenceResourceBar(gc, barX, barY + (barH + barGap) * 2, barW, barH,
                 "MANA", hero.getMana(), hero.getMaxMana(),
                 "#0a1a3a", "#1565c0", "#64b5f6");
@@ -2006,7 +2024,7 @@ public class GameView {
         drawOrnateHudPanel(gc, L.statsX, L.panelY, L.statsW, L.panelH);
         double tx = L.statsX + 12;
         double innerW = L.statsW - 24;
-        double lineStep = (L.panelH - 20) / 5.0;
+        double lineStep = (L.panelH - 20) / 6.0;
         double ty = L.panelY + 18;
         gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
         if (session instanceof TeamMatchSession) {
@@ -2022,6 +2040,9 @@ public class GameView {
         } else {
             gc.setFill(Color.web("#ffffff", 0.92));
             gc.fillText("\u23F1  " + formatTime(session.getPlayDurationTimer()), tx, ty);
+            ty += lineStep;
+            gc.setFill(Color.web("#ffffff", 0.95));
+            gc.fillText("\u2756  STR " + hero.getStrength(), tx, ty);
             ty += lineStep;
             gc.setFill(hero.getEquippedWeapon() != null ? Color.web("#ffd54f") : Color.web("#e8c84a"));
             gc.fillText("\u2694  ATK " + hero.calculateDamage(), tx, ty);
@@ -2290,6 +2311,19 @@ public class GameView {
     }
 
     private void updateSidebar(GameSession session) {
+    }
+
+    /** Draws the hero's equipped melee/ranged weapon in-hand on the map (arrows excluded). */
+    private void drawHeroEquippedWeapon(GraphicsContext gc, int screenX, int screenY, Hero hero) {
+        if (hero == null) {
+            return;
+        }
+        Weapon equipped = hero.getEquippedWeapon();
+        if (equipped == null || WeaponCatalog.isArrow(equipped.getName())) {
+            return;
+        }
+        renderer.drawEquippedWeaponInHand(
+                gc, screenX, screenY, hero.getFacingRow(), hero.getFacingCol(), equipped.getName());
     }
 
     private static String formatEquippedWeaponLine(Hero hero) {

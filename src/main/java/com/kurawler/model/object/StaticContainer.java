@@ -14,6 +14,8 @@ public class StaticContainer extends GameObject {
     private final List<Item> contents;
     private boolean isLocked = false;
     private String requiredKeyId = null;
+    /** Breakable chests/crates must be smashed open before loot can be taken. */
+    private boolean broken = false;
 
     public StaticContainer(String name, String description) {
         super(name, description);
@@ -52,19 +54,13 @@ public class StaticContainer extends GameObject {
         return isShelfLike() || !isEmpty();
     }
 
-    /** Removes this container from the grid when it has been looted (not bookshelves). */
+    /**
+     * Looting a container no longer removes it from the map: an emptied chest stays
+     * in place (rendered with its open/empty sprite). Only a successful BREAK removes
+     * a container (see {@link com.kurawler.effect.BreakObjectEffect}).
+     */
     public void removeFromMapIfLooted(Map map) {
-        if (map == null || isShelfLike() || !isEmpty()) {
-            return;
-        }
-        for (int r = 0; r < map.getHeight(); r++) {
-            for (int c = 0; c < map.getWidth(); c++) {
-                GridCell cell = map.getCell(r, c);
-                if (cell != null && cell.removeObject(this)) {
-                    return;
-                }
-            }
-        }
+        // Intentionally a no-op — chests remain after being opened and emptied.
     }
 
     /** Bookshelves use the static prop sprite on the tile; no chest overlay. */
@@ -73,11 +69,34 @@ public class StaticContainer extends GameObject {
         return n.contains("bookshelf") || n.contains("shelf");
     }
 
+    /** Crates/chests/barrels can be broken; bookshelves are opened/searched only. */
+    public boolean isBreakable() {
+        return !isShelfLike();
+    }
+
+    /** Any container on a tile blocks movement until removed from the cell. */
+    public boolean blocksMovement() {
+        return true;
+    }
+
+    public boolean isBroken() {
+        return broken;
+    }
+
+    /** Bookshelves open freely; chests/crates need a successful BREAK first. */
+    public boolean isOpened() {
+        return isShelfLike() || broken;
+    }
+
+    public void markBroken() {
+        this.broken = true;
+    }
+
     /** Sprite hint for renderer: empty chest uses open sprite. */
     public String getSpriteName() {
         if (isShelfLike()) {
             return getName();
         }
-        return ResourceAssetCatalog.containerSpriteName(getName(), isEmpty());
+        return ResourceAssetCatalog.containerSpriteName(getName(), isEmpty() || isBroken());
     }
 }

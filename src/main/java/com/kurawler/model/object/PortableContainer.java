@@ -41,4 +41,9 @@ public class PortableContainer extends Item {
     public int getCapacity() {
         return capacity;
     }
+
+    @Override
+    public List<ItemAction> getActions() {
+        return List.of(ItemAction.TAKE, ItemAction.OPEN);
+    }
 }
