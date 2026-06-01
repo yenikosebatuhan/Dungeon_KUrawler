@@ -39,8 +39,8 @@ public final class ResourceAssetCatalog {
 
     public static Item createItem(String name) {
         String n = lower(name);
-        if (n.equals("armor") || n.contains("armor") || n.contains("mail") || n.contains("plate")) {
-            return new Wearable(name, "Body armor (+5 DEF)", 5);
+        if (WearableCatalog.isBodyArmorName(name)) {
+            return WearableCatalog.createArmor(name);
         }
         if (n.equals("shield") || n.contains("shield")) {
             return new Wearable(name, "Shield (+3 DEF)", 3);
@@ -55,9 +55,13 @@ public final class ResourceAssetCatalog {
         if (n.contains("key ring")) return new Key(name, "A master ring for common locks", "keyring");
         if (n.contains("brass key")) return new Key(name, "Opens brass locks", "brass");
 
-        if (n.contains("health potion")) return new Consumable(name, "Restores 25 HP", 25, 0, 0);
+        if (n.contains("health potion")) {
+            return new Consumable(name, "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0);
+        }
         if (n.contains("mana potion")) return new Consumable(name, "Restores 30 mana", 0, 30, 0);
-        if (n.contains("energy potion")) return new Consumable(name, "Restores 35 energy", 0, 0, 35);
+        if (n.contains("energy potion")) {
+            return new Consumable(name, "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY);
+        }
 
         if (n.contains("ruby ring")) return new Wearable(name, "Ruby ring (+2 DEF)", 2);
         if (n.contains("emerald ring")) return new Wearable(name, "Emerald ring (+3 DEF)", 3);
@@ -77,7 +81,9 @@ public final class ResourceAssetCatalog {
         if (n.contains("curse scroll")) return new Scroll(name, "Curse scroll (+4 HP, +15 Mana)", "Dangerous magic restores both mind and flesh.", 4, 15, 0);
 
         if (n.contains("mana")) return new Consumable(name, "Restores mana", 0, 20, 0);
-        if (n.contains("energy")) return new Consumable(name, "Restores energy", 0, 0, 20);
+        if (n.contains("energy")) {
+            return new Consumable(name, "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY);
+        }
         if (n.contains("potion")) return new Consumable(name, "Restores health", 20, 0, 0);
         if (n.contains("key")) return new Key(name, keyDescription(n), keyId(n));
         if (n.contains("ring") || n.contains("amulet")) return new Wearable(name, "A magical trinket", 1);

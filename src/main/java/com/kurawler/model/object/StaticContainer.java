@@ -14,6 +14,8 @@ public class StaticContainer extends GameObject {
     private final List<Item> contents;
     private boolean isLocked = false;
     private String requiredKeyId = null;
+    /** Breakable chests/crates must be smashed open before loot can be taken. */
+    private boolean broken = false;
 
     public StaticContainer(String name, String description) {
         super(name, description);
@@ -73,11 +75,34 @@ public class StaticContainer extends GameObject {
         return n.contains("bookshelf") || n.contains("shelf");
     }
 
+    /** Crates/chests/barrels can be broken; bookshelves are opened/searched only. */
+    public boolean isBreakable() {
+        return !isShelfLike();
+    }
+
+    /** Any container on a tile blocks movement until removed from the cell. */
+    public boolean blocksMovement() {
+        return true;
+    }
+
+    public boolean isBroken() {
+        return broken;
+    }
+
+    /** Bookshelves open freely; chests/crates need a successful BREAK first. */
+    public boolean isOpened() {
+        return isShelfLike() || broken;
+    }
+
+    public void markBroken() {
+        this.broken = true;
+    }
+
     /** Sprite hint for renderer: empty chest uses open sprite. */
     public String getSpriteName() {
         if (isShelfLike()) {
             return getName();
         }
-        return ResourceAssetCatalog.containerSpriteName(getName(), isEmpty());
+        return ResourceAssetCatalog.containerSpriteName(getName(), isEmpty() || isBroken());
     }
 }

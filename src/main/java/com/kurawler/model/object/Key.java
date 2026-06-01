@@ -1,5 +1,7 @@
 package com.kurawler.model.object;
 
+import java.util.List;
+
 public class Key extends Item {
 
     private String keyId;
@@ -11,5 +13,10 @@ public class Key extends Item {
 
     public String getKeyId() {
         return keyId;
+    }
+
+    @Override
+    public List<ItemAction> getActions() {
+        return List.of(ItemAction.TAKE);
     }
 }

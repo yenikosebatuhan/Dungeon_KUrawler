@@ -2,50 +2,61 @@ package com.kurawler.effect;
 
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
-import com.kurawler.model.object.StaticObject;
+import com.kurawler.model.MapFactory;
+import com.kurawler.model.character.Hero;
+import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
+import com.kurawler.model.object.StaticContainer;
+import com.kurawler.model.object.StaticObject;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Effect: Removes a breakable static object from the map and drops its contents.
+ * Effect: Marks a breakable container open or removes a crate/barrel floor prop.
  */
 public class BreakObjectEffect implements Effect {
+    public static final int BREAK_ENERGY_COST = 5;
+
     private final int row;
     private final int col;
 
-    /**
-     * @requires row >= 0 && col >= 0
-     * @modifies this.row, this.col
-     * @effects Stores target cell coordinates for use in apply().
-     */
+    /** Spends break attempt energy (success or failure). */
+    public static boolean spendAttemptEnergy(Hero hero) {
+        return hero != null && hero.useEnergy(BREAK_ENERGY_COST);
+    }
+
     public BreakObjectEffect(int row, int col) {
         this.row = row;
         this.col = col;
     }
 
-    /**
-     * @requires session != null
-     * @modifies cell (removes object, adds item), session
-     * @effects Removes the static object from the cell. If it contained a hidden item,
-     * adds that item to the grid cell's object list.
-     */
     @Override
     public void apply(GameSession session) {
         GridCell cell = session.getMap().getCell(row, col);
         if (cell == null) {
             return;
         }
-        
-        StaticObject object = cell.getStaticObject();
-        
-        if (object != null && object.isSearchable()) {
-            
-            Item hidden = object.revealHiddenItem();
-            if (hidden != null) {
-                cell.addObject(hidden);
+
+        for (GameObject obj : new ArrayList<>(cell.getObjects())) {
+            if (!(obj instanceof StaticContainer sc) || !sc.isBreakable()) {
+                continue;
             }
-            
-            cell.setStaticObject(null);
+            sc.markBroken();
+            if (sc.isLocked()) {
+                sc.unlock();
+            }
+            return;
         }
+
+        StaticObject object = cell.getStaticObject();
+        if (!MapFactory.isBreakableStaticObject(object)) {
+            return;
+        }
+        Item hidden = object.revealHiddenItem();
+        if (hidden != null) {
+            cell.addObject(hidden);
+        }
+        cell.setStaticObject(null);
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.kurawler.editor;
 
+import com.kurawler.model.WearableCatalog;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
@@ -101,9 +102,9 @@ public class ObjectPalette {
                 return new Scroll("Spell Book", "A tome of arcane power",
                         "The glyphs flare with restorative magic.", 12);
             case "Health Potion":
-                return new Consumable("Health Potion", "Restores 20 HP", 20);
+                return new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL);
             case "Armor":
-                return new Wearable("Armor", "Protective armor (+5 DEF)", Wearable.ARMOR_DEFENSE_BONUS);
+                return WearableCatalog.createArmor("Armor", "Protective body armor");
             case "Golden Key":
                 return new Key("Golden Key", "Opens a golden lock", "gold");
             case "Chest":

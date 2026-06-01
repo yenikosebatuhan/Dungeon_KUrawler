@@ -1,5 +1,7 @@
 package com.kurawler.model.object;
 
+import java.util.List;
+
 /**
  * Readable item that can trigger a simple gameplay effect.
  */
@@ -26,4 +28,9 @@ public class Scroll extends Item {
     public int getHealAmount() { return healAmount; }
     public int getManaAmount() { return manaAmount; }
     public int getEnergyAmount() { return energyAmount; }
+
+    @Override
+    public List<ItemAction> getActions() {
+        return List.of(ItemAction.TAKE, ItemAction.READ);
+    }
 }

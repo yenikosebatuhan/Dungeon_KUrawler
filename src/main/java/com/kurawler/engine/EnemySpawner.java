@@ -13,12 +13,13 @@ import java.util.Random;
 /**
  * Spawns enemies at the edges of the map on a fixed interval.
  *
- * <p>Spawn rules (from spec):
+ * <p>Spawn rules:
  * <ul>
- *   <li>One spawn attempt every {@value #SPAWN_INTERVAL} ms (9 seconds)</li>
+ *   <li>No spawn for the first {@value #INITIAL_QUIET_MS} ms of play</li>
+ *   <li>First spawn between 3–6 s (always a Knight)</li>
+ *   <li>Then one attempt every 3–5 s (random interval)</li>
  *   <li>Maximum {@value #MAX_ACTIVE_ENEMIES} active enemies at once</li>
- *   <li>60% chance Knight, 30% chance Sorcerer, 10% chance nothing spawns</li>
- *   <li>Enemies appear on walkable edge cells (row 0 or last row)</li>
+ *   <li>50% Knight, 40% Sorcerer, 10% no spawn (after the first Knight)</li>
  * </ul>
  * </p>
  */
@@ -26,81 +27,95 @@ public class EnemySpawner {
 
     private GameSession session;
     private long timeSinceLastSpawn;
+    private long totalPlayMs;
+    private boolean firstSpawnDone;
+    private long firstSpawnAtMs;
+    private long nextSpawnIntervalMs;
     private Random random;
 
-    /** Time between spawn attempts in milliseconds (9 seconds per spec). */
-    public static final long SPAWN_INTERVAL = 9000;
+    /** No edge spawns during the first 3 seconds. */
+    public static final long INITIAL_QUIET_MS = 3000;
+
+    /** First Knight may appear in [3 s, 6 s] after play starts. */
+    public static final long FIRST_SPAWN_WINDOW_MS = 3000;
+
+    /** Min/max delay between spawn attempts after the first Knight (3–5 s). */
+    public static final long SPAWN_INTERVAL_MIN_MS = 3000;
+    public static final long SPAWN_INTERVAL_MAX_MS = 5000;
 
     /** Maximum number of living enemies allowed on the map. */
     public static final int MAX_ACTIVE_ENEMIES = 5;
 
-    /**
-     * Creates a spawner for the given session.
-     *
-     * @requires session != null
-     * @modifies this.session, this.timeSinceLastSpawn, this.random
-     * @effects Initialises the spawner; throws IllegalArgumentException if session is null.
-     * @param session the active game session; must not be null
-     */
     public EnemySpawner(GameSession session) {
         if (session == null) {
             throw new IllegalArgumentException("GameSession must not be null");
         }
         this.session = session;
         this.timeSinceLastSpawn = 0;
+        this.totalPlayMs = 0;
+        this.firstSpawnDone = false;
         this.random = new Random();
+        scheduleFirstSpawn();
     }
 
-    /**
-     * Accumulates elapsed time and attempts a spawn when the interval is reached.
-     *
-     * @requires deltaTime >= 0
-     * @modifies this.timeSinceLastSpawn, session.enemies (if spawn occurs)
-     * @effects Adds deltaTime to the accumulator. If accumulator >= SPAWN_INTERVAL,
-     *          attempts to spawn one enemy and resets the accumulator to 0.
-     * @param deltaTime milliseconds elapsed since the last call
-     */
+    private void scheduleFirstSpawn() {
+        firstSpawnAtMs = INITIAL_QUIET_MS + random.nextInt((int) FIRST_SPAWN_WINDOW_MS + 1);
+    }
+
+    private void scheduleNextSpawn() {
+        long span = SPAWN_INTERVAL_MAX_MS - SPAWN_INTERVAL_MIN_MS + 1;
+        nextSpawnIntervalMs = SPAWN_INTERVAL_MIN_MS + random.nextInt((int) span);
+    }
+
     public void update(long deltaTime) {
-        timeSinceLastSpawn += deltaTime;
-
-        if (timeSinceLastSpawn >= SPAWN_INTERVAL) {
-            spawnEnemy();
-            timeSinceLastSpawn = 0;
+        if (deltaTime > 0) {
+            totalPlayMs += deltaTime;
         }
-    }
 
-    /**
-     * Attempts to spawn a single enemy. Does nothing if the map already has
-     * {@value #MAX_ACTIVE_ENEMIES} or more living enemies.
-     *
-     * <p>Roll distribution: 0-59 = Knight, 60-89 = Sorcerer, 90-99 = no spawn.</p>
-     */
-    private void spawnEnemy() {
-        if (session.getActiveEnemyCount() >= MAX_ACTIVE_ENEMIES) {
+        if (!firstSpawnDone) {
+            if (totalPlayMs < firstSpawnAtMs) {
+                return;
+            }
+            spawnEnemy(true);
+            firstSpawnDone = true;
+            timeSinceLastSpawn = 0;
+            scheduleNextSpawn();
             return;
         }
 
-        int roll = random.nextInt(100);
-        Enemy enemy = null;
+        timeSinceLastSpawn += deltaTime;
+        if (timeSinceLastSpawn >= nextSpawnIntervalMs) {
+            spawnEnemy(false);
+            timeSinceLastSpawn = 0;
+            scheduleNextSpawn();
+        }
+    }
 
-        if (roll < 60) {
+    /**
+     * @param forceKnight true for the delayed first spawn (always Knight)
+     */
+    private void spawnEnemy(boolean forceKnight) {
+        if (countLivingEnemiesOnMap() >= MAX_ACTIVE_ENEMIES) {
+            return;
+        }
+
+        Enemy enemy = null;
+        if (forceKnight) {
             enemy = new Knight();
-        } else if (roll < 90) {
+        } else if (!hasLivingSorcererOnMap()) {
+            // Keep sorcerers in the mix (40% roll can miss several times in a row).
             enemy = new Sorcerer();
+        } else {
+            int roll = random.nextInt(100);
+            if (roll < 50) {
+                enemy = new Knight();
+            } else if (roll < 90) {
+                enemy = new Sorcerer();
+            }
         }
 
         if (enemy != null) {
-            String diff = session.getDifficulty();
-            if ("Easy".equals(diff)) {
-                enemy.setMaxHealth((int)(enemy.getMaxHealth() * 0.7));
-                enemy.setHealth((int)(enemy.getHealth() * 0.7));
-                enemy.setStrength((int)(enemy.getStrength() * 0.7));
-            } else if ("Hard".equals(diff)) {
-                enemy.setMaxHealth((int)(enemy.getMaxHealth() * 1.3));
-                enemy.setHealth((int)(enemy.getHealth() * 1.3));
-                enemy.setStrength((int)(enemy.getStrength() * 1.3));
-            }
-
+            applyDifficultyScaling(enemy);
             GridCell spawnCell = findSpawnLocation();
             if (spawnCell != null) {
                 enemy.moveToCell(spawnCell);
@@ -108,13 +123,20 @@ public class EnemySpawner {
             }
         }
     }
-    /**
-     * Finds a random walkable, unoccupied cell for spawning.
-     * Prefers edge cells (top/bottom row); falls back to any walkable cell
-     * far from the hero if edges are all walls.
-     *
-     * @return a valid GridCell for spawning, or null if none available
-     */
+
+    private void applyDifficultyScaling(Enemy enemy) {
+        String diff = session.getDifficulty();
+        if ("Easy".equals(diff)) {
+            enemy.setMaxHealth((int) (enemy.getMaxHealth() * 0.7));
+            enemy.setHealth((int) (enemy.getHealth() * 0.7));
+            enemy.setStrength((int) (enemy.getStrength() * 0.7));
+        } else if ("Hard".equals(diff)) {
+            enemy.setMaxHealth((int) (enemy.getMaxHealth() * 1.3));
+            enemy.setHealth((int) (enemy.getHealth() * 1.3));
+            enemy.setStrength((int) (enemy.getStrength() * 1.3));
+        }
+    }
+
     private GridCell findSpawnLocation() {
         Map map = session.getMap();
         if (map == null) {
@@ -122,48 +144,54 @@ public class EnemySpawner {
         }
 
         List<GridCell> edgeCandidates = new ArrayList<>();
-        int lastRow = map.getHeight() - 1;
-        int lastCol = map.getWidth() - 1;
-        for (int c = 0; c < map.getWidth(); c++) {
-            addIfValidSpawn(map.getCell(0, c), edgeCandidates);
-            addIfValidSpawn(map.getCell(lastRow, c), edgeCandidates);
+        int innerTop = 1;
+        int innerBottom = map.getHeight() - 2;
+        int innerLeft = 1;
+        int innerRight = map.getWidth() - 2;
+        if (innerBottom < innerTop || innerRight < innerLeft) {
+            return null;
         }
-        for (int r = 1; r < lastRow; r++) {
-            addIfValidSpawn(map.getCell(r, 0), edgeCandidates);
-            addIfValidSpawn(map.getCell(r, lastCol), edgeCandidates);
+        for (int c = innerLeft; c <= innerRight; c++) {
+            addIfValidSpawn(map.getCell(innerTop, c), edgeCandidates);
+            addIfValidSpawn(map.getCell(innerBottom, c), edgeCandidates);
+        }
+        for (int r = innerTop + 1; r < innerBottom; r++) {
+            addIfValidSpawn(map.getCell(r, innerLeft), edgeCandidates);
+            addIfValidSpawn(map.getCell(r, innerRight), edgeCandidates);
         }
 
         if (!edgeCandidates.isEmpty()) {
             return edgeCandidates.get(random.nextInt(edgeCandidates.size()));
         }
 
-        // Fallback: any walkable cell at least 5 tiles from hero
         List<GridCell> fallback = new ArrayList<>();
         com.kurawler.model.character.Hero hero = session.getHero();
         for (int r = 0; r < map.getHeight(); r++) {
             for (int c = 0; c < map.getWidth(); c++) {
                 GridCell cell = map.getCell(r, c);
-                if (cell == null || cell.isBlocked()) continue;
-                if (cell.getOccupyingCharacter() != null) continue;
+                if (cell == null || !cell.isEnemyWalkable()) {
+                    continue;
+                }
+                if (cell.getOccupyingCharacter() != null) {
+                    continue;
+                }
                 if (hero != null) {
                     int dist = Math.abs(r - hero.getRow()) + Math.abs(c - hero.getCol());
-                    if (dist < 5) continue;
+                    if (dist < 5) {
+                        continue;
+                    }
                 }
                 fallback.add(cell);
             }
         }
-        if (fallback.isEmpty()) return null;
+        if (fallback.isEmpty()) {
+            return null;
+        }
         return fallback.get(random.nextInt(fallback.size()));
     }
 
-    /**
-     * Adds a cell to the candidate list if it is walkable and not occupied.
-     *
-     * @param cell       the cell to evaluate
-     * @param candidates the list to add valid cells to
-     */
     private void addIfValidSpawn(GridCell cell, List<GridCell> candidates) {
-        if (cell == null || cell.isBlocked()) {
+        if (cell == null || !cell.isEnemyWalkable()) {
             return;
         }
         if (cell.getOccupyingCharacter() != null) {
@@ -172,26 +200,47 @@ public class EnemySpawner {
         candidates.add(cell);
     }
 
-    /**
-     * Returns the time accumulated since the last spawn attempt.
-     *
-     * @requires none
-     * @modifies none
-     * @effects Returns timeSinceLastSpawn in milliseconds.
-     * @return elapsed time in milliseconds
-     */
     public long getTimeSinceLastSpawn() {
         return timeSinceLastSpawn;
     }
 
-    /**
-     * Resets the spawn timer to zero.
-     *
-     * @requires none
-     * @modifies this.timeSinceLastSpawn
-     * @effects Sets timeSinceLastSpawn to 0.
-     */
     public void resetTimer() {
-        this.timeSinceLastSpawn = 0;
+        timeSinceLastSpawn = 0;
+        totalPlayMs = 0;
+        firstSpawnDone = false;
+        scheduleFirstSpawn();
+    }
+
+    private int countLivingEnemiesOnMap() {
+        Map map = session.getMap();
+        if (map == null) {
+            return 0;
+        }
+        int n = 0;
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int c = 0; c < map.getWidth(); c++) {
+                GridCell cell = map.getCell(r, c);
+                if (cell != null && cell.getOccupyingCharacter() instanceof Enemy e && e.isAlive()) {
+                    n++;
+                }
+            }
+        }
+        return n;
+    }
+
+    private boolean hasLivingSorcererOnMap() {
+        Map map = session.getMap();
+        if (map == null) {
+            return false;
+        }
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int c = 0; c < map.getWidth(); c++) {
+                GridCell cell = map.getCell(r, c);
+                if (cell != null && cell.getOccupyingCharacter() instanceof Sorcerer s && s.isAlive()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
