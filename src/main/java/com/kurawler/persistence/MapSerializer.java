@@ -24,6 +24,10 @@ import com.kurawler.model.object.MapPortal;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.Wearable;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -42,8 +46,11 @@ public class MapSerializer {
     public boolean saveGameState(GameSession session, String filename, String saveName) {
         try {
             ensureParentDirectory(filename);
+            // Phase 2 spec: save files must be produced via Gson (§Phase2 Save/Load).
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            JsonElement element = JsonParser.parseString(buildStateJson(session, saveName));
             try (FileWriter writer = new FileWriter(filename)) {
-                writer.write(buildStateJson(session, saveName));
+                gson.toJson(element, writer);
             }
             System.out.println("[Persistence] Saved game state to " + filename);
             return true;
