@@ -69,6 +69,7 @@ public class MapFactory {
         session.setHero(hero);
         session.setAchievementManager(new AchievementManager());
         session.wireObservers();
+        session.snapshotFloorInventory(); // baseline: empty inventory on floor 1
 
         Random rng = new Random();
 
@@ -87,6 +88,68 @@ public class MapFactory {
         syncEnemiesFromMap(gatehouse, session);
 
         return session;
+    }
+
+    /**
+     * Restarts the current floor from scratch: fresh enemies, items, and chests.
+     * The hero is teleported back to the floor's entry point.
+     * Items picked up on this floor are stripped from the hero's inventory;
+     * items carried in from previous floors are preserved.
+     *
+     * @return true if the floor was recognised and restarted successfully
+     */
+    public static boolean restartCurrentFloor(GameSession session) {
+        if (session == null) return false;
+        String mapId = session.getCurrentMapId();
+        Random rng = new Random();
+
+        // Strip items the hero picked up on this floor
+        session.restoreFloorInventory();
+
+        Map fresh;
+        int heroRow, heroCol;
+        switch (mapId == null ? "" : mapId) {
+            case MAP_GATEHOUSE:
+                fresh = buildGatehouse();
+                placeGatehouseLoot(fresh, rng);
+                placeGatehouseEnemies(fresh);
+                heroRow = 4; heroCol = 4;
+                break;
+            case MAP_ARMORY:
+                fresh = buildArmory();
+                placeArmoryLoot(fresh, rng);
+                placeArmoryEnemies(fresh);
+                heroRow = 7; heroCol = 2;
+                break;
+            case MAP_INNERVAULT:
+                fresh = buildInnerVault();
+                placeInnerVaultLoot(fresh, session, rng);
+                placeInnerVaultEnemies(fresh);
+                heroRow = 7; heroCol = 2;
+                break;
+            default:
+                return false;
+        }
+        scatterRandomMapWeapons(fresh, rng, 4 + rng.nextInt(2));
+
+        // Replace the live map and re-register enemies
+        session.registerWorldMap(mapId, fresh);
+        session.setMap(fresh);
+        syncEnemiesFromMap(fresh, session);
+
+        // Move hero to entry point
+        GridCell dest = fresh.getCell(heroRow, heroCol);
+        if (dest != null && session.getHero() != null) {
+            com.kurawler.model.character.Hero h = session.getHero();
+            if (h.getCurrentCell() != null) h.getCurrentCell().setOccupyingCharacter(null);
+            h.moveToCell(dest);
+        }
+        if (session.getShadowClone() != null) session.setShadowClone(null);
+
+        // Re-snapshot: hero now carries only what they had at floor entry
+        session.snapshotFloorInventory();
+        session.consumeMapChanged();
+        return true;
     }
 
     /** Configures a win objective on an arbitrary editor-loaded map. */

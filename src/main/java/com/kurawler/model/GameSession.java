@@ -6,7 +6,9 @@ import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Key;
-import com.kurawler.model.object.Projectile; 
+import com.kurawler.model.object.Projectile;
+import com.kurawler.model.object.Wearable;
+import com.kurawler.model.object.Weapon;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,8 +34,16 @@ public class GameSession {
     private String currentMode;
     private String difficulty = "Normal";
     private Item targetObjective;
-  /** True when playing a map launched from the level editor (no game-over popup on editor). */
+    /** True when playing a map launched from the level editor (no game-over popup on editor). */
     private boolean editorTestPlay;
+
+    /** Hero inventory + equipped items captured at the moment of entering a floor. */
+    private List<Item> floorEntryInventorySnapshot = new ArrayList<>();
+    private Weapon floorEntryWeapon;
+    private Weapon floorEntryArrow;
+    private Wearable floorEntryArmor;
+    private Wearable floorEntryShield;
+    private Wearable floorEntryRing;
 
     public GameSession() {
         this.turnCount = 0;
@@ -209,6 +219,7 @@ public class GameSession {
         if (hero != null) {
             hero.moveToCell(dest);
         }
+        snapshotFloorInventory();
         incrementFloorsCleared();
         mapChanged = true;
         lastPortalMessage = "Entered " + mapDisplayName(mapId) + ".";
@@ -309,4 +320,70 @@ public class GameSession {
     public int getFloorsClearedCount() { return floorsClearedCount; }
     public void incrementFloorsCleared() { this.floorsClearedCount++; }
     public void setFloorsClearedCount(int count) { this.floorsClearedCount = Math.max(0, count); }
+
+    // -----------------------------------------------------------------------
+    // Floor-entry inventory snapshot — used by "Restart Level"
+    // -----------------------------------------------------------------------
+
+    /**
+     * Records the hero's current inventory and equipped items at the moment
+     * of entering a floor. Call this whenever the hero transitions to a new
+     * floor (or at game start before the first floor).
+     */
+    public void snapshotFloorInventory() {
+        floorEntryInventorySnapshot = new ArrayList<>();
+        if (hero == null) return;
+        floorEntryInventorySnapshot.addAll(hero.getInventory().getItems());
+        floorEntryWeapon = hero.getEquippedWeapon();
+        floorEntryArrow  = hero.getEquippedArrow();
+        floorEntryArmor  = hero.getEquippedArmor();
+        floorEntryShield = hero.getEquippedShield();
+        floorEntryRing   = hero.getEquippedRing();
+    }
+
+    /**
+     * Strips any item the hero picked up AFTER entering the current floor,
+     * restoring the inventory (and equipped slots) to the floor-entry state.
+     * Items that were consumed or discarded during the floor are gone for good.
+     */
+    public void restoreFloorInventory() {
+        if (hero == null) return;
+
+        // Remove items acquired on this floor (not present in the snapshot)
+        for (Item item : hero.getInventory().getItems()) {
+            if (!floorEntryInventorySnapshot.contains(item)) {
+                hero.getInventory().removeItem(item);
+                // Unequip if the removed item happened to be equipped
+                if (item instanceof Weapon) {
+                    if (hero.getEquippedWeapon() == item) hero.setEquippedWeapon(null);
+                    if (hero.getEquippedArrow()  == item) hero.setEquippedArrow(null);
+                } else if (item instanceof Wearable) {
+                    hero.unequipWearable((Wearable) item);
+                }
+            }
+        }
+
+        // Restore equipped slots that were active at floor entry
+        // (the item is still in inventory, just needs re-equipping)
+        if (hero.getEquippedWeapon() == null && floorEntryWeapon != null
+                && hero.getInventory().hasItem(floorEntryWeapon)) {
+            hero.setEquippedWeapon(floorEntryWeapon);
+        }
+        if (hero.getEquippedArrow() == null && floorEntryArrow != null
+                && hero.getInventory().hasItem(floorEntryArrow)) {
+            hero.setEquippedArrow(floorEntryArrow);
+        }
+        if (floorEntryArmor != null && hero.getInventory().hasItem(floorEntryArmor)
+                && !hero.isWearableEquipped(floorEntryArmor)) {
+            hero.equipWearable(floorEntryArmor);
+        }
+        if (floorEntryShield != null && hero.getInventory().hasItem(floorEntryShield)
+                && !hero.isWearableEquipped(floorEntryShield)) {
+            hero.equipWearable(floorEntryShield);
+        }
+        if (floorEntryRing != null && hero.getInventory().hasItem(floorEntryRing)
+                && !hero.isWearableEquipped(floorEntryRing)) {
+            hero.equipWearable(floorEntryRing);
+        }
+    }
 }
