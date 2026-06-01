@@ -83,10 +83,65 @@ public class ScreenManager {
         showDifficultyScreen("Default");
     }
 
-    /** PBI-16: play a map JSON from maps/ with a win objective. */
+    /** PBI-16: play a map JSON from maps/ with a win objective.
+     *  Supports both single-map .json and multi-map .world.json files. */
     public void startNewGameFromCustomMap() {
-        com.kurawler.model.Map map = showLoadMapDialog();
+        // Let the user pick any .json file from maps/
+        List<MapFileEntry> files = listMapFiles();
+        if (files.isEmpty()) {
+            EditorStyledDialog.showMessage(stage, "New Game", "No map files found.\nSave a map first — it goes in the maps/ folder.");
+            return;
+        }
+        List<String> labels = new java.util.ArrayList<>();
+        for (MapFileEntry e : files) labels.add(e.label);
+        java.util.Optional<Integer> picked = EditorStyledDialog.chooseIndex(stage, "Load Map", "Pick a dungeon to play.", labels);
+        if (!picked.isPresent()) return;
+
+        MapFileEntry chosen = files.get(picked.get());
+        String filename = chosen.path.getFileName().toString();
+
+        // World files: .world.json — load all maps and wire portals
+        if (filename.endsWith(".world.json")) {
+            com.kurawler.persistence.MapDeserializer.WorldData data =
+                    deserializer.loadWorldFromFile(chosen.path.toString());
+            if (data == null || data.maps.isEmpty()) {
+                EditorStyledDialog.showMessage(stage, "Load Map", "Could not load world file.");
+                return;
+            }
+            java.util.LinkedHashMap<String, com.kurawler.model.Map> linked =
+                    new java.util.LinkedHashMap<>(data.maps);
+            String startId = data.startMapId != null && linked.containsKey(data.startMapId)
+                    ? data.startMapId : linked.keySet().iterator().next();
+            com.kurawler.model.Map startMap = linked.get(startId);
+            GameSession session = new GameSession(startMap);
+            for (java.util.Map.Entry<String, com.kurawler.model.Map> e : linked.entrySet()) {
+                session.registerWorldMap(e.getKey(), e.getValue());
+            }
+            session.setCurrentMapId(startId);
+            Hero hero = new Hero("Adventurer");
+            com.kurawler.model.GridCell spawn = startMap.getCell(2, 2);
+            if (spawn != null && spawn.isWalkable()) {
+                hero.setPosition(2, 2);
+                hero.moveToCell(spawn);
+            }
+            session.setHero(hero);
+            prepareSessionForPlay(session);
+            // Place the win objective in the LAST map (deepest dungeon level), not the start.
+            com.kurawler.model.Map objectiveMap = linked.values().stream()
+                    .reduce((a, b) -> b).orElse(startMap);
+            MapFactory.configureObjectiveForMap(objectiveMap, session);
+            session.setAchievementManager(new AchievementManager());
+            session.wireObservers();
+            lastGameType = "Custom";
+            lastDifficulty = "Normal";
+            showPlayMode(session);
+            return;
+        }
+
+        // Single-map .json
+        com.kurawler.model.Map map = deserializer.loadMapFromFile(chosen.path.toString());
         if (map == null) {
+            EditorStyledDialog.showMessage(stage, "Load Map", "Could not load the selected map.");
             return;
         }
         GameSession session = new GameSession(map);
