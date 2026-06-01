@@ -571,6 +571,11 @@ public class MapDeserializer {
             case "StaticContainer":
                 StaticContainer fixed = new StaticContainer(name, description);
                 restoreContainerContents(fixed, json);
+                if (json.containsKey("locked") && (boolean) json.get("locked")) {
+                    String reqKey = json.containsKey("requiredKeyId")
+                            ? (String) json.get("requiredKeyId") : "";
+                    fixed.setLock(reqKey);
+                }
                 return fixed;
             default:
                 System.out.println("[Persistence] Unknown object type: " + type);
