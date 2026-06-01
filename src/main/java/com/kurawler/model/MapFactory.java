@@ -42,6 +42,11 @@ public class MapFactory {
             "Orange Chest", "Blue Banded Chest"
     };
 
+    /** Heavy chest names (Iron/Banded) for hard-to-break chests. */
+    private static final String[] HARD_CHEST_NAMES = {
+            "Iron Chest", "Banded Chest", "Red Locked Chest", "Blue Locked Chest"
+    };
+
     public static GameSession createDefaultMap() {
         Random doorRng = new Random();
         DoorSlot hallToCat = randomPerimeterDoor(doorRng);
@@ -236,9 +241,14 @@ public class MapFactory {
         DoorSlot catEntry = oppositePerimeterDoor(exitToCatacombs);
 
         placeBookshelf(map, 3, 3,
-                "Ancient Bookshelf", "Dusty tomes line the shelves — press E to browse.");
-        setFloor(map, 10, 5, new StaticObject(
-                "Gargoyle Pool", "A shallow pool — something may be hidden inside.", true, true));
+                "Ancient Bookshelf", "Dusty tomes line the shelves — a scrawled note reads: 'The gargoyle pool hides a silver key. The locked iron chest in the catacombs demands it.'");
+
+        // Gargoyle pool — Silver Key hidden inside (SEARCH to find)
+        StaticObject hallPool = new StaticObject(
+                "Gargoyle Pool", "Dark water stirs. Something glints at the bottom...", true, true);
+        hallPool.setHiddenItem(new Key("Silver Key", "A tarnished silver key. What does it open?", "silver"));
+        setFloor(map, 10, 5, hallPool);
+
         setFloor(map, 12, 8, new StaticObject(
                 "Stone Column", "A cracked pillar — search the base.", false, true));
 
@@ -377,10 +387,15 @@ public class MapFactory {
                 WearableCatalog.createArmor("Leather Armor", "Leather armor", rng),
                 WearableCatalog.createShield("Shield"),
         });
+        // Hall: 1 open chest (easy loot), 1 hard-to-break iron chest (high STR needed)
         scatterChestLoot(hall, rng, new ChestLoot[]{
-                new ChestLoot("A dusty chest",
+                new ChestLoot("A dusty wooden chest — the latch is loose.",
                         new Consumable("Energy Potion", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY),
-                        new Key("Silver Key", "Ornamental key", "silver")),
+                        WearableCatalog.createShield("Wooden Shield")),
+                new ChestLoot("A heavy iron chest — battered but solid. Needs real strength to break.",
+                        null, true,   // no key, but hardToBreak → Iron/Banded sprite
+                        new Consumable("Mana Potion", "Restores 25 mana", 0, 25, 0),
+                        WearableCatalog.createArmor("Chain Mail", "Worn chain mail", rng)),
         });
 
         scatterFloorLoot(catacombs, rng, new GameObject[]{
@@ -391,34 +406,51 @@ public class MapFactory {
                 WearableCatalog.createArmor("Chain Mail", "Worn chain mail", rng),
                 new Scroll("Healing Scroll", "Glowing parchment", "Heals wounds.", 10),
         });
+        // Catacombs: 1 open chest, 1 locked with Silver Key (key hidden in Hall pool)
         scatterChestLoot(catacombs, rng, new ChestLoot[]{
-                new ChestLoot("An old wooden chest",
-                        new Consumable("Mana Potion", "Restores 30 mana", 0, 30, 0),
-                        WearableCatalog.createArmor("Heavy Armor", "Heavy armor", rng)),
+                new ChestLoot("An old wooden chest — the lock is broken.",
+                        new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0),
+                        new Consumable("Mana Potion", "Restores 30 mana", 0, 30, 0)),
+                new ChestLoot("A heavy chest sealed with a silver lock. Find the silver key.",
+                        "silver", false,   // locked with silver key
+                        WearableCatalog.createArmor("Heavy Armor", "Heavy armor", rng),
+                        new Key("Gold Key", "A gold key to the vault.", "gold")),
         });
 
         scatterFloorLoot(vault, rng, new GameObject[]{
                 new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0),
                 new Consumable("Mana Potion", "Restores 30 mana", 0, 30, 0),
-                new Scroll("Spell Book", "Ancient scripture",
-                        "Warm light restores your wounds.", 10),
+                new Scroll("Spell Book", "Ancient scripture", "Warm light restores your wounds.", 10),
                 WearableCatalog.createArmor("Royal Armor", "Royal armor", rng),
         });
+        // Vault: 1 open chest, 1 hard-to-break iron chest, 1 locked with Gold Key (from catacombs)
         scatterChestLoot(vault, rng, new ChestLoot[]{
-                new ChestLoot("A sealed treasure chest",
-                        new Consumable("Energy Potion", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY)),
-                new ChestLoot("An ornate chest",
-                        new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0),
+                new ChestLoot("A sealed treasure chest — the clasp is stiff but not locked.",
+                        new Consumable("Energy Potion", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY),
                         new Scroll("Spell Book", "Faded runes", "A spark of healing.", 8)),
+                new ChestLoot("A reinforced iron chest — you\\'ll need serious strength to crack this.",
+                        null, true,   // hardToBreak
+                        WearableCatalog.createArmor("Plate Armor", "Plate armor", rng)),
+                new ChestLoot("An ornate chest sealed with a gold lock. The vault\\'s deepest secret lies within.",
+                        "gold", false,   // locked with gold key
+                        new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0)),
         });
     }
 
     private static final class ChestLoot {
         final String description;
         final Item[] items;
+        final String requiredKeyId;   // null = open, else locked
+        final boolean hardToBreak;    // if true, chest name hints it's tough
 
         ChestLoot(String description, Item... items) {
+            this(description, null, false, items);
+        }
+
+        ChestLoot(String description, String requiredKeyId, boolean hardToBreak, Item... items) {
             this.description = description;
+            this.requiredKeyId = requiredKeyId;
+            this.hardToBreak = hardToBreak;
             this.items = items;
         }
     }
@@ -451,8 +483,13 @@ public class MapFactory {
                 }
                 int r = cell.getRow();
                 int c = cell.getCol();
-                String chestName = LOOT_CHEST_NAMES[rng.nextInt(LOOT_CHEST_NAMES.length)];
-                map.placeObject(r, c, new StaticContainer(chestName, chest.description));
+                String[] namePool = chest.hardToBreak ? HARD_CHEST_NAMES : LOOT_CHEST_NAMES;
+                String chestName = namePool[rng.nextInt(namePool.length)];
+                StaticContainer sc = new StaticContainer(chestName, chest.description);
+                if (chest.requiredKeyId != null) {
+                    sc.setLock(chest.requiredKeyId);
+                }
+                map.placeObject(r, c, sc);
                 populateChest(map, r, c, chest.items);
                 break;
             }
