@@ -2,7 +2,6 @@ package com.kurawler.editor;
 
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Map;
-import com.kurawler.model.WearableCatalog;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
@@ -245,16 +244,16 @@ public class RandomItemGenerator {
             case 0:
                 return new Weapon("Random Sword", "A randomly forged blade", 3 + random.nextInt(5));
             case 1:
-                return new Consumable("Health Potion", "Restores 10 HP",
-                        Consumable.HEALTH_POTION_HEAL, 0, 0);
+                return new Consumable("Health Potion", "Restores HP",
+                        10 + random.nextInt(20), 0, 0);
             case 2:
-                return new Consumable("Mana Elixir", "Restores mana",
-                        0, 15 + random.nextInt(15), 0);
+                return new Consumable("Mana Potion", "Restores 30 mana",
+                        0, 30, 0);
             case 3:
-                return new Consumable("Energy Apple", "Restores 40 EN",
-                        0, 0, Consumable.ENERGY_POTION_ENERGY);
+                return new Consumable("Energy Potion", "Restores 35 energy",
+                        0, 0, 35);
             case 4:
-                return WearableCatalog.createRandomArmor(random);
+                return new Wearable("Random Armor", "Protective gear", 1 + random.nextInt(3));
             case 5:
                 return new Key("Random Key", "A mysterious key", "key_" + random.nextInt(100));
             case 6:
@@ -276,13 +275,13 @@ public class RandomItemGenerator {
             case 0:
                 return new Weapon("Random Sword", "A randomly forged blade", 3 + random.nextInt(5));
             case 1:
-                return new Consumable("Health Potion", "Restores 10 HP",
-                        Consumable.HEALTH_POTION_HEAL, 0, 0);
+                return new Consumable("Health Potion", "Restores HP",
+                        10 + random.nextInt(20), 0, 0);
             case 2:
-                return new Consumable("Mana Elixir", "Restores mana",
-                        0, 15 + random.nextInt(15), 0);
+                return new Consumable("Mana Potion", "Restores 30 mana",
+                        0, 30, 0);
             case 3:
-                return WearableCatalog.createRandomArmor(random);
+                return new Wearable("Random Armor", "Protective gear", 1 + random.nextInt(3));
             case 4:
                 return new Key("Random Key", "A mysterious key", "key_" + random.nextInt(100));
             case 5:

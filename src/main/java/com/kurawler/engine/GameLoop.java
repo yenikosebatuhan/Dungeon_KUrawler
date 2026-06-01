@@ -36,7 +36,8 @@ public class GameLoop {
 
     /** Enemy AI runs every this many frames (~2 moves/sec at 60 FPS). */
     private static final int ENEMY_TICK_INTERVAL = 30;
-    private static final int PROJECTILE_TICK_INTERVAL = 8;
+    /** Projectiles advance one cell every this many frames (~4.5 cells/sec at 60 FPS). */
+    private static final int PROJECTILE_TICK_INTERVAL = 14;
     private int enemyTickCounter = 0;
     private int projectileTickCounter = 0;
 
@@ -184,10 +185,11 @@ public class GameLoop {
             if (!(enemy instanceof Sorcerer sorcerer) || !sorcerer.isAlive()) {
                 continue;
             }
-            // Sorcerers always react to the hero — shadow clone as target made them ignore the player.
-            sorcerer.tickTeleport(deltaTime, map, hero);
-            if (hero.isAlive()) {
-                sorcerer.tickSpellAttack(deltaTime, hero, map, session);
+            // Phase II: an active shadow clone draws aggro as if it were the hero.
+            Character target = resolveEnemyTarget(hero);
+            sorcerer.tickTeleport(deltaTime, map, target);
+            if (target.isAlive()) {
+                sorcerer.tickSpellAttack(deltaTime, target, map, session);
             }
         }
     }
@@ -214,7 +216,8 @@ public class GameLoop {
             if (enemy instanceof Sorcerer) {
                 continue; // §2.5.2: no walking; spell + teleport use wall-clock timers
             }
-            Character target = enemy instanceof Knight ? hero : resolveEnemyTarget(hero);
+            // Phase II: all enemies treat an active shadow clone as the real hero.
+            Character target = resolveEnemyTarget(hero);
             enemy.decideAction(target, map, session);
         }
     }

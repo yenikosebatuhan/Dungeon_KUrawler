@@ -6,6 +6,8 @@ import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.MapFactory;
 import com.kurawler.model.character.Hero;
+import com.kurawler.model.object.GameObject;
+import com.kurawler.model.object.StaticContainer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -48,7 +50,13 @@ public class BreakAction implements Action {
         }
 
         public static BreakRoll fromStrength(int strength) {
-            double chance = breakSuccessChance(strength);
+            return fromStrength(strength, 1.0);
+        }
+
+        /** {@code difficulty} in (0,1]: lower = harder (locked / iron chests). */
+        public static BreakRoll fromStrength(int strength, double difficulty) {
+            double chance = breakSuccessChance(strength) * difficulty;
+            chance = Math.max(0.0, Math.min(1.0, chance));
             String chanceLabel = String.format(Locale.US, "%.1f", chance * 100.0);
             double roll = ThreadLocalRandom.current().nextDouble();
             int rollPct = (int) Math.round(roll * 100.0);
@@ -108,7 +116,34 @@ public class BreakAction implements Action {
         if (!spendAttemptEnergy(hero)) {
             return BreakRoll.noEnergy();
         }
-        return BreakRoll.fromStrength(hero.getStrength());
+        return BreakRoll.fromStrength(hero.getStrength(), breakDifficulty(cell));
+    }
+
+    /**
+     * Difficulty multiplier for the breakable target on this cell (1.0 = easiest).
+     * Locked containers and heavy iron/steel chests are far harder to smash open,
+     * so a player without the key must rely on high STR and repeated attempts.
+     */
+    public static double breakDifficulty(GridCell cell) {
+        if (cell == null) {
+            return 1.0;
+        }
+        for (GameObject obj : cell.getObjects()) {
+            if (obj instanceof StaticContainer sc) {
+                double factor = 1.0;
+                String n = sc.getName().toLowerCase(Locale.US);
+                if (sc.isLocked()) {
+                    factor *= 0.5;
+                }
+                if (n.contains("iron") || n.contains("steel")) {
+                    factor *= 0.4;
+                } else if (n.contains("chest")) {
+                    factor *= 0.7;
+                }
+                return factor;
+            }
+        }
+        return 1.0;
     }
 
     /** Spends break attempt energy (success or failure). */

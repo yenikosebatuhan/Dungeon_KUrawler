@@ -54,19 +54,13 @@ public class StaticContainer extends GameObject {
         return isShelfLike() || !isEmpty();
     }
 
-    /** Removes this container from the grid when it has been looted (not bookshelves). */
+    /**
+     * Looting a container no longer removes it from the map: an emptied chest stays
+     * in place (rendered with its open/empty sprite). Only a successful BREAK removes
+     * a container (see {@link com.kurawler.effect.BreakObjectEffect}).
+     */
     public void removeFromMapIfLooted(Map map) {
-        if (map == null || isShelfLike() || !isEmpty()) {
-            return;
-        }
-        for (int r = 0; r < map.getHeight(); r++) {
-            for (int c = 0; c < map.getWidth(); c++) {
-                GridCell cell = map.getCell(r, c);
-                if (cell != null && cell.removeObject(this)) {
-                    return;
-                }
-            }
-        }
+        // Intentionally a no-op — chests remain after being opened and emptied.
     }
 
     /** Bookshelves use the static prop sprite on the tile; no chest overlay. */
