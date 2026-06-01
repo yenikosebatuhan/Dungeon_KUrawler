@@ -33,9 +33,9 @@ public class GameLoop {
     /** Target sleep time per frame in milliseconds (~60 FPS). */
     private static final long FRAME_SLEEP_MS = 16;
 
-    /** Enemy AI runs every this many frames (~2 moves/sec at 60 FPS). */
-    private static final int ENEMY_TICK_INTERVAL = 30;
-    private static final int PROJECTILE_TICK_INTERVAL = 8;
+    /** Enemy AI runs every this many frames (~1.5 moves/sec at 60 FPS). */
+    private static final int ENEMY_TICK_INTERVAL = 42;
+    private static final int PROJECTILE_TICK_INTERVAL = 11;
     private int enemyTickCounter = 0;
     private int projectileTickCounter = 0;
 
