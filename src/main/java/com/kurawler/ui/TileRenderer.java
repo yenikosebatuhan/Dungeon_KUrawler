@@ -222,19 +222,17 @@ public class TileRenderer {
                 { "/assets/dc_statue.png", "Stone Statue" },
                 { "/assets/dc_statue_sword.png", "Knight Statue" },
                 { "/assets/dc_sarcophagus.png", "Sarcophagus" },
+                { "/assets/dc_door_closed.png", "Wooden Door" },
+                { "/assets/dc_door_open.png", "Open Door" },
+                { "/assets/dc_door_runed.png", "Runed Door" },
+                { "/assets/dc_stairs_down.png", "Stairs Down" },
+                { "/assets/dc_stairs_up.png", "Stairs Up" },
                 { "/assets/dc_lantern.png", "Lantern" },
                 { "/assets/dc_lamp.png", "Oil Lamp" },
                 { "/assets/dc_gold.png", "Gold Pile" },
                 { "/assets/dc_orb.png", "Glowing Orb" },
                 { "/assets/dc_orb2.png", "Blue Orb" },
                 { "/assets/dc_orb3.png", "Dark Orb" },
-        });
-        addNamedSprites("Portals", AssetKind.PORTAL, new String[][] {
-                { "/assets/dc_door_closed.png", "Wooden Door" },
-                { "/assets/dc_door_open.png", "Open Door" },
-                { "/assets/dc_door_runed.png", "Runed Door" },
-                { "/assets/dc_stairs_down.png", "Stairs Down" },
-                { "/assets/dc_stairs_up.png", "Stairs Up" },
                 { "/assets/dc_gateway_enter.png", "Gateway" },
                 { "/assets/dc_portal_blue.png", "Blue Portal" },
                 { "/assets/dc_portal_magic.png", "Magic Portal" },
@@ -251,6 +249,7 @@ public class TileRenderer {
             addStructure(wsSheet, "Tan Carpet", 392, 24, 79, 92);
             addStructure(wsSheet, "Barrel Stack", 152, 56, 80, 72);
         }
+        registerWallAndStaticResourceTiles();
 
         // --- Weapons: verified DCSS tiles (game + editor); sheet extras are trimmed per cell.
         addNamedSprites("Weapons", AssetKind.WEAPON, new String[][] {
@@ -266,10 +265,8 @@ public class TileRenderer {
             registerWeaponsFromAtlas(weaponsSheet);
             registerWeaponNameAliases();
         }
-        // --- Items: clean 6x4 grid, exact names per cell.
-        addSlicedSheet(itemsAtlas, "Items", AssetKind.ITEM, (c, r) -> gridName(ITEM_GRID, c, r, "Relic"));
-        // --- Containers: sheet tiles for editor + per-tile PNGs for in-game chest art.
-        addSlicedSheet(containersAtlas, "Containers", AssetKind.CONTAINER, (c, r) -> gridName(CONTAINER_GRID, c, r, null));
+        // --- Items / Containers: pre-sliced resource folders (level-editor catalog).
+        registerItemResourceTiles();
         registerContainerResourceTiles();
         // Gameplay wearables (Entry Hall etc.) — match MapFactory item names exactly.
         addNamedSprites("Wearables", AssetKind.ITEM, new String[][] {
@@ -278,13 +275,26 @@ public class TileRenderer {
                 { "/assets/dc_ring.png", "Ring" },
         });
 
-        // --- Characters: functional placeables first, then NPC standees named by class/row.
-        editorAssets.add(new EditorAsset("Hero", "Characters", AssetKind.HERO));
-        editorAssets.add(new EditorAsset("Knight", "Characters", AssetKind.KNIGHT));
-        editorAssets.add(new EditorAsset("Guard", "Characters", AssetKind.GUARD));
-        editorAssets.add(new EditorAsset("Sorcerer", "Characters", AssetKind.SORCERER));
-        editorAssets.add(new EditorAsset("Assassin", "Characters", AssetKind.ASSASSIN));
-        addSlicedSheet(charactersAtlas, "Characters", AssetKind.NPC, (c, r) -> characterName(r));
+        // --- Navigation: portals / stairs / doors linking maps together.
+        addNamedSprites("Navigation", AssetKind.PORTAL, new String[][] {
+                { "/assets/dc_stairs_down.png", "Stairs Down" },
+                { "/assets/dc_stairs_up.png", "Stairs Up" },
+                { "/assets/dc_door_closed.png", "Door" },
+                { "/assets/dc_portal_blue.png", "Portal" },
+                { "/assets/dc_portal_magic.png", "Magic Portal" },
+        });
+
+        // --- Characters: per-file sprites used by the level editor palette.
+        addCharacterAsset("/assets/characters/tile018.png", "Hero", AssetKind.HERO);
+        addCharacterAsset("/assets/characters/MainChar012.png", "Hero Blonde", AssetKind.HERO);
+        addCharacterAsset("/assets/characters/MainChar013.png", "Hero Yellow", AssetKind.HERO);
+        addCharacterAsset("/assets/characters/tile009.png", "Knight", AssetKind.KNIGHT);
+        addCharacterAsset("/assets/characters/MainChar005.png", "Horned Guard Brown", AssetKind.GUARD);
+        addCharacterAsset("/assets/characters/MainChar006.png", "Horned Guard Blue", AssetKind.GUARD);
+        addCharacterAsset("/assets/characters/MainChar003.png", "Sorcerer Purple", AssetKind.SORCERER);
+        addCharacterAsset("/assets/characters/MainChar004.png", "Sorcerer Red", AssetKind.SORCERER);
+        addCharacterAsset("/assets/characters/MainChar016.png", "Assassin Blue Hood", AssetKind.ASSASSIN);
+        addCharacterAsset("/assets/characters/MainChar015.png", "Assassin Red Hood", AssetKind.ASSASSIN);
     }
 
     /** Resolves a unique catalog name and registers it once. */
@@ -436,9 +446,31 @@ public class TileRenderer {
         return SpriteAtlas.trimOpaqueBounds(crop);
     }
 
+    private void registerItemResourceTiles() {
+        for (String[] entry : ResourceAssetCatalog.ITEM_TILES) {
+            addResourceSprite("/assets/items/" + entry[0] + ".png", entry[1], "Items", AssetKind.ITEM);
+        }
+    }
+
     private void registerContainerResourceTiles() {
         for (String[] entry : ResourceAssetCatalog.CONTAINER_TILES) {
             addResourceSprite("/assets/containers/" + entry[0] + ".png", entry[1], "Containers", AssetKind.CONTAINER);
+        }
+    }
+
+    private void addCharacterAsset(String path, String name, AssetKind kind) {
+        addResourceSprite(path, name, "Characters", kind);
+    }
+
+    private void registerWallAndStaticResourceTiles() {
+        for (int i = 0; i < 240; i++) {
+            String id = String.format("tile%03d", i);
+            String name = ResourceAssetCatalog.wallStaticName(id);
+            AssetKind kind = ResourceAssetCatalog.isTerrainWall(name) ? AssetKind.TERRAIN_WALL
+                    : ResourceAssetCatalog.isTerrainFloor(name) ? AssetKind.TERRAIN_FLOOR
+                    : AssetKind.STATIC;
+            String category = kind == AssetKind.STATIC ? "Statics" : "Walls/Floors";
+            addResourceSprite("/assets/wall and statics/" + id + ".png", name, category, kind);
         }
     }
 
@@ -464,6 +496,23 @@ public class TileRenderer {
                 if (pr.getColor(x, y).getOpacity() > 0.18 && ++opaque >= minimum) {
                     return true;
                 }
+            }
+        }
+        return false;
+    }
+
+    /** True for catalog names like {@code 03-14} from the wall/statics tile folder. */
+    private boolean isResourceCellTile(String name) {
+        if (name == null) {
+            return false;
+        }
+        for (int i = 0; i <= name.length() - 5; i++) {
+            if (Character.isDigit(name.charAt(i))
+                    && Character.isDigit(name.charAt(i + 1))
+                    && name.charAt(i + 2) == '-'
+                    && Character.isDigit(name.charAt(i + 3))
+                    && Character.isDigit(name.charAt(i + 4))) {
+                return true;
             }
         }
         return false;
@@ -1779,11 +1828,23 @@ public class TileRenderer {
 
         Image wall = wallSpriteFor(objectName);
         if (wall != null) {
+            if (isResourceCellTile(objectName)) {
+                gc.setFill(Color.web("#4a2736"));
+                gc.fillRect(0, 0, s, s);
+                gc.drawImage(wall, 0, 0, s, s);
+                return;
+            }
             drawScaledFit(gc, wall, 0, 0, s, atlasRegistry.containsKey(objectName) ? 2 : 1);
             return;
         }
         Image floor = floorSpriteFor(objectName);
         if (floor != null) {
+            if (isResourceCellTile(objectName)) {
+                gc.setFill(Color.web("#4a2736"));
+                gc.fillRect(0, 0, s, s);
+                gc.drawImage(floor, 0, 0, s, s);
+                return;
+            }
             drawScaledFit(gc, floor, 0, 0, s, atlasRegistry.containsKey(objectName) ? 2 : 1);
             return;
         }
@@ -1850,6 +1911,13 @@ public class TileRenderer {
             return atlas;
         }
         String n = id.toLowerCase();
+
+        // --- Characters (editor placeables; atlas wins when registered above) ---
+        if (n.contains("hero")) return heroSprite;
+        if (n.contains("knight")) return knightSprite;
+        if (n.contains("guard")) return knightSprite2 != null ? knightSprite2 : knightSprite;
+        if (n.contains("assassin")) return sorcererSprite2 != null ? sorcererSprite2 : sorcererSprite;
+        if (n.contains("sorcerer")) return sorcererSprite;
 
         // --- Items / weapons (resolved before statics to avoid keyword clashes) ---
         if (n.contains("spell book") || n.contains("scroll") || n.contains("tome")) return scrollSprite;
@@ -1967,11 +2035,20 @@ public class TileRenderer {
             return;
         }
         Image w = wallSpriteFor(name);
-        if (w != null && !atlasRegistry.containsKey(name)) {
+        if (w != null) {
             gc.setImageSmoothing(false);
-            gc.setFill(Color.web("#2a1528"));
-            gc.fillRect(screenX, screenY, tileSize, tileSize);
-            gc.drawImage(w, screenX, screenY, tileSize, tileSize);
+            if (isResourceCellTile(name)) {
+                drawPatternedFloor(gc, screenX, screenY);
+                gc.drawImage(w, screenX, screenY, tileSize, tileSize);
+            } else if (atlasRegistry.containsKey(name)) {
+                gc.setFill(Color.web("#1a1a2e"));
+                gc.fillRect(screenX, screenY, tileSize, tileSize);
+                drawScaledFit(gc, w, screenX, screenY, tileSize, 1);
+            } else {
+                gc.setFill(Color.web("#2a1528"));
+                gc.fillRect(screenX, screenY, tileSize, tileSize);
+                gc.drawImage(w, screenX, screenY, tileSize, tileSize);
+            }
         } else {
             drawWall(gc, map, row, col, screenX, screenY);
         }
@@ -1988,12 +2065,17 @@ public class TileRenderer {
         }
         Image f = floorSpriteFor(name);
         if (f != null) {
-            gc.setFill(Color.web("#1a1a2e"));
-            gc.fillRect(screenX, screenY, tileSize, tileSize);
             gc.setImageSmoothing(false);
-            if (atlasRegistry.containsKey(name)) {
+            if (isResourceCellTile(name)) {
+                drawPatternedFloor(gc, screenX, screenY);
+                gc.drawImage(f, screenX, screenY, tileSize, tileSize);
+            } else if (atlasRegistry.containsKey(name)) {
+                gc.setFill(Color.web("#1a1a2e"));
+                gc.fillRect(screenX, screenY, tileSize, tileSize);
                 drawScaledFit(gc, f, screenX, screenY, tileSize, 1);
             } else {
+                gc.setFill(Color.web("#1a1a2e"));
+                gc.fillRect(screenX, screenY, tileSize, tileSize);
                 gc.drawImage(f, screenX, screenY, tileSize, tileSize);
             }
         } else {
@@ -2019,12 +2101,16 @@ public class TileRenderer {
                 gc.setGlobalAlpha(0.62);
             }
             String propName = so.getName();
-            double pad = catalogDrawPadding(propName, sprite);
-            boolean wide = Math.abs(sprite.getWidth() - sprite.getHeight()) > 1;
-            if (wide || atlasRegistry.containsKey(propName)) {
-                drawScaledFit(gc, sprite, screenX, screenY, tileSize, pad);
-            } else {
+            if (isResourceCellTile(propName)) {
                 gc.drawImage(sprite, screenX, screenY, tileSize, tileSize);
+            } else {
+                double pad = catalogDrawPadding(propName, sprite);
+                boolean wide = Math.abs(sprite.getWidth() - sprite.getHeight()) > 1;
+                if (wide || atlasRegistry.containsKey(propName)) {
+                    drawScaledFit(gc, sprite, screenX, screenY, tileSize, pad);
+                } else {
+                    gc.drawImage(sprite, screenX, screenY, tileSize, tileSize);
+                }
             }
             gc.setGlobalAlpha(oldAlpha);
         } else if (!so.isPassable()) {
