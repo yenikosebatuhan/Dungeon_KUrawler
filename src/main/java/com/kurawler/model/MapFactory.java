@@ -32,6 +32,16 @@ public class MapFactory {
     /** Keep loot off the wall ring and the tile right beside it. */
     private static final int LOOT_INSET = 2;
 
+    /**
+     * Chest names whose closed sprite and "Open …" sprite both exist in the container
+     * atlas (see ResourceAssetCatalog.CONTAINER_TILES + containerSpriteName), so a chest
+     * looks like the same chest whether it is closed or opened.
+     */
+    private static final String[] LOOT_CHEST_NAMES = {
+            "Gold Banded Chest", "Bronze Treasure Chest", "Copper Chest",
+            "Orange Chest", "Blue Banded Chest"
+    };
+
     public static GameSession createDefaultMap() {
         Random doorRng = new Random();
         DoorSlot hallToCat = randomPerimeterDoor(doorRng);
@@ -232,6 +242,13 @@ public class MapFactory {
         setFloor(map, 12, 8, new StaticObject(
                 "Stone Column", "A cracked pillar — search the base.", false, true));
 
+        // Breakable floor prop: smash it open (BREAK) to reveal what's inside.
+        StaticObject hallCrate = new StaticObject(
+                "Wooden Crate", "A flimsy crate — could be smashed open.", false, true);
+        hallCrate.setHiddenItem(new Consumable("Health Potion", "Restores 10 HP",
+                Consumable.HEALTH_POTION_HEAL, 0, 0));
+        setFloor(map, 6, 10, hallCrate);
+
         placeWallPortal(map, exitToCatacombs.row, exitToCatacombs.col, new MapPortal(
                 "Wooden Door", "Leads deeper into the dungeon.",
                 "catacombs", catEntry.row, catEntry.col, null, true));
@@ -254,6 +271,11 @@ public class MapFactory {
         setFloor(map, 12, 8, new StaticObject(
                 "Stone Column", "A cracked pillar — search the base.", false, true));
 
+        StaticObject catCrate = new StaticObject(
+                "Barrel", "An old barrel — smash it to see inside.", false, true);
+        catCrate.setHiddenItem(new Consumable("Mana Potion", "Restores 25 mana", 0, 25, 0));
+        setFloor(map, 6, 11, catCrate);
+
         placeWallPortal(map, hallLink.row, hallLink.col, new MapPortal(
                 "Wooden Door", "Back to the entry hall.",
                 "hall", hallReturn.row, hallReturn.col, null, true));
@@ -274,6 +296,12 @@ public class MapFactory {
                 "Gargoyle Pool", "A dark pool — search the water.", true, true));
         setFloor(map, 12, 10, new StaticObject(
                 "Stone Column", "Ancient carvings cover the column.", false, true));
+
+        StaticObject vaultCrate = new StaticObject(
+                "Wooden Crate", "A reinforced crate — break it open.", false, true);
+        vaultCrate.setHiddenItem(new Consumable("Energy Potion", "Restores 40 energy",
+                0, 0, Consumable.ENERGY_POTION_ENERGY));
+        setFloor(map, 6, 12, vaultCrate);
 
         placeWallPortal(map, catacombsLink.row, catacombsLink.col, new MapPortal(
                 "Iron Door", "Return to the catacombs.",
@@ -343,42 +371,42 @@ public class MapFactory {
         scatterFloorLoot(hall, rng, new GameObject[]{
                 new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0),
                 new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0),
-                new Consumable("Energy Apple", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY),
-                new Consumable("Mana Elixir", "Restores 25 mana", 0, 25, 0),
+                new Consumable("Energy Potion", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY),
+                new Consumable("Mana Potion", "Restores 25 mana", 0, 25, 0),
                 new Scroll("Spell Book", "Arcane tome", "Runes mend your wounds.", 12),
                 WearableCatalog.createArmor("Leather Armor", "Leather armor", rng),
                 WearableCatalog.createShield("Shield"),
         });
         scatterChestLoot(hall, rng, new ChestLoot[]{
                 new ChestLoot("A dusty chest",
-                        new Consumable("Energy Apple", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY),
+                        new Consumable("Energy Potion", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY),
                         new Key("Silver Key", "Ornamental key", "silver")),
         });
 
         scatterFloorLoot(catacombs, rng, new GameObject[]{
                 new Scroll("Spell Book", "Arcane tome", "Runes flare and mend your wounds.", 14),
                 new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0),
-                new Consumable("Mana Elixir", "Restores 25 mana", 0, 25, 0),
-                new Consumable("Energy Apple", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY),
+                new Consumable("Mana Potion", "Restores 25 mana", 0, 25, 0),
+                new Consumable("Energy Potion", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY),
                 WearableCatalog.createArmor("Chain Mail", "Worn chain mail", rng),
                 new Scroll("Healing Scroll", "Glowing parchment", "Heals wounds.", 10),
         });
         scatterChestLoot(catacombs, rng, new ChestLoot[]{
                 new ChestLoot("An old wooden chest",
-                        new Consumable("Mana Elixir", "Restores 30 mana", 0, 30, 0),
+                        new Consumable("Mana Potion", "Restores 30 mana", 0, 30, 0),
                         WearableCatalog.createArmor("Heavy Armor", "Heavy armor", rng)),
         });
 
         scatterFloorLoot(vault, rng, new GameObject[]{
                 new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0),
-                new Consumable("Mana Elixir", "Restores 30 mana", 0, 30, 0),
+                new Consumable("Mana Potion", "Restores 30 mana", 0, 30, 0),
                 new Scroll("Spell Book", "Ancient scripture",
                         "Warm light restores your wounds.", 10),
                 WearableCatalog.createArmor("Royal Armor", "Royal armor", rng),
         });
         scatterChestLoot(vault, rng, new ChestLoot[]{
                 new ChestLoot("A sealed treasure chest",
-                        new Consumable("Energy Apple", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY)),
+                        new Consumable("Energy Potion", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY)),
                 new ChestLoot("An ornate chest",
                         new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0),
                         new Scroll("Spell Book", "Faded runes", "A spark of healing.", 8)),
@@ -423,7 +451,8 @@ public class MapFactory {
                 }
                 int r = cell.getRow();
                 int c = cell.getCol();
-                map.placeObject(r, c, new StaticContainer("Chest", chest.description));
+                String chestName = LOOT_CHEST_NAMES[rng.nextInt(LOOT_CHEST_NAMES.length)];
+                map.placeObject(r, c, new StaticContainer(chestName, chest.description));
                 populateChest(map, r, c, chest.items);
                 break;
             }
@@ -602,9 +631,9 @@ public class MapFactory {
             case 0:
                 return new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0);
             case 1:
-                return new Consumable("Mana Elixir", "Restores 25 mana", 0, 25, 0);
+                return new Consumable("Mana Potion", "Restores 25 mana", 0, 25, 0);
             case 2:
-                return new Consumable("Energy Apple", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY);
+                return new Consumable("Energy Potion", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY);
             case 3:
                 return new Scroll("Spell Book", "Arcane tome", "Runes mend your wounds.", 10);
             default:
@@ -764,7 +793,7 @@ public class MapFactory {
             case 0:
                 return new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0);
             case 1:
-                return new Consumable("Energy Apple", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY);
+                return new Consumable("Energy Potion", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY);
             case 2:
                 return new Scroll("Spell Book", "Faint magic", "A spark of healing.", 6);
             default:

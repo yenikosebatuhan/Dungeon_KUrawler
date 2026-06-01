@@ -1,6 +1,5 @@
 package com.kurawler.editor;
 
-import com.kurawler.model.WearableCatalog;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
@@ -10,6 +9,7 @@ import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Key;
 import com.kurawler.model.object.PortableContainer;
 import com.kurawler.model.object.Scroll;
+import com.kurawler.model.object.ShadowCloneScroll;
 import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
@@ -42,6 +42,7 @@ public class ObjectPalette {
         availableObjects.add(createObjectByName("Golden Key"));
         availableObjects.add(createObjectByName("Chest"));
         availableObjects.add(createObjectByName("Pouch"));
+        availableObjects.add(createObjectByName("Shadow Clone Scroll"));
 
         availableCharacters.add(new Hero("Adventurer"));
         availableCharacters.add(new Knight());
@@ -102,15 +103,17 @@ public class ObjectPalette {
                 return new Scroll("Spell Book", "A tome of arcane power",
                         "The glyphs flare with restorative magic.", 12);
             case "Health Potion":
-                return new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL);
+                return new Consumable("Health Potion", "Restores 20 HP", 20);
             case "Armor":
-                return WearableCatalog.createArmor("Armor", "Protective body armor");
+                return new Wearable("Armor", "Protective armor (+5 DEF)", Wearable.ARMOR_DEFENSE_BONUS);
             case "Golden Key":
                 return new Key("Golden Key", "Opens a golden lock", "gold");
             case "Chest":
                 return new StaticContainer("Chest", "A wooden chest");
             case "Pouch":
                 return new PortableContainer("Pouch", "A small pouch", 4);
+            case "Shadow Clone Scroll":
+                return new ShadowCloneScroll();
             default:
                 return null;
         }
