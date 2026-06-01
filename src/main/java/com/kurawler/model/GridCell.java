@@ -39,9 +39,13 @@ public class GridCell {
     public void setOccupyingCharacter(Character character) { this.occupyingCharacter = character; }
 
     public boolean isBlocked() {
-        if (staticObject != null && !staticObject.isPassable()) return true;
-        if (occupyingCharacter != null && occupyingCharacter.isAlive()) return true;
-        return false;
+        if (occupyingCharacter != null) {
+            return true;
+        }
+        if (hasObjects()) {
+            return true;
+        }
+        return !isWalkableFloorTile();
     }
 
     /** Enemies cannot stand on walls, doors/portals, or occupied tiles. */
@@ -49,10 +53,34 @@ public class GridCell {
         if (staticObject instanceof MapPortal) {
             return false;
         }
-        if (staticObject != null && !staticObject.isPassable()) {
+        if (occupyingCharacter != null) {
             return false;
         }
-        return occupyingCharacter == null;
+        if (hasObjects()) {
+            return false;
+        }
+        return isWalkableFloorTile();
+    }
+
+    /**
+     * Only bare interior floor tiles are walkable — not pools, bookshelves, columns,
+     * chests, or dropped items (those live in {@link #objects}).
+     */
+    private boolean isWalkableFloorTile() {
+        StaticObject so = staticObject;
+        if (so == null) {
+            return false;
+        }
+        if (so instanceof MapPortal) {
+            return so.isPassable();
+        }
+        if (!so.isPassable()) {
+            return false;
+        }
+        if (so.isSearchable() || so.wasSearched()) {
+            return false;
+        }
+        return "Floor".equals(so.getName());
     }
 
     // Alias for teammates

@@ -8,6 +8,7 @@ import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.ShadowClone;
+import com.kurawler.model.character.Sorcerer;
 import com.kurawler.model.object.Projectile;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,9 +34,9 @@ public class GameLoop {
     /** Target sleep time per frame in milliseconds (~60 FPS). */
     private static final long FRAME_SLEEP_MS = 16;
 
-    /** Enemy AI runs every this many frames (~1.5 moves/sec at 60 FPS). */
-    private static final int ENEMY_TICK_INTERVAL = 42;
-    private static final int PROJECTILE_TICK_INTERVAL = 11;
+    /** Enemy AI runs every this many frames (~2 moves/sec at 60 FPS). */
+    private static final int ENEMY_TICK_INTERVAL = 30;
+    private static final int PROJECTILE_TICK_INTERVAL = 8;
     private int enemyTickCounter = 0;
     private int projectileTickCounter = 0;
 
@@ -80,6 +81,11 @@ public class GameLoop {
         }
     }
 
+    /** Resets spawn timing after in-game "Restart Level". */
+    public void resetEnemySpawner() {
+        enemySpawner = new EnemySpawner(session);
+    }
+
     /**
      * Internal loop that calls {@link #update(long)} each frame
      * and sleeps to approximate 60 FPS.
@@ -114,6 +120,7 @@ public class GameLoop {
         }
 
         updateShadowClone(deltaTime);
+        updateSorcererTimedAbilities(deltaTime);
         updateEnemies();
         if (++projectileTickCounter >= PROJECTILE_TICK_INTERVAL) {
             projectileTickCounter = 0;
@@ -163,6 +170,28 @@ public class GameLoop {
         }
     }
 
+    /** Spec §2.5.2: Sorcerer teleport (7s) and spell fire (5s) on wall-clock timers. */
+    private void updateSorcererTimedAbilities(long deltaTime) {
+        if (deltaTime <= 0) {
+            return;
+        }
+        Map map = session.getMap();
+        Hero hero = session.getHero();
+        if (map == null || hero == null || !hero.isAlive()) {
+            return;
+        }
+        for (Enemy enemy : findAllEnemies(map)) {
+            if (!(enemy instanceof Sorcerer sorcerer) || !sorcerer.isAlive()) {
+                continue;
+            }
+            // Sorcerers always react to the hero — shadow clone as target made them ignore the player.
+            sorcerer.tickTeleport(deltaTime, map, hero);
+            if (hero.isAlive()) {
+                sorcerer.tickSpellAttack(deltaTime, hero, map, session);
+            }
+        }
+    }
+
     /**
      * Scans the grid for all living enemies and lets each one decide its
      * action (chase, attack, wander, teleport, or cast spell) based on type.
@@ -182,7 +211,9 @@ public class GameLoop {
             if (!enemy.isAlive()) {
                 continue;
             }
-            // Knights always chase/attack the hero; sorcerers may target shadow clone.
+            if (enemy instanceof Sorcerer) {
+                continue; // §2.5.2: no walking; spell + teleport use wall-clock timers
+            }
             Character target = enemy instanceof Knight ? hero : resolveEnemyTarget(hero);
             enemy.decideAction(target, map, session);
         }
@@ -257,8 +288,7 @@ public class GameLoop {
             int newCol = projectile.getPositionCol() + projectile.getDirectionCol();
 
             GridCell targetCell = map.getCell(newRow, newCol);
-            if (targetCell == null || (targetCell.getStaticObject() != null
-                    && !targetCell.getStaticObject().isPassable())) {
+            if (blocksProjectile(targetCell)) {
                 activeProjectiles.remove(projectile);
                 continue;
             }
@@ -301,6 +331,17 @@ public class GameLoop {
     private static boolean isHeroOwnedProjectile(String name) {
         return "Hero Bolt".equals(name) || "Arrow".equals(name) || "Bomb".equals(name)
                 || "Staff Bolt".equals(name) || "Weapon Strike".equals(name);
+    }
+
+    /** §2.5.2: bolts stop at walls and cells with large floor objects (chests, props). */
+    static boolean blocksProjectile(GridCell cell) {
+        if (cell == null) {
+            return true;
+        }
+        if (cell.getStaticObject() != null && !cell.getStaticObject().isPassable()) {
+            return true;
+        }
+        return cell.hasObjects();
     }
 
     /** Hero takes splash damage when a bomb explodes on a tile adjacent to them. */
@@ -381,11 +422,10 @@ public class GameLoop {
                 GridCell cell = map.getCellAt(x, y);
                 if (cell == null) continue;
                 Character occupant = cell.getOccupyingCharacter();
-                if (!(occupant instanceof Enemy) || occupant.isAlive()) continue;
                 if (occupant instanceof com.kurawler.model.character.Sorcerer) {
                     com.kurawler.model.character.Sorcerer s =
                             (com.kurawler.model.character.Sorcerer) occupant;
-                    if (!s.isRingDropped()) {
+                    if (!s.isAlive() && !s.isRingDropped()) {
                         // 60% chance the sorcerer was carrying a ring
                         if (rng.nextDouble() < 0.60) {
                             cell.addObject(com.kurawler.model.object.Ring.sorcererDrop());
@@ -393,9 +433,6 @@ public class GameLoop {
                         s.markRingDropped();
                     }
                 }
-                // Clear the cell so dead enemies don't permanently occupy tiles.
-                cell.setOccupyingCharacter(null);
-                session.decrementEnemyCount();
             }
         }
     }

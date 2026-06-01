@@ -2,10 +2,7 @@ package com.kurawler.model;
 
 import com.kurawler.model.achievement.AchievementManager;
 import com.kurawler.model.character.Enemy;
-import com.kurawler.model.character.Guard;
 import com.kurawler.model.character.Hero;
-import com.kurawler.model.character.Knight;
-import com.kurawler.model.character.Sorcerer;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
@@ -22,46 +19,43 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Builds the story dungeon: The Stolen Relic — three floors.
- *
- * Story: A priceless relic was seized and locked in a warlord's fortress.
- * The player must push through the Gatehouse and the Armory to reach
- * the Inner Vault where the relic is hidden.
- *
- * Floor chain: gatehouse → armory → innervault
+ * Builds the default multi-map dungeon: Entry Hall → Catacombs → Treasure Vault.
  */
 public class MapFactory {
 
-    private static final int WORLD_WIDTH  = 22;
-    private static final int WORLD_HEIGHT = 16;
-
-    public static final String MAP_GATEHOUSE  = "gatehouse";
-    public static final String MAP_ARMORY     = "armory";
-    public static final String MAP_INNERVAULT = "innervault";
-
-    // =========================================================
-    // PUBLIC ENTRY POINTS
-    // =========================================================
-
     /**
-     * Creates a full three-floor story session starting at the Gatehouse.
-     * The win objective (the relic) is hidden in the Royal Vault Chest on
-     * the final floor; its name is randomised each new game.
+     * Story map size — matches play viewport (1248×810 window, 48px tiles,
+     * 100px HUD, 34px info bar): 26×14 cells.
      */
-    public static GameSession createDefaultMap() {
-        Map gatehouse  = buildGatehouse();
-        Map armory     = buildArmory();
-        Map innervault = buildInnerVault();
+    private static final int WORLD_WIDTH = 26;
+    private static final int WORLD_HEIGHT = 14;
+    /** Keep loot off the wall ring and the tile right beside it. */
+    private static final int LOOT_INSET = 2;
 
-        GameSession session = new GameSession(gatehouse);
-        session.registerWorldMap(MAP_GATEHOUSE,  gatehouse);
-        session.registerWorldMap(MAP_ARMORY,     armory);
-        session.registerWorldMap(MAP_INNERVAULT, innervault);
-        session.setMap(gatehouse);
-        session.setCurrentMapId(MAP_GATEHOUSE);
+    public static GameSession createDefaultMap() {
+        Random doorRng = new Random();
+        DoorSlot hallToCat = randomPerimeterDoor(doorRng);
+        DoorSlot catFromHall = oppositePerimeterDoor(hallToCat);
+        DoorSlot catToVault = randomPerimeterDoor(doorRng);
+        int guard = 0;
+        while (sameDoorSlot(catFromHall, catToVault) && guard++ < 20) {
+            catToVault = randomPerimeterDoor(doorRng);
+        }
+        DoorSlot vaultFromCat = oppositePerimeterDoor(catToVault);
+
+        Map hall = buildEntryHall(hallToCat);
+        Map catacombs = buildCatacombs(catFromHall, catToVault, hallToCat);
+        Map vault = buildTreasureVault(vaultFromCat, catToVault);
+
+        GameSession session = new GameSession(hall);
+        session.registerWorldMap("hall", hall);
+        session.registerWorldMap("catacombs", catacombs);
+        session.registerWorldMap("vault", vault);
+        session.setMap(hall);
+        session.setCurrentMapId("hall");
 
         Hero hero = new Hero("Adventurer");
-        GridCell spawn = gatehouse.getCell(4, 4);
+        GridCell spawn = hall.getCell(4, 4);
         if (spawn != null) {
             hero.setPosition(4, 4);
             hero.moveToCell(spawn);
@@ -69,90 +63,23 @@ public class MapFactory {
         session.setHero(hero);
         session.setAchievementManager(new AchievementManager());
         session.wireObservers();
-        session.snapshotFloorInventory(); // baseline: empty inventory on floor 1
 
-        Random rng = new Random();
+        scatterDefaultLoot(hall, catacombs, vault);
 
-        placeGatehouseLoot(gatehouse, rng);
-        placeArmoryLoot(armory, rng);
-        placeInnerVaultLoot(innervault, session, rng);
+        Random weaponRng = new Random();
+        scatterRandomMapWeapons(hall, weaponRng, 5 + weaponRng.nextInt(2));
+        scatterRandomMapWeapons(catacombs, weaponRng, 5 + weaponRng.nextInt(2));
+        scatterRandomMapWeapons(vault, weaponRng, 3 + weaponRng.nextInt(2));
 
-        scatterRandomMapWeapons(gatehouse,  rng, 4 + rng.nextInt(2));
-        scatterRandomMapWeapons(armory,     rng, 5 + rng.nextInt(2));
-        scatterRandomMapWeapons(innervault, rng, 3 + rng.nextInt(2));
+        populateStoryBookshelfLoot(hall, catacombs);
+        fillBookshelfLoot(vault, 3, 4, new Random(), false);
 
-        placeGatehouseEnemies(gatehouse);
-        placeArmoryEnemies(armory);
-        placeInnerVaultEnemies(innervault);
-
-        syncEnemiesFromMap(gatehouse, session);
+        placeTargetInRandomVaultChest(vault, session);
 
         return session;
     }
 
-    /**
-     * Restarts the current floor from scratch: fresh enemies, items, and chests.
-     * The hero is teleported back to the floor's entry point.
-     * Items picked up on this floor are stripped from the hero's inventory;
-     * items carried in from previous floors are preserved.
-     *
-     * @return true if the floor was recognised and restarted successfully
-     */
-    public static boolean restartCurrentFloor(GameSession session) {
-        if (session == null) return false;
-        String mapId = session.getCurrentMapId();
-        Random rng = new Random();
-
-        // Strip items the hero picked up on this floor
-        session.restoreFloorInventory();
-
-        Map fresh;
-        int heroRow, heroCol;
-        switch (mapId == null ? "" : mapId) {
-            case MAP_GATEHOUSE:
-                fresh = buildGatehouse();
-                placeGatehouseLoot(fresh, rng);
-                placeGatehouseEnemies(fresh);
-                heroRow = 4; heroCol = 4;
-                break;
-            case MAP_ARMORY:
-                fresh = buildArmory();
-                placeArmoryLoot(fresh, rng);
-                placeArmoryEnemies(fresh);
-                heroRow = 7; heroCol = 2;
-                break;
-            case MAP_INNERVAULT:
-                fresh = buildInnerVault();
-                placeInnerVaultLoot(fresh, session, rng);
-                placeInnerVaultEnemies(fresh);
-                heroRow = 7; heroCol = 2;
-                break;
-            default:
-                return false;
-        }
-        scatterRandomMapWeapons(fresh, rng, 4 + rng.nextInt(2));
-
-        // Replace the live map and re-register enemies
-        session.registerWorldMap(mapId, fresh);
-        session.setMap(fresh);
-        syncEnemiesFromMap(fresh, session);
-
-        // Move hero to entry point
-        GridCell dest = fresh.getCell(heroRow, heroCol);
-        if (dest != null && session.getHero() != null) {
-            com.kurawler.model.character.Hero h = session.getHero();
-            if (h.getCurrentCell() != null) h.getCurrentCell().setOccupyingCharacter(null);
-            h.moveToCell(dest);
-        }
-        if (session.getShadowClone() != null) session.setShadowClone(null);
-
-        // Re-snapshot: hero now carries only what they had at floor entry
-        session.snapshotFloorInventory();
-        session.consumeMapChanged();
-        return true;
-    }
-
-    /** Configures a win objective on an arbitrary editor-loaded map. */
+    /** Win objective + hidden target for a custom / editor-loaded map. */
     public static void configureObjectiveForMap(Map map, GameSession session) {
         List<StaticContainer> chests = collectChests(map);
         if (!chests.isEmpty()) {
@@ -162,276 +89,597 @@ public class MapFactory {
         }
     }
 
-    // =========================================================
-    // FLOOR BUILDERS
-    // =========================================================
-
     /**
-     * Floor 1 — The Gatehouse: open courtyard, two Guards on patrol.
-     * The Iron Key (locked in a chest near the east wall) unlocks the iron
-     * gate that leads to the Armory.
+     * Restarts the floor the hero is on: removes enemies/projectiles and moves the hero
+     * back to that map's default spawn. Map layout and loot are left as-is.
      */
-    private static Map buildGatehouse() {
-        Map map = new Map(WORLD_WIDTH, WORLD_HEIGHT);
-        fillWalls(map);
-        carveRoom(map, 1, 1, 13, 19);   // Large courtyard — rows 1-13, cols 1-19
-
-        setFloor(map, 3, 3, new StaticObject(
-                "Ancient Bookshelf", "Dusty tomes — search it.", true, true));
-        setFloor(map, 5, 12, new StaticObject(
-                "Gargoyle Pool", "A shallow pool — something may be inside.", true, true));
-        setFloor(map, 11, 8, new StaticObject(
-                "Stone Column", "A cracked pillar — search the base.", true, true));
-
-        map.placeObject(6, 15, new StaticContainer("Iron Chest",
-                "A heavy iron chest — the Iron Key must be inside."));
-        map.placeObject(2,  9, new StaticContainer("Wooden Chest",
-                "A dusty wooden chest left by the guards."));
-
-        // East gate to Armory — requires Iron Key
-        setFloor(map, 7, 19, new MapPortal(
-                "Iron Gate", "A heavy iron gate. You need the Iron Key to pass.",
-                MAP_ARMORY, 7, 2, "iron_key", false));
-
-        return map;
-    }
-
-    /**
-     * Floor 2 — The Armory: split hall with weapons and cursed soldiers.
-     * The Vault Key is hidden in a military shelf in the entry hall;
-     * it unlocks the passage to the Inner Vault.
-     */
-    private static Map buildArmory() {
-        Map map = new Map(WORLD_WIDTH, WORLD_HEIGHT);
-        fillWalls(map);
-        carveRoom(map, 1,  1, 6, 19);   // Entry hall — rows 1-6, cols 1-19
-        carveRoom(map, 6,  1, 8,  9);   // Left barracks — rows 6-13, cols 1-9
-        carveRoom(map, 6, 11, 8,  9);   // Right armory  — rows 6-13, cols 11-19
-        carveHCorridor(map, 7, 9, 11);  // Cross-passage at row 7
-
-        // Vault Key hidden in the left shelf (the KEY mechanic for floor 2)
-        StaticObject shelf1 = new StaticObject(
-                "Armory Shelf", "Military logbooks and equipment — search it.", true, true);
-        shelf1.setHiddenItem(new Key(
-                "Vault Key", "Opens the passage to the Inner Vault.", "vault_key"));
-        setFloor(map, 3, 5, shelf1);
-
-        StaticObject shelf2 = new StaticObject(
-                "Armory Shelf", "Rows of dusty supply ledgers.", true, true);
-        setFloor(map, 3, 14, shelf2);
-
-        StaticObject col = new StaticObject(
-                "Stone Column", "A supporting pillar — search the base.", true, true);
-        col.setHiddenItem(new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
-        setFloor(map, 10, 6, col);
-
-        setFloor(map, 10, 16, new StaticObject(
-                "Gargoyle Pool", "Stagnant, dark water.", true, true));
-
-        map.placeObject(11,  5, new StaticContainer("Footlocker",
-                "A soldier's heavy footlocker."));
-        map.placeObject( 2, 18, new StaticContainer("Supply Chest",
-                "A locked supply chest."));
-
-        // Back portal (west) → Gatehouse
-        setFloor(map, 7, 1, new MapPortal(
-                "Wooden Door", "Returns to the Gatehouse.",
-                MAP_GATEHOUSE, 7, 18, null, true));
-        // Forward portal (east) → Inner Vault — requires Vault Key
-        setFloor(map, 7, 19, new MapPortal(
-                "Reinforced Door", "Sealed passage to the Inner Vault. Needs the Vault Key.",
-                MAP_INNERVAULT, 7, 2, "vault_key", false));
-
-        return map;
-    }
-
-    /**
-     * Floor 3 — The Inner Vault: grand final chamber, the relic is here.
-     * One Sorcerer and two Knights guard the Royal Vault Chest.
-     * Opening the chest and claiming the relic wins the game.
-     */
-    private static Map buildInnerVault() {
-        Map map = new Map(WORLD_WIDTH, WORLD_HEIGHT);
-        fillWalls(map);
-        carveRoom(map, 1, 1, 13, 19);   // Grand vault hall — rows 1-13, cols 1-19
-
-        // Decorative impassable pillars flanking the vault chest
-        setFloor(map, 3,  5, new StaticObject("Stone Pillar", "A heavy stone column.", false, false));
-        setFloor(map, 3, 15, new StaticObject("Stone Pillar", "A heavy stone column.", false, false));
-
-        // Searchable props (decoys + small rewards)
-        setFloor(map, 11,  5, new StaticObject(
-                "Gargoyle Pool", "Cold, dark water — search it.", true, true));
-        setFloor(map, 11, 15, new StaticObject(
-                "Gargoyle Pool", "The water glows faintly — search it.", true, true));
-        setFloor(map,  8,  3, new StaticObject(
-                "Ancient Bookshelf", "Crumbling tomes of forbidden lore.", true, true));
-
-        // Royal Vault Chest — relic (win objective) placed in placeInnerVaultLoot
-        map.placeObject( 2, 12, new StaticContainer("Royal Vault Chest",
-                "A sealed vault chest. This must be where the relic is kept."));
-        map.placeObject(11, 17, new StaticContainer("Wooden Chest",
-                "A battered guard chest."));
-
-        // Back portal only (no exit — player wins by claiming the relic)
-        setFloor(map, 7, 1, new MapPortal(
-                "Reinforced Door", "Returns to the Armory.",
-                MAP_ARMORY, 7, 18, null, true));
-
-        return map;
-    }
-
-    // =========================================================
-    // LOOT PLACEMENT
-    // =========================================================
-
-    private static void placeGatehouseLoot(Map map, Random rng) {
-        // Iron Chest: Iron Key + a health potion to soften the blow of a first fight
-        populateChest(map, 6, 15,
-                new Key("Iron Key",
-                        "The key to the iron gate — unlocks the passage to the Armory.",
-                        "iron_key"),
-                new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
-
-        // Wooden Chest: early survival supplies
-        populateChest(map, 2, 9,
-                new Consumable("Energy Potion", "Restores 35 energy", 0, 0, 35),
-                new Wearable("Leather Armor", "Basic padded armor", 1));
-
-        // Searchable hidden items
-        hiddenIn(map, 3, 3,
-                new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
-        hiddenIn(map, 5, 12,
-                new Consumable("Energy Potion", "Restores 35 energy", 0, 0, 35));
-        hiddenIn(map, 11, 8,
-                new Consumable("Mana Potion", "Restores 30 mana", 0, 30, 0));
-
-        // Floor loot
-        map.placeObject( 2,  6, new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
-        map.placeObject( 9, 14, new Consumable("Mana Potion",   "Restores 30 mana", 0, 30, 0));
-        map.placeObject(13,  3, new Scroll("Spell Book", "An arcane tome",
-                "A healing warmth washes over you.", 12));
-    }
-
-    private static void placeArmoryLoot(Map map, Random rng) {
-        // Footlocker: heavier armor available here
-        populateChest(map, 11, 5,
-                new Consumable("Mana Potion", "Restores 30 mana", 0, 30, 0),
-                new Wearable("Chain Armor", "Heavy linked chain armor", 2));
-
-        // Supply chest: healing + scroll
-        populateChest(map, 2, 18,
-                new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0),
-                new Scroll("Healing Scroll", "Glowing parchment",
-                        "Wounds close rapidly.", 14));
-
-        // Decoy items in searchable props
-        hiddenIn(map, 3, 14,
-                new Consumable("Energy Potion", "Restores 35 energy", 0, 0, 35));
-        hiddenIn(map, 10, 16,
-                new Consumable("Mana Potion", "Restores 30 mana", 0, 30, 0));
-
-        // Floor loot
-        map.placeObject( 2, 16, new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
-        map.placeObject( 9,  3, new Consumable("Energy Potion", "Restores 35 energy", 0, 0, 35));
-        map.placeObject(12, 12, new Scroll("Spell Book", "Arcane tome",
-                "Light mends your wounds.", 10));
-    }
-
-    private static void placeInnerVaultLoot(Map map, GameSession session, Random rng) {
-        // Win objective hidden in the Royal Vault Chest
-        String[] relicNames = {"Crystal Orb", "Ancient Relic", "Dragon Gem", "Golden Idol"};
-        String relicName = relicNames[rng.nextInt(relicNames.length)];
-        Key relic = new Key(relicName,
-                "The stolen relic — claim it to win!", "objective");
-        session.setTargetObjective(relic);
-
-        populateChest(map, 2, 12,
-                relic,
-                new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0),
-                new Wearable("Royal Plate", "Gleaming kingly armor", 4));
-
-        // Side chest: strong healing scroll for the final fight
-        populateChest(map, 11, 17,
-                new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0),
-                new Scroll("Ancient Spell", "Tattered but still glowing",
-                        "A surge of restoration fills you.", 22));
-
-        // Searchable decoys
-        hiddenIn(map, 11,  5,
-                new Consumable("Energy Potion", "Restores 35 energy", 0, 0, 35));
-        hiddenIn(map, 11, 15,
-                new Consumable("Mana Potion", "Restores 30 mana", 0, 30, 0));
-        hiddenIn(map,  8,  3,
-                new Consumable("Health Potion", "Restores 20 HP", 20, 0, 0));
-
-        // Floor loot
-        map.placeObject( 5,  8, new Consumable("Health Potion",  "Restores 20 HP",      20,  0,  0));
-        map.placeObject(10, 14, new Consumable("Energy Potion",  "Restores 35 energy",   0,  0, 35));
-        map.placeObject( 5, 14, new Consumable("Mana Potion",    "Restores 30 mana",     0, 30,  0));
-        map.placeObject( 9,  6, new Wearable("Enchanted Plate",  "Gleaming enchanted plate armor", 3));
-    }
-
-    // =========================================================
-    // ENEMY PLACEMENT
-    // =========================================================
-
-    private static void placeGatehouseEnemies(Map map) {
-        placeEnemy(map, new Guard(),  5,  7);
-        placeEnemy(map, new Guard(), 10, 11);
-    }
-
-    private static void placeArmoryEnemies(Map map) {
-        placeEnemy(map, new Guard(),   2,  5);
-        placeEnemy(map, new Guard(),   4, 16);
-        placeEnemy(map, new Knight(),  9,  5);
-    }
-
-    private static void placeInnerVaultEnemies(Map map) {
-        placeEnemy(map, new Sorcerer(),  4, 14);
-        placeEnemy(map, new Knight(),    6,  4);
-        placeEnemy(map, new Knight(),    9, 12);
-    }
-
-    private static void placeEnemy(Map map, Enemy enemy, int row, int col) {
-        GridCell cell = map.getCell(row, col);
-        if (cell != null && cell.isWalkable() && cell.getOccupyingCharacter() == null) {
-            enemy.moveToCell(cell);
+    public static boolean restartCurrentFloor(GameSession session) {
+        if (session == null) {
+            return false;
         }
+        Hero hero = session.getHero();
+        Map map = session.getMap();
+        if (hero == null || map == null) {
+            return false;
+        }
+
+        purgeEnemiesFromMap(map);
+        session.clearEnemies();
+        session.getProjectiles().clear();
+        session.setShadowClone(null);
+
+        GridCell spawn = defaultSpawnCell(map, session.getCurrentMapId());
+        if (spawn == null) {
+            return false;
+        }
+        if (hero.getCurrentCell() != null) {
+            hero.getCurrentCell().setOccupyingCharacter(null);
+        }
+        hero.moveToCell(spawn);
+        return true;
     }
 
-    /**
-     * Clears the session enemy list and re-registers every living enemy
-     * currently occupying a cell on the given map.
-     * Called at game start and by {@link GameSession#transitionHeroTo}.
-     */
-    static void syncEnemiesFromMap(Map map, GameSession session) {
-        session.clearEnemies();
+    private static void purgeEnemiesFromMap(Map map) {
         for (int r = 0; r < map.getHeight(); r++) {
             for (int c = 0; c < map.getWidth(); c++) {
                 GridCell cell = map.getCell(r, c);
-                if (cell == null) continue;
-                if (cell.getOccupyingCharacter() instanceof Enemy) {
-                    Enemy e = (Enemy) cell.getOccupyingCharacter();
-                    if (e.isAlive()) session.addEnemy(e);
+                if (cell != null && cell.getOccupyingCharacter() instanceof Enemy) {
+                    cell.setOccupyingCharacter(null);
                 }
             }
         }
     }
 
-    // =========================================================
-    // EDITOR OBJECTIVE HELPERS
-    // =========================================================
+    private static GridCell defaultSpawnCell(Map map, String mapId) {
+        if ("hall".equals(mapId)) {
+            GridCell hallSpawn = map.getCell(4, 4);
+            if (hallSpawn != null && hallSpawn.isWalkable()) {
+                return hallSpawn;
+            }
+        }
+        for (int r = 1; r < map.getHeight() - 1; r++) {
+            for (int c = 1; c < map.getWidth() - 1; c++) {
+                GridCell cell = map.getCell(r, c);
+                if (cell != null && cell.isWalkable() && cell.getOccupyingCharacter() == null) {
+                    return cell;
+                }
+            }
+        }
+        return null;
+    }
 
-    private static void placeTargetInRandomChest(Map map, GameSession session,
-                                                  List<StaticContainer> chests) {
-        if (chests.isEmpty()) return;
+    // --- Three connected maps (PDF-style dungeon, not a tiny grid puzzle) ---
+
+    /** Solid walls on the outer border; playable floor one tile inside (classic dungeon room). */
+    private static Map newWorldMap() {
+        Map map = new Map(WORLD_WIDTH, WORLD_HEIGHT);
+        fillWalls(map);
+        carveInterior(map);
+        return map;
+    }
+
+    private static void carveInterior(Map map) {
+        for (int r = 1; r < map.getHeight() - 1; r++) {
+            for (int c = 1; c < map.getWidth() - 1; c++) {
+                GridCell cell = map.getCell(r, c);
+                if (cell != null) {
+                    cell.setStaticObject(new StaticObject("Floor", "Stone floor", true, false));
+                }
+            }
+        }
+    }
+
+    /** Map-transition door embedded in the outer wall ring. */
+    private static void placeWallPortal(Map map, int row, int col, MapPortal portal) {
+        GridCell cell = map.getCell(row, col);
+        if (cell != null && portal != null) {
+            cell.setStaticObject(portal);
+        }
+    }
+
+    /** A door tile on the outer wall ring. */
+    private static final class DoorSlot {
+        final int row;
+        final int col;
+
+        DoorSlot(int row, int col) {
+            this.row = row;
+            this.col = col;
+        }
+    }
+
+    /** Random door on north, south, east, or west wall (not on corners). */
+    private static DoorSlot randomPerimeterDoor(Random rng) {
+        int edge = rng.nextInt(4);
+        switch (edge) {
+            case 0:
+                return new DoorSlot(0, 1 + rng.nextInt(WORLD_WIDTH - 2));
+            case 1:
+                return new DoorSlot(WORLD_HEIGHT - 1, 1 + rng.nextInt(WORLD_WIDTH - 2));
+            case 2:
+                return new DoorSlot(1 + rng.nextInt(WORLD_HEIGHT - 2), WORLD_WIDTH - 1);
+            default:
+                return new DoorSlot(1 + rng.nextInt(WORLD_HEIGHT - 2), 0);
+        }
+    }
+
+    /** Opposite wall tile so the linked map door faces this one. */
+    private static DoorSlot oppositePerimeterDoor(DoorSlot door) {
+        if (door.row == 0) {
+            return new DoorSlot(WORLD_HEIGHT - 1, door.col);
+        }
+        if (door.row == WORLD_HEIGHT - 1) {
+            return new DoorSlot(0, door.col);
+        }
+        if (door.col == 0) {
+            return new DoorSlot(door.row, WORLD_WIDTH - 1);
+        }
+        return new DoorSlot(door.row, 0);
+    }
+
+    private static boolean sameDoorSlot(DoorSlot a, DoorSlot b) {
+        return a.row == b.row && a.col == b.col;
+    }
+
+    private static Map buildEntryHall(DoorSlot exitToCatacombs) {
+        Map map = newWorldMap();
+        DoorSlot catEntry = oppositePerimeterDoor(exitToCatacombs);
+
+        placeBookshelf(map, 3, 3,
+                "Ancient Bookshelf", "Dusty tomes line the shelves — press E to browse.");
+        setFloor(map, 10, 5, new StaticObject(
+                "Gargoyle Pool", "A shallow pool — something may be hidden inside.", true, true));
+        setFloor(map, 12, 8, new StaticObject(
+                "Stone Column", "A cracked pillar — search the base.", false, true));
+
+        placeWallPortal(map, exitToCatacombs.row, exitToCatacombs.col, new MapPortal(
+                "Wooden Door", "Leads deeper into the dungeon.",
+                "catacombs", catEntry.row, catEntry.col, null, true));
+
+        return map;
+    }
+
+    private static Map buildCatacombs(DoorSlot hallLink, DoorSlot vaultLink, DoorSlot hallReturn) {
+        Map map = newWorldMap();
+        DoorSlot vaultEntry = oppositePerimeterDoor(vaultLink);
+
+        placeBookshelf(map, 4, 4,
+                "Wall Shelf", "Ledges along the wall — press E to browse.");
+        setFloor(map, 10, 5, new StaticObject(
+                "Gargoyle Pool", "Stagnant water glistens.", true, true));
+        StaticObject catacombsPool = map.getCell(10, 5).getStaticObject();
+        if (catacombsPool != null) {
+            catacombsPool.setHiddenItem(new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0));
+        }
+        setFloor(map, 12, 8, new StaticObject(
+                "Stone Column", "A cracked pillar — search the base.", false, true));
+
+        placeWallPortal(map, hallLink.row, hallLink.col, new MapPortal(
+                "Wooden Door", "Back to the entry hall.",
+                "hall", hallReturn.row, hallReturn.col, null, true));
+
+        placeWallPortal(map, vaultLink.row, vaultLink.col, new MapPortal(
+                "Iron Door", "A heavy door to the treasure vault.",
+                "vault", vaultEntry.row, vaultEntry.col, "gold", false));
+
+        return map;
+    }
+
+    private static Map buildTreasureVault(DoorSlot catacombsLink, DoorSlot catacombsReturn) {
+        Map map = newWorldMap();
+
+        placeBookshelf(map, 3, 4,
+                "Wall Shelf", "Relics rest on stone shelves — press E to browse.");
+        setFloor(map, 10, 6, new StaticObject(
+                "Gargoyle Pool", "A dark pool — search the water.", true, true));
+        setFloor(map, 12, 10, new StaticObject(
+                "Stone Column", "Ancient carvings cover the column.", false, true));
+
+        placeWallPortal(map, catacombsLink.row, catacombsLink.col, new MapPortal(
+                "Iron Door", "Return to the catacombs.",
+                "catacombs", catacombsReturn.row, catacombsReturn.col, null, true));
+
+        return map;
+    }
+
+    /** Describes the primary exit portal direction for the info bar. */
+    public static String primaryExitHint(Map map, String mapId) {
+        if (map == null || mapId == null) {
+            return "";
+        }
+        String forwardTarget;
+        switch (mapId) {
+            case "hall":       forwardTarget = "catacombs"; break;
+            case "catacombs":  forwardTarget = "vault"; break;
+            case "vault":      forwardTarget = "catacombs"; break;
+            default:           return "Find the exit door.";
+        }
+        int lastRow = map.getHeight() - 1;
+        int lastCol = map.getWidth() - 1;
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int c = 0; c < map.getWidth(); c++) {
+                StaticObject so = map.getCell(r, c).getStaticObject();
+                if (!(so instanceof MapPortal)) {
+                    continue;
+                }
+                MapPortal portal = (MapPortal) so;
+                if (!forwardTarget.equals(portal.getTargetMapId())) {
+                    continue;
+                }
+                String dir;
+                if (c == lastCol) {
+                    dir = "east";
+                } else if (c == 0) {
+                    dir = "west";
+                } else if (r == 0) {
+                    dir = "north";
+                } else if (r == lastRow) {
+                    dir = "south";
+                } else {
+                    dir = "nearby";
+                }
+                if ("hall".equals(mapId)) {
+                    return "EXIT: " + dir + " DOOR (\u2192). Press E on a bookshelf for the Golden Key. "
+                            + "Win item is in a vault chest.";
+                }
+                return "EXIT: " + dir + " DOOR (\u2192).";
+            }
+        }
+        return "Find the exit door.";
+    }
+
+    private static void fillWalls(Map map) {
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int c = 0; c < map.getWidth(); c++) {
+                map.getCell(r, c).setStaticObject(
+                        new StaticObject("Wall", "Dark stone wall", false, false));
+            }
+        }
+    }
+
+    /** Floor + chest loot spread randomly across each map (not clustered in one corner). */
+    private static void scatterDefaultLoot(Map hall, Map catacombs, Map vault) {
+        Random rng = new Random();
+        scatterFloorLoot(hall, rng, new GameObject[]{
+                new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0),
+                new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0),
+                new Consumable("Energy Apple", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY),
+                new Consumable("Mana Elixir", "Restores 25 mana", 0, 25, 0),
+                new Scroll("Spell Book", "Arcane tome", "Runes mend your wounds.", 12),
+                WearableCatalog.createArmor("Leather Armor", "Leather armor", rng),
+                WearableCatalog.createShield("Shield"),
+        });
+        scatterChestLoot(hall, rng, new ChestLoot[]{
+                new ChestLoot("A dusty chest",
+                        new Consumable("Energy Apple", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY),
+                        new Key("Silver Key", "Ornamental key", "silver")),
+        });
+
+        scatterFloorLoot(catacombs, rng, new GameObject[]{
+                new Scroll("Spell Book", "Arcane tome", "Runes flare and mend your wounds.", 14),
+                new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0),
+                new Consumable("Mana Elixir", "Restores 25 mana", 0, 25, 0),
+                new Consumable("Energy Apple", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY),
+                WearableCatalog.createArmor("Chain Mail", "Worn chain mail", rng),
+                new Scroll("Healing Scroll", "Glowing parchment", "Heals wounds.", 10),
+        });
+        scatterChestLoot(catacombs, rng, new ChestLoot[]{
+                new ChestLoot("An old wooden chest",
+                        new Consumable("Mana Elixir", "Restores 30 mana", 0, 30, 0),
+                        WearableCatalog.createArmor("Heavy Armor", "Heavy armor", rng)),
+        });
+
+        scatterFloorLoot(vault, rng, new GameObject[]{
+                new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0),
+                new Consumable("Mana Elixir", "Restores 30 mana", 0, 30, 0),
+                new Scroll("Spell Book", "Ancient scripture",
+                        "Warm light restores your wounds.", 10),
+                WearableCatalog.createArmor("Royal Armor", "Royal armor", rng),
+        });
+        scatterChestLoot(vault, rng, new ChestLoot[]{
+                new ChestLoot("A sealed treasure chest",
+                        new Consumable("Energy Apple", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY)),
+                new ChestLoot("An ornate chest",
+                        new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0),
+                        new Scroll("Spell Book", "Faded runes", "A spark of healing.", 8)),
+        });
+    }
+
+    private static final class ChestLoot {
+        final String description;
+        final Item[] items;
+
+        ChestLoot(String description, Item... items) {
+            this.description = description;
+            this.items = items;
+        }
+    }
+
+    private static void scatterFloorLoot(Map map, Random rng, GameObject[] loot) {
+        List<GridCell> floors = collectLootFloorTiles(map);
+        Collections.shuffle(floors, rng);
+        int idx = 0;
+        for (GameObject obj : loot) {
+            while (idx < floors.size()) {
+                GridCell cell = floors.get(idx++);
+                if (cell.hasObjects()) {
+                    continue;
+                }
+                map.placeObject(cell.getRow(), cell.getCol(), obj);
+                break;
+            }
+        }
+    }
+
+    private static void scatterChestLoot(Map map, Random rng, ChestLoot[] chests) {
+        List<GridCell> floors = collectLootFloorTiles(map);
+        Collections.shuffle(floors, rng);
+        int idx = 0;
+        for (ChestLoot chest : chests) {
+            while (idx < floors.size()) {
+                GridCell cell = floors.get(idx++);
+                if (cell.hasObjects()) {
+                    continue;
+                }
+                int r = cell.getRow();
+                int c = cell.getCol();
+                map.placeObject(r, c, new StaticContainer("Chest", chest.description));
+                populateChest(map, r, c, chest.items);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Places {@code count} distinct catalog weapons on one map (random each new game).
+     * If Arrow is chosen, Bow is included on the same map.
+     */
+    private static void scatterRandomMapWeapons(Map map, Random rng, int count) {
+        List<String> pool = new ArrayList<>();
+        for (String[] row : WeaponCatalog.ENTRIES) {
+            if (row != null && row.length > 0) {
+                pool.add(row[0]);
+            }
+        }
+        Collections.shuffle(pool, rng);
+        List<String> chosen = new ArrayList<>();
+        for (String name : pool) {
+            if (chosen.size() >= count) {
+                break;
+            }
+            if (!chosen.contains(name)) {
+                chosen.add(name);
+            }
+        }
+        ensureBowWithArrow(chosen, pool, rng);
+        placeWeaponBatch(map, rng, chosen);
+    }
+
+    private static void ensureBowWithArrow(List<String> chosen, List<String> pool, Random rng) {
+        boolean hasArrow = false;
+        boolean hasBow = false;
+        for (String n : chosen) {
+            if (WeaponCatalog.isArrow(n)) {
+                hasArrow = true;
+            }
+            if (WeaponCatalog.isBow(n)) {
+                hasBow = true;
+            }
+        }
+        if (hasArrow && !hasBow) {
+            chosen.add("Bow");
+        }
+        if (!hasArrow && hasBow && chosen.size() < pool.size()) {
+            for (String n : pool) {
+                if (WeaponCatalog.isArrow(n) && !chosen.contains(n)) {
+                    chosen.add(n);
+                    break;
+                }
+            }
+        }
+    }
+
+    private static void placeWeaponBatch(Map map, Random rng, List<String> weaponNames) {
+        if (weaponNames.isEmpty()) {
+            return;
+        }
+        List<GridCell> floors = collectLootFloorTiles(map);
+        Collections.shuffle(floors, rng);
+        int floorIdx = 0;
+        for (String name : weaponNames) {
+            while (floorIdx < floors.size()) {
+                GridCell cell = floors.get(floorIdx++);
+                if (cell.hasObjects()) {
+                    continue;
+                }
+                map.placeObject(cell.getRow(), cell.getCol(), WeaponCatalog.create(name));
+                break;
+            }
+        }
+    }
+
+    private static List<GridCell> collectLootFloorTiles(Map map) {
+        List<GridCell> floors = new ArrayList<>();
+        for (int r = LOOT_INSET; r < map.getHeight() - LOOT_INSET; r++) {
+            for (int c = LOOT_INSET; c < map.getWidth() - LOOT_INSET; c++) {
+                GridCell cell = map.getCell(r, c);
+                if (isLootFloorTile(cell, map) && !cell.hasObjects()) {
+                    floors.add(cell);
+                }
+            }
+        }
+        return floors;
+    }
+
+    private static boolean isLootFloorTile(GridCell cell, Map map) {
+        if (cell == null || !cell.isWalkable()) {
+            return false;
+        }
+        if (cell.getOccupyingCharacter() != null) {
+            return false;
+        }
+        StaticObject so = cell.getStaticObject();
+        if (so == null || so instanceof MapPortal) {
+            return false;
+        }
+        if (so.isSearchable()) {
+            return false;
+        }
+        if (!"Floor".equals(so.getName())) {
+            return false;
+        }
+        int r = cell.getRow();
+        int c = cell.getCol();
+        return r >= LOOT_INSET && r < map.getHeight() - LOOT_INSET
+                && c >= LOOT_INSET && c < map.getWidth() - LOOT_INSET;
+    }
+
+    /**
+     * Bookshelf prop + loot container on the same tile (opened like a chest with E).
+     */
+    private static void placeBookshelf(Map map, int row, int col, String propName, String description) {
+        // Searchable flag drives sparkle markers; loot is opened via the Bookshelf container (E / OPEN).
+        setFloor(map, row, col, new StaticObject(propName, description, true, true));
+        GridCell cell = map.getCell(row, col);
+        if (cell != null) {
+            cell.addObject(new StaticContainer("Bookshelf", description));
+        }
+    }
+
+    private static StaticContainer findBookshelfContainer(Map map, int row, int col) {
+        GridCell cell = map.getCell(row, col);
+        if (cell == null) {
+            return null;
+        }
+        for (GameObject obj : cell.getObjects()) {
+            if (obj instanceof StaticContainer && ((StaticContainer) obj).isShelfLike()) {
+                return (StaticContainer) obj;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Each story bookshelf holds 1–2 items. The Golden Key (vault iron door) is placed in
+     * either the Entry Hall bookshelf or the Catacombs shelf (random each new game).
+     */
+    private static void populateStoryBookshelfLoot(Map hall, Map catacombs) {
+        Random rng = new Random();
+        boolean keyInHall = rng.nextBoolean();
+        fillBookshelfLoot(hall, 3, 3, rng, keyInHall);
+        fillBookshelfLoot(catacombs, 4, 4, rng, !keyInHall);
+    }
+
+    private static void fillBookshelfLoot(Map map, int row, int col, Random rng, boolean withVaultKey) {
+        StaticContainer shelf = findBookshelfContainer(map, row, col);
+        if (shelf == null) {
+            return;
+        }
+        if (withVaultKey) {
+            shelf.addItem(new Key("Golden Key", "Opens the iron vault door", "gold"));
+        }
+        int lootCount = 1 + rng.nextInt(2);
+        java.util.HashSet<String> placed = new java.util.HashSet<>();
+        for (Item existing : shelf.getContents()) {
+            if (existing != null) {
+                placed.add(existing.getName());
+            }
+        }
+        for (int i = 0; i < lootCount; i++) {
+            for (int attempt = 0; attempt < 8; attempt++) {
+                Item item = createBookshelfLootItem(rng);
+                if (!placed.contains(item.getName())) {
+                    shelf.addItem(item);
+                    placed.add(item.getName());
+                    break;
+                }
+            }
+        }
+    }
+
+    private static Item createBookshelfLootItem(Random rng) {
+        switch (rng.nextInt(5)) {
+            case 0:
+                return new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0);
+            case 1:
+                return new Consumable("Mana Elixir", "Restores 25 mana", 0, 25, 0);
+            case 2:
+                return new Consumable("Energy Apple", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY);
+            case 3:
+                return new Scroll("Spell Book", "Arcane tome", "Runes mend your wounds.", 10);
+            default:
+                return new Scroll("Healing Scroll", "Glowing parchment", "Heals wounds.", 10);
+        }
+    }
+
+    /**
+     * Win target (objective key) inside a random chest on the treasure vault.
+     * Golden Key for the vault door is in a story bookshelf — see {@link #populateStoryBookshelfLoot}.
+     */
+    private static void placeTargetInRandomVaultChest(Map vault, GameSession session) {
+        placeTargetInRandomChest(vault, session, collectChests(vault));
+        Random rng = new Random();
+        for (GridCell cell : collectSearchableSpots(vault)) {
+            StaticObject so = cell.getStaticObject();
+            if (so != null && so.getHiddenItem() == null) {
+                so.setHiddenItem(createDecoyHiddenItem(rng));
+            }
+        }
+    }
+
+    private static void placeTargetInRandomChest(Map map, GameSession session, List<StaticContainer> chests) {
+        if (chests.isEmpty()) {
+            return;
+        }
         Random rng = new Random();
         String[] targetNames = {"Crystal Orb", "Ancient Relic", "Dragon Gem", "Golden Idol"};
         String name = targetNames[rng.nextInt(targetNames.length)];
         Key target = new Key(name, "A precious artifact — find it to win!", "objective");
         session.setTargetObjective(target);
-        chests.get(rng.nextInt(chests.size())).addItem(target);
+
+        StaticContainer chosen = chests.get(rng.nextInt(chests.size()));
+        chosen.addItem(target);
+    }
+
+    private static List<StaticContainer> collectChests(Map map) {
+        List<StaticContainer> chests = new ArrayList<>();
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int c = 0; c < map.getWidth(); c++) {
+                GridCell cell = map.getCell(r, c);
+                if (cell == null) {
+                    continue;
+                }
+                for (GameObject obj : cell.getObjects()) {
+                    if (obj instanceof StaticContainer) {
+                        chests.add((StaticContainer) obj);
+                    }
+                }
+            }
+        }
+        return chests;
+    }
+
+    private static void populateChest(Map map, int row, int col, Item... loot) {
+        GridCell cell = map.getCell(row, col);
+        if (cell == null) {
+            return;
+        }
+        for (GameObject obj : cell.getObjects()) {
+            if (obj instanceof StaticContainer) {
+                StaticContainer chest = (StaticContainer) obj;
+                for (Item item : loot) {
+                    chest.addItem(item);
+                }
+                return;
+            }
+        }
+    }
+
+    private static void setFloor(Map map, int row, int col, StaticObject tile) {
+        GridCell cell = map.getCell(row, col);
+        if (cell != null) {
+            cell.setStaticObject(tile);
+        }
     }
 
     private static void placeTargetObjective(Map map, GameSession session) {
@@ -443,7 +691,9 @@ public class MapFactory {
 
         int targetSearchableCount = 2 + rng.nextInt(2);
         List<GridCell> searchableSpots = ensureSearchableSpots(map, rng, targetSearchableCount);
-        if (searchableSpots.isEmpty()) return;
+        if (searchableSpots.isEmpty()) {
+            return;
+        }
 
         GridCell chosen = searchableSpots.get(rng.nextInt(searchableSpots.size()));
         chosen.getStaticObject().setHiddenItem(target);
@@ -454,25 +704,35 @@ public class MapFactory {
         int decoyCount = Math.min(targetSearchableCount - 1, decoyCandidates.size());
         for (int i = 0; i < decoyCount; i++) {
             StaticObject so = decoyCandidates.get(i).getStaticObject();
-            if (so != null && so.getHiddenItem() == null)
+            if (so != null && so.getHiddenItem() == null) {
                 so.setHiddenItem(createDecoyHiddenItem(rng));
+            }
         }
     }
 
     private static List<GridCell> ensureSearchableSpots(Map map, Random rng, int minimumCount) {
         List<GridCell> searchable = collectSearchableSpots(map);
-        if (searchable.size() >= minimumCount) return searchable;
+        if (searchable.size() >= minimumCount) {
+            return searchable;
+        }
 
         List<GridCell> candidates = new ArrayList<>();
         for (int r = 0; r < map.getHeight(); r++) {
             for (int c = 0; c < map.getWidth(); c++) {
                 GridCell cell = map.getCell(r, c);
-                if (cell == null || !cell.isWalkable()) continue;
-                if (cell.getStaticObject() == null || cell.getStaticObject().isSearchable()) continue;
-                if (cell.getOccupyingCharacter() != null) continue;
+                if (cell == null || !cell.isWalkable()) {
+                    continue;
+                }
+                if (cell.getStaticObject() == null || cell.getStaticObject().isSearchable()) {
+                    continue;
+                }
+                if (cell.getOccupyingCharacter() != null) {
+                    continue;
+                }
                 candidates.add(cell);
             }
         }
+
         Collections.shuffle(candidates, rng);
         int needed = minimumCount - searchable.size();
         for (int i = 0; i < candidates.size() && needed > 0; i++) {
@@ -491,8 +751,9 @@ public class MapFactory {
             for (int c = 0; c < map.getWidth(); c++) {
                 GridCell cell = map.getCell(r, c);
                 if (cell != null && cell.getStaticObject() != null
-                        && cell.getStaticObject().isSearchable())
+                        && cell.getStaticObject().isSearchable()) {
                     searchable.add(cell);
+                }
             }
         }
         return searchable;
@@ -500,75 +761,14 @@ public class MapFactory {
 
     private static Item createDecoyHiddenItem(Random rng) {
         switch (rng.nextInt(4)) {
-            case 0:  return new Consumable("Health Potion",  "Restores 20 HP",      20,  0,  0);
-            case 1:  return new Consumable("Energy Potion",  "Restores 35 energy",   0,  0, 35);
-            case 2:  return new Scroll("Spell Book", "Faint magic",
-                                        "A spark of healing.", 6);
-            default: return new Weapon("Dagger", "A small blade", 4);
-        }
-    }
-
-    // =========================================================
-    // WEAPON SCATTER
-    // =========================================================
-
-    private static void scatterRandomMapWeapons(Map map, Random rng, int count) {
-        List<String> pool = new ArrayList<>();
-        for (String[] row : WeaponCatalog.ENTRIES) {
-            if (row != null && row.length > 0) pool.add(row[0]);
-        }
-        Collections.shuffle(pool, rng);
-        List<String> chosen = new ArrayList<>();
-        for (String name : pool) {
-            if (chosen.size() >= count) break;
-            if (!chosen.contains(name)) chosen.add(name);
-        }
-        ensureBowWithArrow(chosen, pool, rng);
-        placeWeaponBatch(map, rng, chosen);
-    }
-
-    private static void ensureBowWithArrow(List<String> chosen, List<String> pool, Random rng) {
-        boolean hasArrow = false, hasBow = false;
-        for (String n : chosen) {
-            if (WeaponCatalog.isArrow(n)) hasArrow = true;
-            if (WeaponCatalog.isBow(n))   hasBow   = true;
-        }
-        if (hasArrow && !hasBow) chosen.add("Bow");
-        if (!hasArrow && hasBow && chosen.size() < pool.size()) {
-            for (String n : pool) {
-                if (WeaponCatalog.isArrow(n) && !chosen.contains(n)) {
-                    chosen.add(n);
-                    break;
-                }
-            }
-        }
-    }
-
-    private static void placeWeaponBatch(Map map, Random rng, List<String> weaponNames) {
-        if (weaponNames.isEmpty()) return;
-        List<GridCell> floors = collectEmptyFloorTiles(map);
-        Collections.shuffle(floors, rng);
-        int floorIdx = 0;
-        for (String name : weaponNames) {
-            while (floorIdx < floors.size()) {
-                GridCell cell = floors.get(floorIdx++);
-                if (isNear(cell, 4, 4, 2)) continue;
-                map.placeObject(cell.getRow(), cell.getCol(), WeaponCatalog.create(name));
-                break;
-            }
-        }
-    }
-
-    // =========================================================
-    // MAP / CELL UTILITIES
-    // =========================================================
-
-    private static void fillWalls(Map map) {
-        for (int r = 0; r < map.getHeight(); r++) {
-            for (int c = 0; c < map.getWidth(); c++) {
-                map.getCell(r, c).setStaticObject(
-                        new StaticObject("Wall", "Dark stone wall", false, false));
-            }
+            case 0:
+                return new Consumable("Health Potion", "Restores 10 HP", Consumable.HEALTH_POTION_HEAL, 0, 0);
+            case 1:
+                return new Consumable("Energy Apple", "Restores 40 EN", 0, 0, Consumable.ENERGY_POTION_ENERGY);
+            case 2:
+                return new Scroll("Spell Book", "Faint magic", "A spark of healing.", 6);
+            default:
+                return new Weapon("Dagger", "A small blade", 4);
         }
     }
 
@@ -576,8 +776,9 @@ public class MapFactory {
         for (int r = startRow; r < startRow + height && r < map.getHeight(); r++) {
             for (int c = startCol; c < startCol + width && c < map.getWidth(); c++) {
                 GridCell cell = map.getCell(r, c);
-                if (cell != null)
+                if (cell != null) {
                     cell.setStaticObject(new StaticObject("Floor", "Stone floor", true, false));
+                }
             }
         }
     }
@@ -587,105 +788,71 @@ public class MapFactory {
         int maxC = Math.max(colFrom, colTo);
         for (int c = minC; c <= maxC; c++) {
             GridCell cell = map.getCell(row, c);
-            if (cell != null)
+            if (cell != null) {
                 cell.setStaticObject(new StaticObject("Floor", "Stone floor", true, false));
-        }
-    }
-
-    private static void setFloor(Map map, int row, int col, StaticObject tile) {
-        GridCell cell = map.getCell(row, col);
-        if (cell != null) cell.setStaticObject(tile);
-    }
-
-    private static void hiddenIn(Map map, int row, int col, Item item) {
-        GridCell cell = map.getCell(row, col);
-        if (cell != null && cell.getStaticObject() != null)
-            cell.getStaticObject().setHiddenItem(item);
-    }
-
-    private static void populateChest(Map map, int row, int col, Item... loot) {
-        GridCell cell = map.getCell(row, col);
-        if (cell == null) return;
-        for (GameObject obj : cell.getObjects()) {
-            if (obj instanceof StaticContainer) {
-                StaticContainer chest = (StaticContainer) obj;
-                for (Item item : loot) chest.addItem(item);
-                return;
             }
         }
     }
 
-    private static List<StaticContainer> collectChests(Map map) {
-        List<StaticContainer> chests = new ArrayList<>();
-        for (int r = 0; r < map.getHeight(); r++) {
-            for (int c = 0; c < map.getWidth(); c++) {
-                GridCell cell = map.getCell(r, c);
-                if (cell == null) continue;
-                for (GameObject obj : cell.getObjects()) {
-                    if (obj instanceof StaticContainer) chests.add((StaticContainer) obj);
-                }
+    private static void carveVCorridor(Map map, int rowFrom, int rowTo, int col) {
+        int minR = Math.min(rowFrom, rowTo);
+        int maxR = Math.max(rowFrom, rowTo);
+        for (int r = minR; r <= maxR; r++) {
+            GridCell cell = map.getCell(r, col);
+            if (cell != null) {
+                cell.setStaticObject(new StaticObject("Floor", "Stone floor", true, false));
             }
         }
-        return chests;
-    }
-
-    private static List<GridCell> collectEmptyFloorTiles(Map map) {
-        List<GridCell> floors = new ArrayList<>();
-        for (int r = 0; r < map.getHeight(); r++) {
-            for (int c = 0; c < map.getWidth(); c++) {
-                GridCell cell = map.getCell(r, c);
-                if (isEmptyFloorTile(cell)) floors.add(cell);
-            }
-        }
-        return floors;
-    }
-
-    private static boolean isEmptyFloorTile(GridCell cell) {
-        if (cell == null || !cell.isWalkable() || cell.hasObjects()) return false;
-        if (cell.getOccupyingCharacter() != null) return false;
-        StaticObject so = cell.getStaticObject();
-        if (so == null || so instanceof MapPortal) return false;
-        if (so.isSearchable()) return false;
-        return "Floor".equals(so.getName());
-    }
-
-    private static boolean isNear(GridCell cell, int row, int col, int radius) {
-        return Math.abs(cell.getRow() - row) <= radius
-                && Math.abs(cell.getCol() - col) <= radius;
-    }
-
-    // =========================================================
-    // BOOKSHELF HELPERS (called by GameView for browse interaction)
-    // =========================================================
-
-    private static StaticContainer findBookshelfContainer(Map map, int row, int col) {
-        GridCell cell = map.getCell(row, col);
-        if (cell == null) return null;
-        for (GameObject obj : cell.getObjects()) {
-            if (obj instanceof StaticContainer && ((StaticContainer) obj).isShelfLike()) {
-                return (StaticContainer) obj;
-            }
-        }
-        return null;
     }
 
     public static boolean isShelfStaticObject(StaticObject so) {
-        if (so == null) return false;
+        if (so == null) {
+            return false;
+        }
         String n = so.getName().toLowerCase();
         return n.contains("bookshelf") || n.contains("shelf");
+    }
+
+    /** Floor props that can be smashed (crate/barrel), not bookshelves/pools/columns. */
+    public static boolean isBreakableStaticObject(StaticObject so) {
+        if (so == null || !so.isSearchable() || isShelfStaticObject(so)) {
+            return false;
+        }
+        String n = so.getName().toLowerCase();
+        return n.contains("crate") || n.contains("barrel") || n.contains("box");
+    }
+
+    public static boolean hasBreakableTarget(GridCell cell) {
+        if (cell == null) {
+            return false;
+        }
+        for (GameObject obj : cell.getObjects()) {
+            if (obj instanceof StaticContainer sc && sc.isBreakable() && !sc.isBroken()) {
+                return true;
+            }
+        }
+        return isBreakableStaticObject(cell.getStaticObject());
     }
 
     /** Returns the bookshelf container on the tile, creating one if only a legacy hidden-item shelf exists. */
     public static StaticContainer resolveBookshelfContainer(Map map, int row, int col) {
         GridCell cell = map.getCell(row, col);
-        if (cell == null) return null;
+        if (cell == null) {
+            return null;
+        }
         StaticContainer existing = findBookshelfContainer(map, row, col);
-        if (existing != null) return existing;
+        if (existing != null) {
+            return existing;
+        }
         StaticObject so = cell.getStaticObject();
-        if (!isShelfStaticObject(so)) return null;
+        if (!isShelfStaticObject(so)) {
+            return null;
+        }
         StaticContainer shelf = new StaticContainer("Bookshelf", so.getDescription());
         Item hidden = so.revealHiddenItem();
-        if (hidden != null) shelf.addItem(hidden);
+        if (hidden != null) {
+            shelf.addItem(hidden);
+        }
         cell.addObject(shelf);
         return shelf;
     }

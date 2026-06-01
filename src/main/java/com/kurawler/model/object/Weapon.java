@@ -1,5 +1,7 @@
 package com.kurawler.model.object;
 
+import java.util.List;
+
 public class Weapon extends Item {
 
     private int damage;
@@ -11,5 +13,10 @@ public class Weapon extends Item {
 
     public int getDamage() {
         return damage;
+    }
+
+    @Override
+    public List<ItemAction> getActions() {
+        return List.of(ItemAction.TAKE, ItemAction.EQUIP);
     }
 }
