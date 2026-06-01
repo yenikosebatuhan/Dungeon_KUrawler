@@ -1,0 +1,4825 @@
+{
+  "format": "world",
+  "startMapId": "antechamber",
+  "maps": {
+    "antechamber": {
+      "width": 26,
+      "height": 14,
+      "cells": [
+        {
+          "row": 0,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 1,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 2,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 2,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 3,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 3,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 4,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 4,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 6,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 6,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 7,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 7,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 8,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 8,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 10,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 10,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 11,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 11,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 12,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 12,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 13,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 13,
+          "walkable": true,
+          "staticObject": {
+            "type": "MapPortal",
+            "name": "Worn Wooden Door",
+            "description": "A heavy door. Cold air rises from the catacombs below.",
+            "targetMapId": "catacombs",
+            "targetRow": 1,
+            "targetCol": 13,
+            "unlocked": true,
+            "stairsMode": true
+          }
+        },
+        {
+          "row": 0,
+          "col": 14,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 14,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 15,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 15,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 16,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 16,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 17,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 17,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 20,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 20,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 21,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 21,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 22,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 22,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 23,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 23,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 24,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 24,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 2,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 2,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 4,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 4,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 5,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 5,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 7,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 7,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 8,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 8,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 9,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 9,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 11,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 11,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 12,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 12,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Vine Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 2,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Vine Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Vine Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 4,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Vine Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 8,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Water Grate",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 9,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Water Grate",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Water Grate",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 11,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Water Grate",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 12,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Water Grate",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 2,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 4,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 8,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Caged Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 9,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Caged Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Caged Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 11,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Caged Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 12,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Caged Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Vine Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 6,
+          "walkable": false,
+          "staticObject": {
+            "name": "Vine Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 7,
+          "walkable": false,
+          "staticObject": {
+            "name": "Vine Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 8,
+          "walkable": false,
+          "staticObject": {
+            "name": "Vine Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 2,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ancient Bookshelf",
+            "description": "A parchment slips out: 'The gargoyle pool in the catacombs holds the golden key. Without it the vault gate will not open.'",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 1,
+          "col": 4,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ancient Bookshelf",
+            "description": "Volume XII: 'The Void Orb imprisons the last Sorcerer King. Four chests guard it in the vault — only one holds truth.'",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 1,
+          "col": 6,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ancient Bookshelf",
+            "description": "A child's sketch: a man searching a stone basin. A key drawn in the water.",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 2,
+          "col": 2,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall Shelf",
+            "description": "Loose stone behind the shelf...",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 20 mana",
+              "healAmount": 0,
+              "manaAmount": 20,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 2,
+          "col": 6,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall Shelf",
+            "description": "A forgotten apothecary jar.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 6,
+          "col": 2,
+          "walkable": true,
+          "staticObject": {
+            "name": "Gargoyle Pool",
+            "description": "Cold water fills this gargoyle basin. The eyes seem to follow you.",
+            "passable": true,
+            "searchable": true
+          }
+        },
+        {
+          "row": 10,
+          "col": 2,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "A mossy pillar. Something wedged in the crack.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Energy Potion",
+              "description": "Restores 40 energy",
+              "healAmount": 0,
+              "manaAmount": 0,
+              "energyAmount": 40
+            }
+          }
+        },
+        {
+          "row": 12,
+          "col": 4,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wooden Crate",
+            "description": "A rotting crate — looks brittle enough to smash.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 5,
+          "col": 6,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Weapon",
+              "name": "Rusty Sword",
+              "description": "A weapon for dungeon survival",
+              "damage": 4
+            }
+          ]
+        },
+        {
+          "row": 7,
+          "col": 7,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Energy Potion",
+              "description": "Restores 40 energy",
+              "healAmount": 0,
+              "manaAmount": 0,
+              "energyAmount": 40
+            }
+          ]
+        },
+        {
+          "row": 11,
+          "col": 6,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          ]
+        },
+        {
+          "row": 2,
+          "col": 12,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "A thick central pillar.",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 2,
+          "col": 15,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "Another support pillar.",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 7,
+          "col": 11,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "Cracked column — search the rubble.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 7,
+          "col": 16,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "Column with faded markings.",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 10,
+          "col": 13,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "A pillar bearing a warning glyph.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 25 mana",
+              "healAmount": 0,
+              "manaAmount": 25,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 1,
+          "col": 11,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall Shelf",
+            "description": "Empty pegs.",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 1,
+          "col": 16,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall Shelf",
+            "description": "Something hidden in the wall.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Energy Potion",
+              "description": "Restores 40 energy",
+              "healAmount": 0,
+              "manaAmount": 0,
+              "energyAmount": 40
+            }
+          }
+        },
+        {
+          "row": 5,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Red Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 5,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Red Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 4,
+          "col": 13,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "StaticContainer",
+              "name": "Bronze Treasure Chest",
+              "description": "A council chest — the lock was pried open long ago.",
+              "contents": [
+                {
+                  "type": "Weapon",
+                  "name": "Iron Sword",
+                  "description": "A weapon for dungeon survival",
+                  "damage": 7
+                },
+                {
+                  "type": "Consumable",
+                  "name": "Mana Potion",
+                  "description": "Restores 25 mana",
+                  "healAmount": 0,
+                  "manaAmount": 25,
+                  "energyAmount": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "row": 9,
+          "col": 14,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          ]
+        },
+        {
+          "row": 11,
+          "col": 11,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Energy Potion",
+              "description": "Restores 40 energy",
+              "healAmount": 0,
+              "manaAmount": 0,
+              "energyAmount": 40
+            }
+          ]
+        },
+        {
+          "row": 1,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Green Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 21,
+          "walkable": false,
+          "staticObject": {
+            "name": "Green Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 23,
+          "walkable": false,
+          "staticObject": {
+            "name": "Green Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 2,
+          "col": 20,
+          "walkable": false,
+          "staticObject": {
+            "name": "Barrel",
+            "description": "An old barrel sealed with wax.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 20 mana",
+              "healAmount": 0,
+              "manaAmount": 20,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 2,
+          "col": 22,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wooden Crate",
+            "description": "Heavy supply crate.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 4,
+          "col": 21,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "Freestanding column.",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 8,
+          "col": 22,
+          "walkable": false,
+          "staticObject": {
+            "name": "Barrel",
+            "description": "A barrel with a peculiar clink inside...",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Key",
+              "name": "Silver Key",
+              "description": "A tarnished silver key.",
+              "keyId": "silver"
+            }
+          }
+        },
+        {
+          "row": 6,
+          "col": 21,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "StaticContainer",
+              "name": "Orange Chest",
+              "description": "A battered wooden chest.",
+              "contents": [
+                {
+                  "type": "Wearable",
+                  "name": "Leather Armor",
+                  "description": "+3 DEF",
+                  "defenseBonus": 3
+                },
+                {
+                  "type": "Consumable",
+                  "name": "Health Potion",
+                  "description": "Restores 10 HP",
+                  "healAmount": 10,
+                  "manaAmount": 0,
+                  "energyAmount": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "row": 9,
+          "col": 20,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Weapon",
+              "name": "Steel Dagger",
+              "description": "A weapon for dungeon survival",
+              "damage": 5
+            }
+          ]
+        },
+        {
+          "row": 11,
+          "col": 22,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Wearable",
+              "name": "Iron Shield",
+              "description": "+3 DEF",
+              "defenseBonus": 3
+            }
+          ]
+        },
+        {
+          "row": 12,
+          "col": 19,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 25 mana",
+              "healAmount": 0,
+              "manaAmount": 25,
+              "energyAmount": 0
+            }
+          ]
+        }
+      ]
+    },
+    "catacombs": {
+      "width": 26,
+      "height": 14,
+      "cells": [
+        {
+          "row": 0,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 1,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 2,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 2,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 3,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 3,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 4,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 4,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 6,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 6,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 7,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 7,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 8,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 8,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 10,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 10,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 11,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 11,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 12,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 12,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 13,
+          "walkable": true,
+          "staticObject": {
+            "type": "MapPortal",
+            "name": "Worn Wooden Door",
+            "description": "Back to the antechamber above.",
+            "targetMapId": "antechamber",
+            "targetRow": 12,
+            "targetCol": 13,
+            "unlocked": true,
+            "stairsMode": true
+          }
+        },
+        {
+          "row": 13,
+          "col": 13,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 14,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 14,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 15,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 15,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 16,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 16,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 17,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 17,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 20,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 20,
+          "walkable": true,
+          "staticObject": {
+            "type": "MapPortal",
+            "name": "Iron Vault Gate",
+            "description": "A massive iron gate sealed with a golden lock. Find the golden key.",
+            "targetMapId": "vault",
+            "targetRow": 1,
+            "targetCol": 20,
+            "unlocked": false,
+            "stairsMode": false,
+            "requiredKeyId": "gold"
+          }
+        },
+        {
+          "row": 0,
+          "col": 21,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 21,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 22,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 22,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 23,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 23,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 24,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 24,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 2,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 2,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 4,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 4,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 5,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 5,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 7,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 7,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 8,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 8,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 9,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 9,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 11,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 11,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 12,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 12,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 1,
+          "walkable": false,
+          "staticObject": {
+            "name": "Vine Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 2,
+          "walkable": false,
+          "staticObject": {
+            "name": "Vine Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 3,
+          "walkable": false,
+          "staticObject": {
+            "name": "Vine Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 4,
+          "walkable": false,
+          "staticObject": {
+            "name": "Vine Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 6,
+          "walkable": false,
+          "staticObject": {
+            "name": "Water Grate",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 7,
+          "walkable": false,
+          "staticObject": {
+            "name": "Water Grate",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 8,
+          "walkable": false,
+          "staticObject": {
+            "name": "Water Grate",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Water Grate",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 10,
+          "walkable": false,
+          "staticObject": {
+            "name": "Water Grate",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 11,
+          "walkable": false,
+          "staticObject": {
+            "name": "Water Grate",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 12,
+          "walkable": false,
+          "staticObject": {
+            "name": "Water Grate",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 13,
+          "walkable": false,
+          "staticObject": {
+            "name": "Water Grate",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 15,
+          "walkable": false,
+          "staticObject": {
+            "name": "Vine Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 16,
+          "walkable": false,
+          "staticObject": {
+            "name": "Vine Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Caged Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Caged Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 20,
+          "walkable": false,
+          "staticObject": {
+            "name": "Caged Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 21,
+          "walkable": false,
+          "staticObject": {
+            "name": "Caged Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 22,
+          "walkable": false,
+          "staticObject": {
+            "name": "Caged Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 23,
+          "walkable": false,
+          "staticObject": {
+            "name": "Caged Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 24,
+          "walkable": false,
+          "staticObject": {
+            "name": "Caged Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 7,
+          "col": 15,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 8,
+          "col": 15,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 11,
+          "col": 15,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 12,
+          "col": 15,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Blue Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 21,
+          "walkable": false,
+          "staticObject": {
+            "name": "Blue Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 3,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ancient Bookshelf",
+            "description": "Scrawled beneath: 'The gargoyle pool to the south holds the golden key. Search its water carefully.'",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 1,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ancient Bookshelf",
+            "description": "A ritual tome: 'Three seals guard the vault: iron, silver, and gold.'",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 2,
+          "col": 3,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall Shelf",
+            "description": "Old shelf — a hidden vial.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Energy Potion",
+              "description": "Restores 40 energy",
+              "healAmount": 0,
+              "manaAmount": 0,
+              "energyAmount": 40
+            }
+          }
+        },
+        {
+          "row": 3,
+          "col": 8,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "Pillar carved with catacomb warning glyphs.",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 3,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "Ancient column.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 25 mana",
+              "healAmount": 0,
+              "manaAmount": 25,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 1,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall Shelf",
+            "description": "Dusty shelf.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 2,
+          "col": 12,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          ]
+        },
+        {
+          "row": 4,
+          "col": 16,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Weapon",
+              "name": "Iron Axe",
+              "description": "A weapon for dungeon survival",
+              "damage": 6
+            }
+          ]
+        },
+        {
+          "row": 5,
+          "col": 22,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Energy Potion",
+              "description": "Restores 40 energy",
+              "healAmount": 0,
+              "manaAmount": 0,
+              "energyAmount": 40
+            }
+          ]
+        },
+        {
+          "row": 8,
+          "col": 5,
+          "walkable": true,
+          "staticObject": {
+            "name": "Gargoyle Pool",
+            "description": "A ceremonial gargoyle pool. The gargoyle's mouth is open — something glints at the bottom...",
+            "passable": true,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Key",
+              "name": "Gold Key",
+              "description": "A heavy golden key — opens the vault gate.",
+              "keyId": "gold"
+            }
+          }
+        },
+        {
+          "row": 10,
+          "col": 4,
+          "walkable": true,
+          "staticObject": {
+            "name": "Gargoyle Pool",
+            "description": "A smaller offering pool. The water has long dried.",
+            "passable": true,
+            "searchable": true
+          }
+        },
+        {
+          "row": 9,
+          "col": 2,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "A ritual column with arcane lock inscriptions.",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 11,
+          "col": 8,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wooden Crate",
+            "description": "Sealed with ritual wax. Might break open.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 11,
+          "col": 3,
+          "walkable": false,
+          "staticObject": {
+            "name": "Barrel",
+            "description": "Medicinal herbs preserved inside.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Energy Potion",
+              "description": "Restores 40 energy",
+              "healAmount": 0,
+              "manaAmount": 0,
+              "energyAmount": 40
+            }
+          }
+        },
+        {
+          "row": 7,
+          "col": 12,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall Shelf",
+            "description": "Ritual items on this shelf.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 25 mana",
+              "healAmount": 0,
+              "manaAmount": 25,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 8,
+          "col": 11,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          ]
+        },
+        {
+          "row": 10,
+          "col": 10,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Wearable",
+              "name": "Chain Mail",
+              "description": "+5 DEF",
+              "defenseBonus": 5
+            }
+          ]
+        },
+        {
+          "row": 12,
+          "col": 6,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 25 mana",
+              "healAmount": 0,
+              "manaAmount": 25,
+              "energyAmount": 0
+            }
+          ]
+        },
+        {
+          "row": 8,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "A column of bone and mortar.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 20 mana",
+              "healAmount": 0,
+              "manaAmount": 20,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 10,
+          "col": 22,
+          "walkable": true,
+          "staticObject": {
+            "name": "Gargoyle Pool",
+            "description": "Underground water seeps through. Strangely warm.",
+            "passable": true,
+            "searchable": true
+          }
+        },
+        {
+          "row": 7,
+          "col": 21,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "StaticContainer",
+              "name": "Copper Chest",
+              "description": "A copper chest — dented from neglect.",
+              "contents": [
+                {
+                  "type": "Weapon",
+                  "name": "Steel Sword",
+                  "description": "A weapon for dungeon survival",
+                  "damage": 8
+                },
+                {
+                  "type": "Wearable",
+                  "name": "Scale Armor",
+                  "description": "+4 DEF",
+                  "defenseBonus": 4
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "row": 10,
+          "col": 18,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "StaticContainer",
+              "name": "Red Locked Chest",
+              "description": "A chest with a silver lock. You need a silver key to open it.",
+              "contents": [
+                {
+                  "type": "Wearable",
+                  "name": "Iron Shield",
+                  "description": "+4 DEF",
+                  "defenseBonus": 4
+                },
+                {
+                  "type": "Consumable",
+                  "name": "Mana Potion",
+                  "description": "Restores 30 mana",
+                  "healAmount": 0,
+                  "manaAmount": 30,
+                  "energyAmount": 0
+                }
+              ],
+              "locked": true,
+              "requiredKeyId": "silver"
+            }
+          ]
+        },
+        {
+          "row": 12,
+          "col": 22,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Wearable",
+              "name": "Iron Shield",
+              "description": "+3 DEF",
+              "defenseBonus": 3
+            }
+          ]
+        },
+        {
+          "row": 12,
+          "col": 19,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Energy Potion",
+              "description": "Restores 40 energy",
+              "healAmount": 0,
+              "manaAmount": 0,
+              "energyAmount": 40
+            }
+          ]
+        }
+      ]
+    },
+    "vault": {
+      "width": 26,
+      "height": 14,
+      "cells": [
+        {
+          "row": 0,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 1,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 2,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 2,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 3,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 3,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 4,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 4,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 6,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 6,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 7,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 7,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 8,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 8,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 10,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 10,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 11,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 11,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 12,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 12,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 13,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 13,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 14,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 14,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 15,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 15,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 16,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 16,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 17,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 17,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 20,
+          "walkable": true,
+          "staticObject": {
+            "type": "MapPortal",
+            "name": "Iron Vault Gate",
+            "description": "Return to the catacombs.",
+            "targetMapId": "catacombs",
+            "targetRow": 12,
+            "targetCol": 20,
+            "unlocked": true,
+            "stairsMode": true
+          }
+        },
+        {
+          "row": 13,
+          "col": 20,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 21,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 21,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 22,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 22,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 23,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 23,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 24,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 24,
+          "walkable": false,
+          "staticObject": {
+            "name": "Dark Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 0,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 13,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 2,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 2,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 4,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 4,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 5,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 5,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 7,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 7,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 8,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 8,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 9,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 9,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 11,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 11,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 12,
+          "col": 0,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 12,
+          "col": 25,
+          "walkable": false,
+          "staticObject": {
+            "name": "Brown Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 2,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 4,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 2,
+          "col": 6,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 4,
+          "col": 6,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 2,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 4,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 2,
+          "col": 20,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 4,
+          "col": 20,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 9,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 11,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 9,
+          "col": 20,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 20,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 11,
+          "col": 20,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 7,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 8,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 16,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 17,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 7,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 8,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 16,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 17,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 18,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ring Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 10,
+          "walkable": false,
+          "staticObject": {
+            "name": "Red Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 3,
+          "col": 15,
+          "walkable": false,
+          "staticObject": {
+            "name": "Red Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 10,
+          "walkable": false,
+          "staticObject": {
+            "name": "Red Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 10,
+          "col": 15,
+          "walkable": false,
+          "staticObject": {
+            "name": "Red Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Green Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 7,
+          "col": 5,
+          "walkable": false,
+          "staticObject": {
+            "name": "Green Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 6,
+          "col": 20,
+          "walkable": false,
+          "staticObject": {
+            "name": "Green Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 7,
+          "col": 20,
+          "walkable": false,
+          "staticObject": {
+            "name": "Green Torch Wall",
+            "description": "Dark dungeon wall",
+            "passable": false,
+            "searchable": false
+          }
+        },
+        {
+          "row": 1,
+          "col": 2,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ancient Bookshelf",
+            "description": "Final Council journal: 'We seal the Void Orb beyond reach. Four chests guard it — only fate knows which holds truth.'",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 1,
+          "col": 4,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ancient Bookshelf",
+            "description": "'The Sorcerer King\\'s consciousness lives on in the Orb. To carry it is to hear his whispers forever.'",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 1,
+          "col": 22,
+          "walkable": false,
+          "staticObject": {
+            "name": "Ancient Bookshelf",
+            "description": "A blank tome. The last scribe fled in haste.",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 2,
+          "col": 2,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall Shelf",
+            "description": "Ritual candles, long extinguished.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 30 mana",
+              "healAmount": 0,
+              "manaAmount": 30,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 2,
+          "col": 23,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wall Shelf",
+            "description": "A sealed clay pot.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Energy Potion",
+              "description": "Restores 40 energy",
+              "healAmount": 0,
+              "manaAmount": 0,
+              "energyAmount": 40
+            }
+          }
+        },
+        {
+          "row": 5,
+          "col": 8,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "Grand pillar etched with constellations.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Energy Potion",
+              "description": "Restores 40 energy",
+              "healAmount": 0,
+              "manaAmount": 0,
+              "energyAmount": 40
+            }
+          }
+        },
+        {
+          "row": 5,
+          "col": 17,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "Matching pillar. The night-sky carvings continue.",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 8,
+          "col": 8,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "A cracked column — the base is hollow.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 25 mana",
+              "healAmount": 0,
+              "manaAmount": 25,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 8,
+          "col": 17,
+          "walkable": false,
+          "staticObject": {
+            "name": "Stone Column",
+            "description": "Column with a faded arcane seal.",
+            "passable": false,
+            "searchable": true
+          }
+        },
+        {
+          "row": 6,
+          "col": 3,
+          "walkable": true,
+          "staticObject": {
+            "name": "Gargoyle Pool",
+            "description": "Ceremonial pool fed by underground springs.",
+            "passable": true,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 25 mana",
+              "healAmount": 0,
+              "manaAmount": 25,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 6,
+          "col": 22,
+          "walkable": true,
+          "staticObject": {
+            "name": "Gargoyle Pool",
+            "description": "Mirror pool — perfectly still.",
+            "passable": true,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 11,
+          "col": 3,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "StaticContainer",
+              "name": "Orange Chest",
+              "description": "A battered wooden chest — decoy?",
+              "contents": [
+                {
+                  "type": "Consumable",
+                  "name": "Mana Potion",
+                  "description": "Restores 30 mana",
+                  "healAmount": 0,
+                  "manaAmount": 30,
+                  "energyAmount": 0
+                },
+                {
+                  "type": "Consumable",
+                  "name": "Energy Potion",
+                  "description": "Restores 40 energy",
+                  "healAmount": 0,
+                  "manaAmount": 0,
+                  "energyAmount": 40
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "row": 11,
+          "col": 22,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "StaticContainer",
+              "name": "Gold Banded Chest",
+              "description": "An ornate golden chest at the heart of the vault. A golden lock seals it. You already have the key...",
+              "locked": true,
+              "requiredKeyId": "gold"
+            }
+          ]
+        },
+        {
+          "row": 10,
+          "col": 6,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wooden Crate",
+            "description": "Petrified supply crate.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 10,
+          "col": 19,
+          "walkable": false,
+          "staticObject": {
+            "name": "Barrel",
+            "description": "Sealed barrel of arcane reagents.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 20 mana",
+              "healAmount": 0,
+              "manaAmount": 20,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 12,
+          "col": 9,
+          "walkable": false,
+          "staticObject": {
+            "name": "Wooden Crate",
+            "description": "A lockbox disguised as a crate.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          }
+        },
+        {
+          "row": 12,
+          "col": 16,
+          "walkable": false,
+          "staticObject": {
+            "name": "Barrel",
+            "description": "Old intact barrel.",
+            "passable": false,
+            "searchable": true,
+            "hiddenItem": {
+              "type": "Consumable",
+              "name": "Energy Potion",
+              "description": "Restores 40 energy",
+              "healAmount": 0,
+              "manaAmount": 0,
+              "energyAmount": 40
+            }
+          }
+        },
+        {
+          "row": 5,
+          "col": 12,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Weapon",
+              "name": "Arcanite Sword",
+              "description": "A weapon for dungeon survival",
+              "damage": 10
+            }
+          ]
+        },
+        {
+          "row": 5,
+          "col": 13,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Wearable",
+              "name": "Arcane Robe",
+              "description": "+6 DEF",
+              "defenseBonus": 6
+            }
+          ]
+        },
+        {
+          "row": 8,
+          "col": 12,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          ]
+        },
+        {
+          "row": 8,
+          "col": 13,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 30 mana",
+              "healAmount": 0,
+              "manaAmount": 30,
+              "energyAmount": 0
+            }
+          ]
+        },
+        {
+          "row": 11,
+          "col": 11,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Energy Potion",
+              "description": "Restores 40 energy",
+              "healAmount": 0,
+              "manaAmount": 0,
+              "energyAmount": 40
+            }
+          ]
+        },
+        {
+          "row": 11,
+          "col": 14,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Wearable",
+              "name": "Sapphire Ring",
+              "description": "A ring of protection. +3 DEF",
+              "defenseBonus": 3
+            }
+          ]
+        },
+        {
+          "row": 4,
+          "col": 12,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            }
+          ]
+        },
+        {
+          "row": 4,
+          "col": 13,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 25 mana",
+              "healAmount": 0,
+              "manaAmount": 25,
+              "energyAmount": 0
+            }
+          ]
+        },
+        {
+          "row": 2,
+          "col": 3,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "StaticContainer",
+              "name": "Bronze Treasure Chest",
+              "description": "An ornate council chest.",
+              "contents": [
+                {
+                  "type": "Weapon",
+                  "name": "Void Blade",
+                  "description": "A weapon for dungeon survival",
+                  "damage": 10
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "row": 2,
+          "col": 22,
+          "walkable": true,
+          "objects": [
+            {
+              "type": "StaticContainer",
+              "name": "Gilded Chest",
+              "description": "Gilded carvings of the Sorcerer King.",
+              "contents": [
+                {
+                  "type": "Wearable",
+                  "name": "Plate Armor",
+                  "description": "+7 DEF",
+                  "defenseBonus": 7
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
