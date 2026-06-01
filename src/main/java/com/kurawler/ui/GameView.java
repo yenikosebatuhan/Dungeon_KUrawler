@@ -86,11 +86,11 @@ public class GameView {
     /** Taller HUD so the stats panel fits timer + ATK + DEF + WPN + weapon name (ref. image 2). */
     private static final int HUD_HEIGHT = 104;
     private static final int INFO_BAR_HEIGHT = 40;
-    private static final double LERP_SPEED = 0.2;
+    private static final double LERP_SPEED = 0.20;
     /** Fraction of flexible width given to the resource bars panel (rest = stats). */
     private static final double HUD_BARS_WIDTH_RATIO = 0.60;
     /** Minimum interval between steps while a movement key is held (ms). */
-    private static final long HELD_MOVE_INTERVAL_MS = 110;
+    private static final long HELD_MOVE_INTERVAL_MS = 190;
 
     private final GameController controller;
     private final ScreenManager screenManager;
@@ -119,6 +119,7 @@ public class GameView {
     private boolean endScreenShown;
 
     private final java.util.Map<Object, double[]> smoothPositions = new java.util.HashMap<>();
+    private long animTick = 0;
     private final List<DustParticle> hitParticles = new ArrayList<>();
     private int lastHeroHp = Integer.MAX_VALUE;
     private final Set<KeyCode> heldMoveKeys = EnumSet.noneOf(KeyCode.class);
@@ -1044,10 +1045,13 @@ public class GameView {
         event.consume();
 
         if (isMoveKey) {
+            boolean firstPress = !heldMoveKeys.contains(event.getCode());
             heldMoveKeys.add(event.getCode());
             lastPressedMoveKey = event.getCode();
-            lastMoveStepMs = System.currentTimeMillis();
-            tryHeroMove(dRow, dCol);
+            if (firstPress) {
+                lastMoveStepMs = System.currentTimeMillis();
+                tryHeroMove(dRow, dCol);
+            }
         }
 
         render();
@@ -1734,6 +1738,7 @@ public class GameView {
 
     /** Render the entire game state by reading the model. */
     private void render() {
+        animTick++;
         syncSessionProjectilesToLoop();
         GameSession session = controller.getSession();
         com.kurawler.model.Map map = session.getMap();
@@ -1825,7 +1830,11 @@ public class GameView {
 
                 Character occupant = cell.getOccupyingCharacter();
                 if (occupant != null && occupant.isAlive() && !(occupant instanceof Hero)) {
-                    double[] pos = lerpPosition(occupant, c * TILE_SIZE, r * TILE_SIZE);
+                    double targetX = c * TILE_SIZE, targetY = r * TILE_SIZE;
+                    double[] pos = lerpPosition(occupant, targetX, targetY);
+                    boolean enemyMoving = Math.abs(pos[0] - targetX) > 1.5
+                            || Math.abs(pos[1] - targetY) > 1.5;
+                    int enemyWalkFrame = enemyMoving ? (int)(animTick / 5) % 2 : 0;
                     String type = (occupant instanceof Knight) ? "Knight"
                             : (occupant instanceof Guard) ? "Guard"
                             : (occupant instanceof Assassin) ? "Assassin" : "Sorcerer";
@@ -1843,7 +1852,7 @@ public class GameView {
                         gc.fillRect((int) pos[0], (int) pos[1], TILE_SIZE, TILE_SIZE);
                     }
 
-                    renderer.drawEnemy(gc, (int) pos[0], (int) pos[1], type, mirrorKnight, occupant.getName());
+                    renderer.drawEnemy(gc, (int) pos[0], (int) pos[1], type, mirrorKnight, occupant.getName(), enemyWalkFrame);
                     renderer.drawHpBar(gc, (int) pos[0], (int) pos[1],
                             occupant.getHealth(), occupant.getMaxHealth());
 
@@ -1865,10 +1874,16 @@ public class GameView {
             renderer.drawShadowClone(gc, (int) clonePos[0], (int) clonePos[1]);
         }
 
-        double[] heroPos = lerpPosition(hero, hero.getCol() * TILE_SIZE, hero.getRow() * TILE_SIZE);
+        double heroTargetX = hero.getCol() * TILE_SIZE, heroTargetY = hero.getRow() * TILE_SIZE;
+        double[] heroPos = lerpPosition(hero, heroTargetX, heroTargetY);
         int heroSx = (int) heroPos[0];
         int heroSy = (int) heroPos[1];
-        renderer.drawHeroFacing(gc, heroSx, heroSy, hero.getFacingRow(), hero.getFacingCol());
+        boolean heroMoving = Math.abs(heroPos[0] - heroTargetX) > 1.5
+                || Math.abs(heroPos[1] - heroTargetY) > 1.5;
+        // Walk frame is driven by lerp state, not a clock — character is in walk
+        // pose exactly while visually moving, idle the moment it arrives.
+        renderer.drawHeroFacing(gc, heroSx, heroSy, hero.getFacingRow(), hero.getFacingCol(),
+                heroMoving ? 1 : 0);
         renderer.drawHpBar(gc, heroSx, heroSy, hero.getHealth(), hero.getMaxHealth());
 
         int currentHp = hero.getHealth();
@@ -3097,8 +3112,8 @@ public class GameView {
         }
         pos[0] += (targetX - pos[0]) * LERP_SPEED;
         pos[1] += (targetY - pos[1]) * LERP_SPEED;
-        if (Math.abs(pos[0] - targetX) < 0.5) pos[0] = targetX;
-        if (Math.abs(pos[1] - targetY) < 0.5) pos[1] = targetY;
+        if (Math.abs(pos[0] - targetX) < 1.0) pos[0] = targetX;
+        if (Math.abs(pos[1] - targetY) < 1.0) pos[1] = targetY;
         return pos;
     }
 

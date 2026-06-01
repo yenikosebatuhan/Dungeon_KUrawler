@@ -883,15 +883,23 @@ public class TileRenderer {
     }
 
     public void drawHeroFacing(GraphicsContext gc, int screenX, int screenY, int facingR, int facingC) {
-        Image sprite = heroSprite != null ? heroSprite : heroSpriteRight;
-        if (sprite == null) {
-            drawCharacterSprite(gc, null, screenX, screenY, Color.web("#4caf50"));
-            return;
-        }
+        drawHeroFacing(gc, screenX, screenY, facingR, facingC, 0);
+    }
+
+    /** walkFrame 0 = idle, 1 = alternate walk frame. */
+    public void drawHeroFacing(GraphicsContext gc, int screenX, int screenY,
+                               int facingR, int facingC, int walkFrame) {
+        Image idle = heroSprite != null ? heroSprite : heroSpriteRight;
+        Image walk;
         if (facingC < 0) {
-            drawCharacterSpriteMirrored(gc, sprite, screenX, screenY, true, false);
+            walk = walkFrame == 1 && heroSpriteLeft != null ? heroSpriteLeft : idle;
+            drawCharacterSpriteMirrored(gc, walk, screenX, screenY, true, false);
+        } else if (facingR < 0) {
+            walk = walkFrame == 1 && heroSpriteUp != null ? heroSpriteUp : idle;
+            drawCharacterSprite(gc, walk, screenX, screenY, Color.web("#4caf50"));
         } else {
-            drawCharacterSprite(gc, sprite, screenX, screenY, Color.web("#4caf50"));
+            walk = walkFrame == 1 && heroSpriteRight != null ? heroSpriteRight : idle;
+            drawCharacterSprite(gc, walk, screenX, screenY, Color.web("#4caf50"));
         }
     }
 
@@ -905,18 +913,25 @@ public class TileRenderer {
     }
 
     public void drawEnemy(GraphicsContext gc, int screenX, int screenY, String enemyType) {
-        drawEnemy(gc, screenX, screenY, enemyType, false);
+        drawEnemy(gc, screenX, screenY, enemyType, false, null, 0);
     }
 
     public void drawEnemy(GraphicsContext gc, int screenX, int screenY, String enemyType, boolean mirrorH) {
-        drawEnemy(gc, screenX, screenY, enemyType, mirrorH, null);
+        drawEnemy(gc, screenX, screenY, enemyType, mirrorH, null, 0);
     }
 
     public void drawEnemy(GraphicsContext gc, int screenX, int screenY,
             String enemyType, boolean mirrorH, String visualName) {
+        drawEnemy(gc, screenX, screenY, enemyType, mirrorH, visualName, 0);
+    }
+
+    /** walkFrame 0 = idle, 1 = alternate walk frame. */
+    public void drawEnemy(GraphicsContext gc, int screenX, int screenY,
+            String enemyType, boolean mirrorH, String visualName, int walkFrame) {
         if ("Knight".equals(enemyType)) {
-            Image sprite = characterSpriteForName(visualName);
-            if (sprite == null) sprite = knightSprite != null ? knightSprite : knightSprite2;
+            Image idle = characterSpriteForName(visualName);
+            if (idle == null) idle = knightSprite != null ? knightSprite : knightSprite2;
+            Image sprite = (walkFrame == 1 && knightSprite2 != null) ? knightSprite2 : idle;
             if (sprite == null) {
                 drawCharacterSprite(gc, null, screenX, screenY, Color.web("#d32f2f"));
                 return;
