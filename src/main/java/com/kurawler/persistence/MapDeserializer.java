@@ -22,6 +22,12 @@ import com.kurawler.model.object.MapPortal;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.Wearable;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -81,9 +87,10 @@ public class MapDeserializer {
     public boolean loadGameState(String filename, GameSession session) {
         try {
             String content = new String(Files.readAllBytes(Paths.get(filename)));
-            src = content;
-            pos = 0;
-            LinkedHashMap<String, Object> root = parseObject();
+            // Phase 2 spec: save files must be parsed via Gson (§Phase2 Save/Load).
+            LinkedHashMap<String, Object> root = gsonToJavaMap(
+                    JsonParser.parseString(content).getAsJsonObject());
+
 
             int width  = (int) root.get("width");
             int height = (int) root.get("height");
@@ -719,5 +726,37 @@ public class MapDeserializer {
 
     private void skipWs() {
         while (pos < src.length() && Character.isWhitespace(src.charAt(pos))) pos++;
+    }
+
+    // ── Gson → Java bridge (used for save-game files only) ───────────────────
+
+    @SuppressWarnings("unchecked")
+    static LinkedHashMap<String, Object> gsonToJavaMap(JsonObject obj) {
+        LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+        for (java.util.Map.Entry<String, JsonElement> e : obj.entrySet()) {
+            map.put(e.getKey(), gsonToJava(e.getValue()));
+        }
+        return map;
+    }
+
+    private static Object gsonToJava(JsonElement el) {
+        if (el == null || el instanceof JsonNull) return null;
+        if (el instanceof JsonPrimitive p) {
+            if (p.isBoolean()) return p.getAsBoolean();
+            if (p.isNumber()) {
+                double d = p.getAsDouble();
+                if (d == Math.floor(d) && !Double.isInfinite(d) && Math.abs(d) < 2.1e9)
+                    return (int) d;
+                return d;
+            }
+            return p.getAsString();
+        }
+        if (el instanceof JsonObject jo) return gsonToJavaMap(jo);
+        if (el instanceof JsonArray ja) {
+            List<Object> list = new ArrayList<>();
+            for (JsonElement item : ja) list.add(gsonToJava(item));
+            return list;
+        }
+        return el.toString();
     }
 }
