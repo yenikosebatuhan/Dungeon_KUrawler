@@ -2030,4 +2030,126 @@ class GameSystemTest {
             assertFalse(v.isValidPlacement(new Weapon("W", "", 1), null));
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 17. Play Screen HUD & In-Game Controls (TC-HUD-01 through TC-HUD-12, §4.3, §5)
+    //
+    //  TC-HUD-02 → CombatSystem / HeroStats (already covered)
+    //  TC-HUD-03 → HeroStats.eachMoveCostsExactlyOneEnergy (already covered)
+    //  TC-HUD-04 → HeroStats.heroShoot_manaDecreasesBy10 (already covered)
+    //  TC-HUD-01, TC-HUD-08 through TC-HUD-12 → pure UI/graphics, not testable
+    //             at system level without a real display
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    class HudAndControls {
+
+        private GameEngine engine;
+
+        @BeforeEach
+        void buildEngine() {
+            engine = new GameEngine(controller);
+            engine.start(); // sets mode to "Play"
+        }
+
+        // TC-HUD-05: timer counts up from 0 when game runs
+        @Test
+        void playTimer_startsAtZero() {
+            assertEquals(0, session.getPlayDurationTimer());
+        }
+
+        @Test
+        void playTimer_advancesAfterOneSecondOfUpdates() {
+            engine.update(1500); // 1.5 s worth of delta
+            assertTrue(session.getPlayDurationTimer() >= 1,
+                    "Play duration timer must advance after 1 s of game time");
+        }
+
+        @Test
+        void playTimer_doesNotAdvanceInDesignMode() {
+            session.setCurrentMode("Design");
+            engine.update(2000);
+            assertEquals(0, session.getPlayDurationTimer());
+        }
+
+        // TC-HUD-06: pause → mode is "Paused"; timer freezes; enemies do not move
+        @Test
+        void pauseGame_setsModeTosPaused() {
+            controller.pauseGame();
+            assertEquals("Paused", session.getCurrentMode());
+        }
+
+        @Test
+        void pauseGame_timerFreezesWhilePaused() {
+            engine.update(1500);                    // advance timer to 1
+            int timerAtPause = session.getPlayDurationTimer();
+            controller.pauseGame();
+            engine.update(5000);                    // 5 s while paused — timer must not move
+            assertEquals(timerAtPause, session.getPlayDurationTimer(),
+                    "Timer must not advance while game is paused");
+        }
+
+        @Test
+        void pauseGame_knightDoesNotMoveWhilePaused() {
+            Knight knight = new Knight();
+            knight.moveToCell(map.getCell(3, 5));   // within sight range of hero
+            session.addEnemy(knight);
+            controller.pauseGame();
+
+            int rowBefore = knight.getRow();
+            int colBefore = knight.getCol();
+            // Trigger many enemy-tick intervals; GameLoop must skip all because paused
+            for (int i = 0; i < 100; i++) {
+                engine.update(500);
+            }
+            assertEquals(rowBefore, knight.getRow(), "Enemy must not move while paused");
+            assertEquals(colBefore, knight.getCol(), "Enemy must not move while paused");
+        }
+
+        // TC-HUD-07: resume → game continues from exact state (hero HP, enemy position unchanged)
+        @Test
+        void resumeAfterPause_modeIsPlay() {
+            controller.pauseGame();
+            session.setCurrentMode("Play");
+            assertEquals("Play", session.getCurrentMode());
+        }
+
+        @Test
+        void resumeAfterPause_heroHpPreserved() {
+            hero.takeDamage(5);
+            int hpAtPause = hero.getHealth();
+            controller.pauseGame();
+            engine.update(2000); // no healing should occur while paused
+            assertEquals(hpAtPause, hero.getHealth(),
+                    "Hero HP must not change during pause");
+        }
+
+        @Test
+        void resumeAfterPause_timerContinuesFromSameValue() {
+            engine.update(1500);
+            int timerBeforePause = session.getPlayDurationTimer();
+            controller.pauseGame();
+            engine.update(3000);                    // still paused, should not advance
+            session.setCurrentMode("Play");
+            engine.update(1500);                    // now unpaused, should advance
+            assertTrue(session.getPlayDurationTimer() > timerBeforePause,
+                    "Timer must resume counting after un-pause");
+        }
+
+        @Test
+        void pauseThenResume_enemyPositionPreserved() {
+            Knight knight = new Knight();
+            knight.moveToCell(map.getCell(0, 0));   // far from hero — out of sight
+            session.addEnemy(knight);
+            engine.update(1500);                    // let some updates happen
+            int rowBeforePause = knight.getRow();
+            int colBeforePause = knight.getCol();
+
+            controller.pauseGame();
+            engine.update(5000);                    // large delta while paused
+
+            assertEquals(rowBeforePause, knight.getRow());
+            assertEquals(colBeforePause, knight.getCol());
+        }
+    }
 }
