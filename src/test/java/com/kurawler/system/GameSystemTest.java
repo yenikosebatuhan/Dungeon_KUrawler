@@ -135,6 +135,45 @@ class GameSystemTest {
             controller.executeAction(new MoveAction(0, 1));
             assertTrue(hero.getEnergy() < energyBefore);
         }
+
+        // TC-MOV-08: hero walks onto a tile that has an item on it
+        @Test
+        void moveOntoItemTile_heroOccupiesSameTile() {
+            Key gem = new Key("Gem", "Shiny gem", "gem1");
+            map.getCell(2, 3).addObject(gem);
+            controller.executeAction(new MoveAction(-1, 0)); // UP → (2,3)
+            assertEquals(2, hero.getRow());
+            assertEquals(3, hero.getCol());
+        }
+
+        @Test
+        void moveOntoItemTile_itemRemainsOnCellUntilTaken() {
+            Key gem = new Key("Gem", "Shiny gem", "gem2");
+            map.getCell(2, 3).addObject(gem);
+            controller.executeAction(new MoveAction(-1, 0));
+            assertTrue(map.getCell(2, 3).getObjects().contains(gem));
+        }
+
+        // TC-MOV-10: hero cannot walk onto a tile occupied by a live enemy
+        @Test
+        void moveIntoLiveEnemy_heroIsBlocked() {
+            Knight knight = new Knight();
+            knight.moveToCell(map.getCell(2, 3)); // directly above hero
+            session.addEnemy(knight);
+            int rowBefore = hero.getRow();
+            controller.executeAction(new MoveAction(-1, 0));
+            assertEquals(rowBefore, hero.getRow());
+        }
+
+        @Test
+        void moveIntoLiveEnemy_colUnchanged() {
+            Knight knight = new Knight();
+            knight.moveToCell(map.getCell(3, 4)); // directly right of hero
+            session.addEnemy(knight);
+            int colBefore = hero.getCol();
+            controller.executeAction(new MoveAction(0, 1));
+            assertEquals(colBefore, hero.getCol());
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
