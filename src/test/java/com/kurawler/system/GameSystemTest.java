@@ -3,9 +3,13 @@ package com.kurawler.system;
 import com.kurawler.action.AttackAction;
 import com.kurawler.action.BreakAction;
 import com.kurawler.action.EquipAction;
+import com.kurawler.editor.LevelEditor;
+import com.kurawler.editor.RandomItemGenerator;
 import com.kurawler.engine.EnemySpawner;
 import com.kurawler.engine.GameEngine;
 import com.kurawler.model.object.Ring;
+import com.kurawler.persistence.MapDeserializer;
+import com.kurawler.persistence.MapSerializer;
 import com.kurawler.action.DiscardAction;
 import com.kurawler.action.EatAction;
 import com.kurawler.action.MoveAction;
@@ -1799,6 +1803,231 @@ class GameSystemTest {
             controller.executeAction(new EquipAction(sword)); // equip
             controller.executeAction(new EquipAction(sword)); // toggle unequip
             assertNull(hero.getEquippedWeapon());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 16. Level Editor (TC-ED-01 through TC-ED-10, §4.2)
+    //     TC-ED-08 → SessionInit.startGame_switchesModeTo_Play (already covered)
+    //     TC-ED-09 → UI-level navigation, not testable at system level
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    class LevelEditorTests {
+
+        private LevelEditor editor;
+
+        @BeforeEach
+        void setUp() {
+            editor = new LevelEditor(map);
+        }
+
+        // TC-ED-01: place item on walkable floor tile → appears on cell
+        @Test
+        void placeItem_onWalkableCell_appearsOnCell() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            boolean placed = editor.placeObject(2, 2, sword);
+            assertTrue(placed);
+            assertTrue(map.getCell(2, 2).getObjects().contains(sword));
+        }
+
+        @Test
+        void placeStaticObject_onEmptyCell_appearsAsStaticObject() {
+            StaticObject crate = new StaticObject("Crate", "Wooden crate", false, true);
+            boolean placed = editor.placeObject(1, 1, crate);
+            assertTrue(placed);
+            assertEquals(crate, map.getCell(1, 1).getStaticObject());
+        }
+
+        // TC-ED-02: place item on wall tile → rejected
+        @Test
+        void placeItem_onWallCell_isRejected() {
+            StaticObject wall = new StaticObject("Wall", "Solid wall", false, false);
+            map.getCell(0, 0).setStaticObject(wall);
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            boolean placed = editor.placeObject(0, 0, sword);
+            assertFalse(placed);
+            assertFalse(map.getCell(0, 0).getObjects().contains(sword));
+        }
+
+        @Test
+        void placeImpassableStaticObject_onOccupiedCell_isRejected() {
+            StaticObject wall1 = new StaticObject("Wall", "First wall", false, false);
+            StaticObject wall2 = new StaticObject("Wall2", "Second wall", false, false);
+            map.getCell(0, 0).setStaticObject(wall1);
+            boolean placed = editor.placeObject(0, 0, wall2);
+            assertFalse(placed);
+            assertEquals(wall1, map.getCell(0, 0).getStaticObject());
+        }
+
+        // TC-ED-03 / TC-ED-04: save to JSON then reload restores objects exactly
+        @Test
+        void saveAndLoad_roundTrip_restoresWeaponOnCell() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            map.getCell(2, 2).addObject(sword);
+
+            MapSerializer serializer = new MapSerializer();
+            MapDeserializer deserializer = new MapDeserializer();
+            String json = serializer.mapToJson(map);
+            Map restored = deserializer.loadMapFromJson(json);
+
+            assertNotNull(restored);
+            assertFalse(restored.getCell(2, 2).getObjects().isEmpty(),
+                    "Weapon on cell must be restored after save/load");
+        }
+
+        @Test
+        void saveAndLoad_roundTrip_restoresStaticObject() {
+            StaticObject crate = new StaticObject("Crate", "Wooden", false, true);
+            map.getCell(1, 1).setStaticObject(crate);
+
+            MapSerializer serializer = new MapSerializer();
+            String json = serializer.mapToJson(map);
+            Map restored = new MapDeserializer().loadMapFromJson(json);
+
+            assertNotNull(restored);
+            assertNotNull(restored.getCell(1, 1).getStaticObject(),
+                    "StaticObject must be restored after save/load");
+        }
+
+        @Test
+        void mapToJson_producesNonEmptyString() {
+            String json = new MapSerializer().mapToJson(map);
+            assertNotNull(json);
+            assertFalse(json.isBlank());
+        }
+
+        // TC-ED-05: addRandomItemsPerSpec → exactly 5 floor items + 1 hidden item
+        @Test
+        void addRandomItemsPerSpec_places5FloorItems() {
+            RandomItemGenerator.PopulateResult result = editor.addRandomItemsPerSpec();
+            assertEquals(5, result.floorItemsPlaced,
+                    "populatePerDesignDocument must place exactly 5 floor items");
+        }
+
+        @Test
+        void addRandomItemsPerSpec_placesOneHiddenItem() {
+            RandomItemGenerator.PopulateResult result = editor.addRandomItemsPerSpec();
+            assertTrue(result.hiddenItemPlaced,
+                    "populatePerDesignDocument must place 1 hidden searchable item");
+        }
+
+        @Test
+        void addRandomItemsPerSpec_nullMap_returnsZeros() {
+            RandomItemGenerator gen = new RandomItemGenerator();
+            RandomItemGenerator.PopulateResult result = gen.populatePerDesignDocument(null);
+            assertEquals(0, result.floorItemsPlaced);
+            assertFalse(result.hiddenItemPlaced);
+        }
+
+        // TC-ED-06: random weapon ATK in [3,7], armor DEF in [1,3]
+        @Test
+        void randomWeapon_ATK_isWithinSpecRange() {
+            RandomItemGenerator gen = new RandomItemGenerator();
+            for (int i = 0; i < 200; i++) {
+                Map testMap = new Map(10, 10);
+                gen.generateRandomItems(testMap, 1);
+                for (int r = 0; r < 10; r++) {
+                    for (int c = 0; c < 10; c++) {
+                        for (var obj : testMap.getCell(r, c).getObjects()) {
+                            if (obj instanceof Weapon w) {
+                                assertTrue(w.getDamage() >= 3 && w.getDamage() <= 7,
+                                        "Weapon ATK out of [3,7]: " + w.getDamage());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        @Test
+        void randomArmor_DEF_isWithinSpecRange() {
+            RandomItemGenerator gen = new RandomItemGenerator();
+            for (int i = 0; i < 200; i++) {
+                Map testMap = new Map(10, 10);
+                gen.generateRandomItems(testMap, 1);
+                for (int r = 0; r < 10; r++) {
+                    for (int c = 0; c < 10; c++) {
+                        for (var obj : testMap.getCell(r, c).getObjects()) {
+                            if (obj instanceof Wearable w && !(obj instanceof Ring)) {
+                                assertTrue(w.getDefenseBonus() >= 1 && w.getDefenseBonus() <= 3,
+                                        "Armor DEF out of [1,3]: " + w.getDefenseBonus());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // TC-ED-07: clearMap removes all placed objects
+        @Test
+        void clearMap_removesAllItemsFromCells() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            map.getCell(2, 2).addObject(sword);
+            map.getCell(3, 3).setStaticObject(
+                    new StaticObject("Crate", "Wooden", false, true));
+
+            editor.clearMap();
+
+            for (int r = 0; r < map.getHeight(); r++) {
+                for (int c = 0; c < map.getWidth(); c++) {
+                    GridCell cell = map.getCell(r, c);
+                    assertNull(cell.getStaticObject(), "Cell (" + r + "," + c + ") still has staticObject");
+                    assertNull(cell.getOccupyingCharacter());
+                    assertTrue(cell.getObjects().isEmpty(), "Cell (" + r + "," + c + ") still has objects");
+                }
+            }
+        }
+
+        @Test
+        void clearMap_canBeUndone() {
+            editor.placeObject(2, 2, new Weapon("Sword", "Sharp", 5));
+            editor.clearMap();
+            assertTrue(editor.canUndo());
+            editor.undo();
+            assertFalse(map.getCell(2, 2).getObjects().isEmpty());
+        }
+
+        // TC-ED-10: container roll ≥ 8 adds loot; roll < 8 stops
+        @Test
+        void containerLootRoll_mayAddItemsInsideContainer() {
+            // Over 100 StaticContainer placements, the roll (1-10 >= 8 means ~30% chance)
+            // means at least one container should get loot
+            RandomItemGenerator gen = new RandomItemGenerator();
+            boolean anyLoot = false;
+            for (int i = 0; i < 100 && !anyLoot; i++) {
+                Map testMap = new Map(10, 10);
+                RandomItemGenerator.PopulateResult result = gen.populatePerDesignDocument(testMap);
+                if (result.containerLootAdded > 0) anyLoot = true;
+            }
+            assertTrue(anyLoot,
+                    "Roll >= 8 must occasionally add loot to containers over 100 runs");
+        }
+
+        @Test
+        void containerLootRoll_neverExceedsReasonableCount() {
+            // Each roll adds at most ~log(0.3) / log(0.3) items on average.
+            // Pathological infinite loop would fail here; sanity check only.
+            RandomItemGenerator gen = new RandomItemGenerator();
+            for (int i = 0; i < 50; i++) {
+                Map testMap = new Map(10, 10);
+                RandomItemGenerator.PopulateResult result = gen.populatePerDesignDocument(testMap);
+                assertTrue(result.containerLootAdded >= 0 && result.containerLootAdded <= 50,
+                        "Container loot count suspiciously large: " + result.containerLootAdded);
+            }
+        }
+
+        // PlacementValidator unit-level edge cases
+        @Test
+        void validator_nullObject_returnsFalse() {
+            com.kurawler.editor.PlacementValidator v = new com.kurawler.editor.PlacementValidator();
+            assertFalse(v.isValidPlacement(null, map.getCell(0, 0)));
+        }
+
+        @Test
+        void validator_nullCell_returnsFalse() {
+            com.kurawler.editor.PlacementValidator v = new com.kurawler.editor.PlacementValidator();
+            assertFalse(v.isValidPlacement(new Weapon("W", "", 1), null));
         }
     }
 }
