@@ -117,6 +117,7 @@ public class GameView {
     private Scene playScene;
     private boolean playActive;
     private boolean endScreenShown;
+    private Stage activeContainerPopup;
 
     private final java.util.Map<Object, double[]> smoothPositions = new java.util.HashMap<>();
     private long animTick = 0;
@@ -482,6 +483,10 @@ public class GameView {
     public void shutdown() {
         playActive = false;
         endScreenShown = true;
+        if (activeContainerPopup != null) {
+            activeContainerPopup.close();
+            activeContainerPopup = null;
+        }
         if (animationTimer != null) {
             animationTimer.stop();
             animationTimer = null;
@@ -786,8 +791,8 @@ public class GameView {
         popup.initModality(Modality.APPLICATION_MODAL);
         popup.initStyle(StageStyle.UNDECORATED);
 
-        int popW = 340;
-        int popH = 420;
+        int popW = 360;
+        int popH = 520;
         Canvas bg = new Canvas(popW, popH);
         drawDungeonBg(bg, popW, popH);
 
@@ -835,7 +840,10 @@ public class GameView {
 
         StackPane root = new StackPane(bg, content);
         popup.setScene(new Scene(root, popW, popH));
-        popup.setOnShown(e -> centerPopup(popup));
+        popup.setOnShown(e -> {
+            popup.sizeToScene();
+            centerPopup(popup);
+        });
         popup.setOnHidden(e -> resumeAnimationTimer());
         popup.showAndWait();
     }
@@ -3100,10 +3108,12 @@ public class GameView {
         popup.setScene(new Scene(root, popW, popH));
         popup.setOnShown(e -> centerPopup(popup));
         popup.setOnHidden(e -> {
+            activeContainerPopup = null;
             resumeAnimationTimer();
             Platform.runLater(() -> canvas.requestFocus());
             render();
         });
+        activeContainerPopup = popup;
         popup.showAndWait();
     }
 
