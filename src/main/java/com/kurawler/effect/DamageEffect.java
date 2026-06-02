@@ -45,6 +45,9 @@ public class DamageEffect implements Effect {
     public void apply(GameSession session) {
         boolean wasAlive = target.isAlive();
         target.takeDamage(amount);
+        if (wasAlive && !target.isAlive() && target.getCurrentCell() != null) {
+            target.moveToCell(null);
+        }
         if (source instanceof Hero) {
             boolean defeatedEnemy = target instanceof Enemy && wasAlive && !target.isAlive();
             ((Hero) source).notifyAttackResolved(amount, defeatedEnemy);

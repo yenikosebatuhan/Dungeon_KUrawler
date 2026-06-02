@@ -52,7 +52,7 @@ public class GridCell {
         if (blockingStatic(staticObject)) {
             return false;
         }
-        return occupyingCharacter == null;
+        return occupyingCharacter == null || !occupyingCharacter.isAlive();
     }
 
     /**

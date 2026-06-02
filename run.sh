@@ -3,12 +3,12 @@
 set -e
 
 JAVAFX_LIB="lib/javafx-sdk-21.0.2/lib"
-GSON_JAR="lib/gson-2.10.1.jar"
+GSON_JAR="lib/gson-2.14.0.jar"
 
 # Auto-download Gson if missing
 if [ ! -f "$GSON_JAR" ]; then
   echo "Downloading Gson..."
-  curl -sL "https://repo1.maven.org/maven2/com/google/code/gson/gson/2.10.1/gson-2.10.1.jar" -o "$GSON_JAR"
+  curl -sL "https://repo1.maven.org/maven2/com/google/code/gson/gson/2.14.0/gson-2.14.0.jar" -o "$GSON_JAR"
 fi
 
 echo "Compiling..."
