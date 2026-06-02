@@ -843,4 +843,172 @@ class GameSystemTest {
             assertTrue(hero.getInventory().hasItem(treasure));
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 11. Hero character stats (TC-STAT-01 through TC-STAT-11, §2.4.1)
+    //     TC-STAT-08 → CombatSystem.heroDies_gameOverTriggered (already exists)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    class HeroStats {
+
+        // TC-STAT-01
+        @Test
+        void freshHero_startingHP_equals17() {
+            assertEquals(17, hero.getMaxHealth());
+            assertEquals(17, hero.getHealth());
+        }
+
+        // TC-STAT-02
+        @Test
+        void freshHero_startingMana_equals80() {
+            assertEquals(80, hero.getMaxMana());
+            assertEquals(80, hero.getMana());
+        }
+
+        // TC-STAT-03
+        @Test
+        void freshHero_baseDefense_equals2_withNoArmor() {
+            assertNull(hero.getEquippedArmor());
+            assertEquals(2, hero.getDefensePower());
+        }
+
+        // TC-STAT-04
+        @Test
+        void freshHero_strength_isBetween8and15Inclusive() {
+            int str = hero.getStrength();
+            assertTrue(str >= 8 && str <= 15,
+                    "Expected STR in [8,15] but was " + str);
+        }
+
+        // TC-STAT-05: across 10 fresh heroes at least 2 must have different STR values
+        @Test
+        void multipleNewGames_strValuesAreRandom() {
+            int first = new Hero("H0").getStrength();
+            boolean varied = false;
+            for (int i = 1; i < 10; i++) {
+                if (new Hero("H" + i).getStrength() != first) {
+                    varied = true;
+                    break;
+                }
+            }
+            assertTrue(varied, "STR must vary across new games (spec §2.4.1)");
+        }
+
+        // TC-STAT-06: DEF = base(2) + armor.defenseBonus
+        @Test
+        void equipArmor_defenseEqualsBasePlusArmorBonus() {
+            Wearable armor = new Wearable("Plate Armor", "Heavy plate", 4);
+            hero.getInventory().addItem(armor);
+            controller.executeAction(new WearAction(armor));
+            assertEquals(2 + armor.getDefenseBonus(), hero.getDefensePower());
+        }
+
+        @Test
+        void unequipArmor_defenseReturnsTOBase() {
+            Wearable armor = new Wearable("Plate Armor", "Heavy plate", 4);
+            hero.getInventory().addItem(armor);
+            controller.executeAction(new WearAction(armor));
+            hero.unequipWearable(armor);
+            assertEquals(2, hero.getDefensePower());
+        }
+
+        // TC-STAT-07: hero takes damage from enemy → HP decreases by max(1, atk - def)
+        @Test
+        void enemyHitsHero_hpDecreasesPerFormula() {
+            Knight knight = new Knight(); // ATK=1, STR=1, DEF=1
+            int expectedDmg = Math.max(1,
+                    (knight.getStrength() / 2) + knight.getAttackPower() - hero.getDefensePower());
+            int hpBefore = hero.getHealth();
+
+            CombatResolver.performMeleeAttack(knight, hero);
+
+            assertEquals(hpBefore - expectedDmg, hero.getHealth());
+        }
+
+        @Test
+        void enemyHit_damage_neverBelowOne() {
+            // Hero DEF > enemy ATK → formula would go negative; must clamp to 1
+            Knight knight = new Knight();
+            hero.setDefensePower(100); // massively over-armored
+            int hpBefore = hero.getHealth();
+
+            CombatResolver.performMeleeAttack(knight, hero);
+
+            assertEquals(hpBefore - 1, hero.getHealth());
+        }
+
+        // TC-STAT-09: eating energy consumable increases energy bar, capped at max
+        @Test
+        void eatEnergyConsumable_energyIncreases() {
+            hero.useEnergy(20);
+            int energyBefore = hero.getEnergy();
+            Consumable energyDrink = new Consumable("Energy Drink", "Restores energy", 0, 0, 15);
+            hero.getInventory().addItem(energyDrink);
+
+            controller.executeAction(new EatAction(energyDrink));
+
+            assertTrue(hero.getEnergy() > energyBefore);
+        }
+
+        @Test
+        void eatEnergyConsumable_energyDoesNotExceedMax() {
+            Consumable bigDrink = new Consumable("Big Drink", "Huge energy", 0, 0, 999);
+            hero.getInventory().addItem(bigDrink);
+
+            controller.executeAction(new EatAction(bigDrink));
+
+            assertEquals(hero.getMaxEnergy(), hero.getEnergy());
+        }
+
+        // TC-STAT-10: each move step depletes exactly 1 energy
+        @Test
+        void eachMoveCostsExactlyOneEnergy() {
+            int energyStart = hero.getEnergy();
+            controller.executeAction(new MoveAction(0, 1));
+            assertEquals(energyStart - 1, hero.getEnergy());
+        }
+
+        @Test
+        void multipleMovesDepletesEnergyProportionally() {
+            int steps = 5;
+            int energyStart = hero.getEnergy();
+            // Move back and forth so hero stays in bounds
+            for (int i = 0; i < steps; i++) {
+                controller.executeAction(i % 2 == 0 ? new MoveAction(0, 1) : new MoveAction(0, -1));
+            }
+            assertEquals(energyStart - steps, hero.getEnergy());
+        }
+
+        @Test
+        void zeroEnergy_heroCannotMove() {
+            hero.setEnergy(0);
+            int rowBefore = hero.getRow();
+            controller.executeAction(new MoveAction(-1, 0));
+            assertEquals(rowBefore, hero.getRow());
+        }
+
+        // TC-STAT-11: casting a spell (heroShoot) costs RANGED_MANA_COST = 10
+        @Test
+        void heroShoot_manaDecreasesBy10() {
+            int manaBefore = hero.getMana();
+            controller.heroShoot();
+            assertEquals(manaBefore - 10, hero.getMana());
+        }
+
+        @Test
+        void heroShoot_insufficientMana_doesNotFire() {
+            hero.setMana(5); // below RANGED_MANA_COST=10
+            boolean fired = controller.heroShoot();
+            assertFalse(fired);
+            assertEquals(5, hero.getMana());
+        }
+
+        @Test
+        void heroShoot_projectileAddedToSession() {
+            assertTrue(session.getProjectiles().isEmpty());
+            controller.heroShoot();
+            assertFalse(session.getProjectiles().isEmpty());
+        }
+    }
 }
