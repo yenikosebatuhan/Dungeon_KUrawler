@@ -2,6 +2,7 @@ package com.kurawler.system;
 
 import com.kurawler.action.AttackAction;
 import com.kurawler.action.BreakAction;
+import com.kurawler.engine.EnemySpawner;
 import com.kurawler.action.DiscardAction;
 import com.kurawler.action.EatAction;
 import com.kurawler.action.MoveAction;
@@ -1401,6 +1402,183 @@ class GameSystemTest {
             }
             assertEquals(startRow, sorcerer.getRow(), "Sorcerer must never walk toward hero");
             assertEquals(startCol, sorcerer.getCol(), "Sorcerer must never walk toward hero");
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 14. Enemy spawning system (TC-SPW-01 through TC-SPW-06, §2.5)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    class EnemySpawning {
+
+        private EnemySpawner spawner;
+
+        @BeforeEach
+        void setUp() {
+            spawner = new EnemySpawner(session);
+            session.setCurrentMode("Play");
+        }
+
+        // TC-SPW-01: spawn attempt fires at exactly SPAWN_INTERVAL (9 000 ms)
+        @Test
+        void spawnInterval_constant_equals9Seconds() {
+            assertEquals(9_000L, EnemySpawner.SPAWN_INTERVAL);
+        }
+
+        @Test
+        void afterOneInterval_timerResets() {
+            spawner.update(EnemySpawner.SPAWN_INTERVAL);
+            assertEquals(0, spawner.getTimeSinceLastSpawn());
+        }
+
+        @Test
+        void beforeInterval_timerAccumulates_noSpawn() {
+            spawner.update(EnemySpawner.SPAWN_INTERVAL - 1);
+            assertEquals(EnemySpawner.SPAWN_INTERVAL - 1, spawner.getTimeSinceLastSpawn());
+        }
+
+        @Test
+        void partialUpdate_doesNotTriggerSpawn() {
+            int enemyCountBefore = session.getActiveEnemyCount();
+            spawner.update(EnemySpawner.SPAWN_INTERVAL / 2);
+            // Timer hasn't reached interval → no spawn
+            assertEquals(enemyCountBefore, session.getActiveEnemyCount());
+        }
+
+        // TC-SPW-02: distribution ~60% Knight, ~30% Sorcerer, ~10% nothing (±10% tolerance)
+        @Test
+        void spawnDistribution_knights60_sorcerers30_nothing10() {
+            int knights = 0, sorcerers = 0, nothing = 0;
+            int trials = 1000;
+
+            for (int i = 0; i < trials; i++) {
+                session.clearEnemies();
+                int before = session.getEnemies().size();
+                spawner.resetTimer();
+                spawner.update(EnemySpawner.SPAWN_INTERVAL);
+                int after = session.getEnemies().size();
+                if (after > before) {
+                    if (session.getEnemies().get(after - 1) instanceof Knight) knights++;
+                    else sorcerers++;
+                } else {
+                    nothing++;
+                }
+            }
+
+            // Check proportions within ±10% tolerance
+            double knightPct   = knights   / (double) trials;
+            double sorcPct     = sorcerers / (double) trials;
+            double nothingPct  = nothing   / (double) trials;
+
+            assertTrue(knightPct  >= 0.50 && knightPct  <= 0.70,
+                    "Knight spawn rate out of range [50%,70%]: " + knightPct);
+            assertTrue(sorcPct    >= 0.20 && sorcPct    <= 0.40,
+                    "Sorcerer spawn rate out of range [20%,40%]: " + sorcPct);
+            assertTrue(nothingPct >= 0.00 && nothingPct <= 0.20,
+                    "No-spawn rate out of range [0%,20%]: " + nothingPct);
+        }
+
+        // TC-SPW-03: active enemy count never exceeds MAX_ACTIVE_ENEMIES (5)
+        @Test
+        void maxActiveEnemies_constant_equals5() {
+            assertEquals(5, EnemySpawner.MAX_ACTIVE_ENEMIES);
+        }
+
+        @Test
+        void whenAtCap_spawnIsSkipped() {
+            // Manually fill to cap
+            for (int i = 0; i < EnemySpawner.MAX_ACTIVE_ENEMIES; i++) {
+                Knight k = new Knight();
+                k.moveToCell(map.getCell(0, i));
+                session.addEnemy(k);
+            }
+            assertEquals(EnemySpawner.MAX_ACTIVE_ENEMIES, session.getActiveEnemyCount());
+
+            spawner.update(EnemySpawner.SPAWN_INTERVAL);
+
+            assertEquals(EnemySpawner.MAX_ACTIVE_ENEMIES, session.getActiveEnemyCount(),
+                    "Enemy count must not exceed MAX_ACTIVE_ENEMIES after spawn attempt");
+        }
+
+        @Test
+        void activeEnemyCount_neverExceedsCap_overManySpawns() {
+            for (int i = 0; i < 20; i++) {
+                spawner.update(EnemySpawner.SPAWN_INTERVAL);
+                assertTrue(session.getActiveEnemyCount() <= EnemySpawner.MAX_ACTIVE_ENEMIES,
+                        "Count exceeded cap at iteration " + i);
+            }
+        }
+
+        // TC-SPW-04: kill all enemies → next interval spawns a new one
+        @Test
+        void afterKillingAllEnemies_nextIntervalSpawnsNewEnemy() {
+            // Fill enemies then clear them (simulate all killed)
+            for (int i = 0; i < EnemySpawner.MAX_ACTIVE_ENEMIES; i++) {
+                Knight k = new Knight();
+                k.moveToCell(map.getCell(0, i));
+                session.addEnemy(k);
+            }
+            session.clearEnemies();
+            assertEquals(0, session.getActiveEnemyCount());
+
+            // Run spawn intervals until an enemy appears (up to 20 tries for 10% nothing chance)
+            boolean spawned = false;
+            for (int i = 0; i < 20; i++) {
+                spawner.update(EnemySpawner.SPAWN_INTERVAL);
+                if (session.getActiveEnemyCount() > 0) { spawned = true; break; }
+            }
+            assertTrue(spawned, "An enemy must spawn within 20 intervals after clearing all enemies");
+        }
+
+        // TC-SPW-05: spawn location is an edge cell (row 0, last row, col 0, or last col)
+        @Test
+        void spawnLocation_isOnMapEdge() {
+            int lastRow = map.getHeight() - 1;
+            int lastCol = map.getWidth() - 1;
+
+            // Try until a spawn occurs (guard against 10% nothing roll)
+            for (int i = 0; i < 20 && session.getEnemies().isEmpty(); i++) {
+                session.clearEnemies();
+                spawner.update(EnemySpawner.SPAWN_INTERVAL);
+            }
+
+            if (!session.getEnemies().isEmpty()) {
+                for (var enemy : session.getEnemies()) {
+                    int r = enemy.getRow(), c = enemy.getCol();
+                    boolean onEdge = r == 0 || r == lastRow || c == 0 || c == lastCol;
+                    assertTrue(onEdge,
+                            "Enemy spawned at non-edge cell (" + r + "," + c + ")");
+                }
+            }
+        }
+
+        // TC-SPW-06: all edge cells blocked → spawner falls back gracefully (no crash)
+        @Test
+        void allEdgesCellsBlocked_spawnerDoesNotCrash() {
+            // Block all edge cells with walls
+            int lastRow = map.getHeight() - 1;
+            int lastCol = map.getWidth() - 1;
+            for (int c = 0; c < map.getWidth(); c++) {
+                map.getCell(0, c).setStaticObject(
+                        new StaticObject("Wall", "Block", false, false));
+                map.getCell(lastRow, c).setStaticObject(
+                        new StaticObject("Wall", "Block", false, false));
+            }
+            for (int r = 1; r < lastRow; r++) {
+                map.getCell(r, 0).setStaticObject(
+                        new StaticObject("Wall", "Block", false, false));
+                map.getCell(r, lastCol).setStaticObject(
+                        new StaticObject("Wall", "Block", false, false));
+            }
+
+            assertDoesNotThrow(() -> spawner.update(EnemySpawner.SPAWN_INTERVAL),
+                    "Spawner must not crash when no edge cells are available");
+        }
+
+        @Test
+        void nullSession_spawnerConstructor_throwsException() {
+            assertThrows(IllegalArgumentException.class, () -> new EnemySpawner(null));
         }
     }
 }
