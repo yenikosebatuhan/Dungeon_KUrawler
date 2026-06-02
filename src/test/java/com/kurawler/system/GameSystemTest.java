@@ -1,12 +1,14 @@
 package com.kurawler.system;
 
 import com.kurawler.action.AttackAction;
+import com.kurawler.action.BreakAction;
 import com.kurawler.action.DiscardAction;
 import com.kurawler.action.EatAction;
 import com.kurawler.action.MoveAction;
 import com.kurawler.action.ReadAction;
 import com.kurawler.action.SearchAction;
 import com.kurawler.action.TakeAction;
+import com.kurawler.action.TakeFromContainerAction;
 import com.kurawler.action.WearAction;
 import com.kurawler.controller.GameController;
 import com.kurawler.engine.CombatResolver;
@@ -18,7 +20,9 @@ import com.kurawler.model.character.Knight;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.Key;
 import com.kurawler.model.object.MapPortal;
+import com.kurawler.model.object.PortableContainer;
 import com.kurawler.model.object.Scroll;
+import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Wearable;
 import com.kurawler.model.object.Weapon;
@@ -651,6 +655,192 @@ class GameSystemTest {
             int invSizeBefore = hero.getInventory().getItemCount();
             controller.executeAction(new DiscardAction(sword));
             assertEquals(invSizeBefore, hero.getInventory().getItemCount());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 10. Inventory management (TC-INV-02, TC-INV-04 – TC-INV-10)
+    //     TC-INV-01 → ItemPickup.takeAction_itemMovesFromCellToInventory
+    //     TC-INV-03 → ItemPickup.takeAction_inventoryFull_itemRemains
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    class InventoryManagement {
+
+        // TC-INV-02: take 8 items one by one → inventory fills up
+        @Test
+        void take8Items_inventoryBecomesExactlyFull() {
+            for (int i = 0; i < 8; i++) {
+                Weapon w = new Weapon("W" + i, "Weapon " + i, i);
+                map.getCell(3, 3).addObject(w);
+                controller.executeAction(new TakeAction(w));
+            }
+            assertTrue(hero.getInventory().isFull());
+            assertEquals(8, hero.getInventory().getItemCount());
+        }
+
+        @Test
+        void take8Items_ninthItemStaysOnFloor() {
+            for (int i = 0; i < 8; i++) {
+                Weapon w = new Weapon("W" + i, "", i);
+                map.getCell(3, 3).addObject(w);
+                controller.executeAction(new TakeAction(w));
+            }
+            Weapon ninth = new Weapon("W8", "", 8);
+            map.getCell(3, 3).addObject(ninth);
+            controller.executeAction(new TakeAction(ninth));
+            assertTrue(map.getCell(3, 3).getObjects().contains(ninth));
+        }
+
+        // TC-INV-04: discard → spec: permanently removed from game (cannot be picked up)
+        // NOTE: current implementation drops item on hero's cell — this test reveals
+        // the spec violation: DiscardEffect.apply() places the item back on the map.
+        @Test
+        void discard_itemCannotBeRetrievedAfterwards() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            hero.getInventory().addItem(sword);
+            controller.executeAction(new DiscardAction(sword));
+            // Spec §2.4.2: discard removes item permanently — should not be on map
+            assertFalse(map.getCell(hero.getRow(), hero.getCol()).getObjects().contains(sword),
+                    "Discarded item must not remain on the map (spec §2.4.2)");
+        }
+
+        // TC-INV-05: take item from open static container
+        @Test
+        void takeFromStaticContainer_itemMovesToInventory() {
+            StaticContainer chest = new StaticContainer("Chest", "Wooden chest");
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            chest.addItem(sword);
+
+            controller.executeAction(new TakeFromContainerAction(chest, sword));
+
+            assertTrue(hero.getInventory().hasItem(sword));
+            assertFalse(chest.getContents().contains(sword));
+        }
+
+        @Test
+        void takeFromStaticContainer_fullInventory_itemStaysInChest() {
+            for (int i = 0; i < 8; i++) {
+                hero.getInventory().addItem(new Weapon("W" + i, "", i));
+            }
+            StaticContainer chest = new StaticContainer("Chest", "Wooden chest");
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            chest.addItem(sword);
+
+            controller.executeAction(new TakeFromContainerAction(chest, sword));
+
+            assertTrue(chest.getContents().contains(sword));
+        }
+
+        // TC-INV-06: break crate — spec: STR-based probability
+        // NOTE: BreakObjectEffect has no STR check; always succeeds when searchable.
+        // This test documents the spec violation: low-STR hero should likely fail.
+        @Test
+        void breakCrate_lowStrHero_alwaysSucceeds_specViolation() {
+            hero.setStrength(1); // very low STR — spec says should likely fail
+            StaticObject crate = new StaticObject("Crate", "Wooden crate", false, true);
+            map.getCell(2, 3).setStaticObject(crate);
+
+            controller.executeAction(new BreakAction(2, 3));
+
+            // Spec §1.2: low STR → likely failure; implementation always breaks it
+            assertNotNull(map.getCell(2, 3).getStaticObject(),
+                    "Low-STR hero should not reliably break the crate (spec §1.2)");
+        }
+
+        // TC-INV-07: break crate with high STR → reveals hidden item
+        @Test
+        void breakCrate_searchable_removesObjectFromCell() {
+            StaticObject crate = new StaticObject("Crate", "Wooden crate", false, true);
+            map.getCell(2, 3).setStaticObject(crate);
+
+            controller.executeAction(new BreakAction(2, 3));
+
+            assertNull(map.getCell(2, 3).getStaticObject());
+        }
+
+        @Test
+        void breakCrate_withHiddenItem_revealsItemOnCell() {
+            Weapon loot = new Weapon("Loot Sword", "Hidden blade", 7);
+            StaticObject crate = new StaticObject("Crate", "Wooden crate", false, true);
+            crate.setHiddenItem(loot);
+            map.getCell(2, 3).setStaticObject(crate);
+
+            controller.executeAction(new BreakAction(2, 3));
+
+            assertTrue(map.getCell(2, 3).getObjects().contains(loot));
+        }
+
+        @Test
+        void breakAction_nonSearchableObject_producesNoEffect() {
+            StaticObject wall = new StaticObject("Wall", "Solid wall", false, false);
+            map.getCell(2, 3).setStaticObject(wall);
+
+            controller.executeAction(new BreakAction(2, 3));
+
+            assertNotNull(map.getCell(2, 3).getStaticObject());
+        }
+
+        // TC-INV-08: portable container (pouch) occupies 1 slot, holds multiple items
+        @Test
+        void portableContainer_occupiesOneInventorySlot() {
+            PortableContainer pouch = new PortableContainer("Pouch", "Small bag", 3);
+            hero.getInventory().addItem(pouch);
+            assertEquals(1, hero.getInventory().getItemCount());
+        }
+
+        @Test
+        void portableContainer_canHoldMultipleItemsInside() {
+            PortableContainer pouch = new PortableContainer("Pouch", "Small bag", 3);
+            Weapon w1 = new Weapon("Dagger", "", 2);
+            Weapon w2 = new Weapon("Knife", "", 1);
+            pouch.addItem(w1);
+            pouch.addItem(w2);
+            assertEquals(2, pouch.getContents().size());
+        }
+
+        @Test
+        void takeFromPortableContainer_movesItemToInventory() {
+            PortableContainer pouch = new PortableContainer("Pouch", "Small bag", 3);
+            Weapon dagger = new Weapon("Dagger", "", 2);
+            pouch.addItem(dagger);
+            hero.getInventory().addItem(pouch);
+
+            controller.executeAction(new TakeFromContainerAction(pouch, dagger));
+
+            assertTrue(hero.getInventory().hasItem(dagger));
+            assertFalse(pouch.getContents().contains(dagger));
+        }
+
+        // TC-INV-09: locked chest without key → spec: cannot open
+        // NOTE: TakeFromContainerAction does not check isLocked() — this test reveals
+        // the spec violation: items can be taken from a locked chest without a key.
+        @Test
+        void takeFromLockedChest_withoutKey_shouldBeBlocked() {
+            StaticContainer lockedChest = new StaticContainer("Locked Chest", "Iron chest");
+            lockedChest.setLock("vault_key");
+            Weapon treasure = new Weapon("Golden Sword", "Priceless", 10);
+            lockedChest.addItem(treasure);
+
+            controller.executeAction(new TakeFromContainerAction(lockedChest, treasure));
+
+            // Spec §2.3: locked container must reject access without the right key
+            assertFalse(hero.getInventory().hasItem(treasure),
+                    "Locked chest must not allow item removal without a key (spec §2.3)");
+        }
+
+        // TC-INV-10: locked chest with matching key → can open and take item
+        @Test
+        void takeFromChest_afterUnlock_itemMovesToInventory() {
+            StaticContainer chest = new StaticContainer("Chest", "Iron chest");
+            chest.setLock("vault_key");
+            Weapon treasure = new Weapon("Golden Sword", "Priceless", 10);
+            chest.addItem(treasure);
+
+            chest.unlock();
+            controller.executeAction(new TakeFromContainerAction(chest, treasure));
+
+            assertTrue(hero.getInventory().hasItem(treasure));
         }
     }
 }
