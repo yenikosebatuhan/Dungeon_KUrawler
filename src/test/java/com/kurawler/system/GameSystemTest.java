@@ -3205,4 +3205,170 @@ class GameSystemTest {
             assertEquals(0, scroll.getHealAmount(), "Shadow Clone Scroll must not directly heal hero");
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 23. Searchable Locations & SEARCH Action (TC-SRCH-01 through TC-SRCH-06)
+    //     TC-SRCH-05 → GameObjective.searchAfterAlreadySearched (already covered)
+    //     TC-SRCH-06 → ItemInteraction.searchAction_nonSearchableObject (already covered)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    class SearchableLocations {
+
+        private StaticObject searchableObj;
+
+        @BeforeEach
+        void placeSearchable() {
+            searchableObj = new StaticObject("Gargoyle Pool", "A shallow pool", true, true);
+            map.getCell(2, 2).setStaticObject(searchableObj);
+        }
+
+        // TC-SRCH-01: SearchAction resolves to SearchObjectEffect for searchable objects
+        // (system-level proxy: the action IS available — action list would show SEARCH)
+        @Test
+        void searchAction_onSearchableObject_producesEffect() {
+            var effects = new SearchAction(searchableObj).resolve(session);
+            assertFalse(effects.isEmpty(),
+                    "SearchAction must produce at least one effect for a searchable object");
+        }
+
+        @Test
+        void searchAction_onNonSearchableObject_producesNoEffect() {
+            StaticObject wall = new StaticObject("Wall", "Solid wall", false, false);
+            var effects = new SearchAction(wall).resolve(session);
+            assertTrue(effects.isEmpty(),
+                    "SearchAction must produce no effect for a non-searchable object");
+        }
+
+        // TC-SRCH-02: SEARCH empty searchable location → object marked searched, no item placed
+        @Test
+        void searchEmptyLocation_objectIsMarkedSearched() {
+            assertNull(searchableObj.getHiddenItem()); // no hidden item
+            controller.executeAction(new SearchAction(searchableObj));
+            assertTrue(searchableObj.wasSearched(),
+                    "Searchable object must be marked as searched after SEARCH");
+        }
+
+        @Test
+        void searchEmptyLocation_nothingAddedToCell() {
+            int objectsBefore = map.getCell(2, 2).getObjects().size();
+            controller.executeAction(new SearchAction(searchableObj));
+            assertEquals(objectsBefore, map.getCell(2, 2).getObjects().size(),
+                    "No item must appear on cell when searchable location is empty");
+        }
+
+        @Test
+        void searchEmptyLocation_inventoryUnchanged() {
+            int invBefore = hero.getInventory().getItemCount();
+            controller.executeAction(new SearchAction(searchableObj));
+            assertEquals(invBefore, hero.getInventory().getItemCount(),
+                    "Inventory must not change when searching empty location");
+        }
+
+        // TC-SRCH-03: SEARCH location with hidden item → item placed on cell
+        @Test
+        void searchLocationWithHiddenItem_itemAppearsOnCell() {
+            Weapon sword = new Weapon("Hidden Sword", "Was hidden", 6);
+            searchableObj.setHiddenItem(sword);
+
+            controller.executeAction(new SearchAction(searchableObj));
+
+            assertTrue(map.getCell(2, 2).getObjects().contains(sword),
+                    "Hidden item must appear on the cell after searching");
+        }
+
+        @Test
+        void searchLocationWithHiddenItem_hiddenItemClearedFromObject() {
+            Weapon sword = new Weapon("Hidden Sword", "Was hidden", 6);
+            searchableObj.setHiddenItem(sword);
+
+            controller.executeAction(new SearchAction(searchableObj));
+
+            assertNull(searchableObj.getHiddenItem(),
+                    "Hidden item must be cleared from the static object after search");
+        }
+
+        @Test
+        void searchLocationWithHiddenItem_objectIsMarkedSearched() {
+            searchableObj.setHiddenItem(new Weapon("Sword", "Test", 4));
+            controller.executeAction(new SearchAction(searchableObj));
+            assertTrue(searchableObj.wasSearched());
+        }
+
+        // TC-SRCH-04: SEARCH with full inventory → item placed on floor (NOT lost)
+        @Test
+        void searchWithFullInventory_itemPlacedOnFloor() {
+            // Fill inventory to capacity
+            for (int i = 0; i < 8; i++) {
+                hero.getInventory().addItem(new Weapon("W" + i, "", i));
+            }
+            assertTrue(hero.getInventory().isFull());
+
+            Weapon hidden = new Weapon("Floor Sword", "Should drop to floor", 5);
+            searchableObj.setHiddenItem(hidden);
+
+            controller.executeAction(new SearchAction(searchableObj));
+
+            // SearchObjectEffect drops to cell regardless of inventory state
+            assertTrue(map.getCell(2, 2).getObjects().contains(hidden),
+                    "Item must be placed on the floor cell even when inventory is full");
+        }
+
+        @Test
+        void searchWithFullInventory_itemNotLost() {
+            for (int i = 0; i < 8; i++) {
+                hero.getInventory().addItem(new Weapon("W" + i, "", i));
+            }
+            Weapon hidden = new Weapon("Precious Item", "Must not be lost", 7);
+            searchableObj.setHiddenItem(hidden);
+
+            controller.executeAction(new SearchAction(searchableObj));
+
+            // Item must exist somewhere — on the cell, since inventory is full
+            assertNull(searchableObj.getHiddenItem(),
+                    "Hidden item must not remain trapped inside the object");
+        }
+
+        // TC-SRCH-05: SEARCH same location twice — second search finds nothing
+        @Test
+        void searchSameLocationTwice_secondSearchFindsNothing() {
+            searchableObj.setHiddenItem(new Weapon("Sword", "Once", 5));
+            controller.executeAction(new SearchAction(searchableObj)); // first → item on cell
+            int cellItemsAfterFirst = map.getCell(2, 2).getObjects().size();
+
+            controller.executeAction(new SearchAction(searchableObj)); // second → no-op
+            assertEquals(cellItemsAfterFirst, map.getCell(2, 2).getObjects().size(),
+                    "Second SEARCH must not add any item to the cell");
+        }
+
+        @Test
+        void searchSameLocationTwice_objectRemainsMarkedSearched() {
+            controller.executeAction(new SearchAction(searchableObj));
+            controller.executeAction(new SearchAction(searchableObj));
+            assertTrue(searchableObj.wasSearched());
+        }
+
+        // TC-SRCH-06: non-searchable wall → SearchAction produces no effect (already covered;
+        // repeated here for completeness in this dedicated nested class)
+        @Test
+        void nonSearchableWall_searchActionDisabled() {
+            StaticObject wall = new StaticObject("Stone Wall", "Solid", false, false);
+            map.getCell(0, 0).setStaticObject(wall);
+            var effects = new SearchAction(wall).resolve(session);
+            assertTrue(effects.isEmpty(),
+                    "Non-searchable wall must not allow SEARCH");
+        }
+
+        @Test
+        void searchableObject_isSearchable_beforeFirstSearch() {
+            assertTrue(searchableObj.isSearchable());
+        }
+
+        @Test
+        void searchableObject_isNotSearchable_afterFirstSearch() {
+            controller.executeAction(new SearchAction(searchableObj));
+            assertFalse(searchableObj.isSearchable(),
+                    "Object must not be searchable again once already searched");
+        }
+    }
 }
