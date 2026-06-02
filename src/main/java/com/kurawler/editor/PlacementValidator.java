@@ -4,6 +4,7 @@ import com.kurawler.model.GridCell;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
+import com.kurawler.model.object.MapPortal;
 import com.kurawler.model.object.StaticContainer;
 import com.kurawler.model.object.StaticObject;
 
@@ -14,7 +15,13 @@ public class PlacementValidator {
             return false;
         }
 
+        if (obj instanceof MapPortal) {
+            // Portals can replace any terrain, even cells with items.
+            return cell.getOccupyingCharacter() == null;
+        }
+
         if (obj instanceof StaticContainer) {
+            // Containers need a walkable floor and no other container/item already there.
             StaticObject floor = cell.getStaticObject();
             boolean walkableFloor = floor == null
                     || (floor.isPassable() && !floor.isSearchable());
@@ -24,11 +31,9 @@ public class PlacementValidator {
         }
 
         if (obj instanceof StaticObject) {
-            // Terrain & props replace whatever terrain is already in the cell — the map
-            // is paved with floor by default, so a wall/prop must be able to overwrite it.
-            // We only refuse to cover an existing item or character.
-            return cell.getOccupyingCharacter() == null
-                    && !cell.hasObjects();
+            // Terrain tiles (wall, floor, decoration) always replace the current static.
+            // They must not overwrite a living character, but items/containers stay untouched.
+            return cell.getOccupyingCharacter() == null;
         }
 
         if (obj instanceof Item) {

@@ -104,12 +104,8 @@ public class MapEditor {
             return false;
         }
 
-        if (cell.getStaticObject() != null) {
-            pushUndoSnapshot();
-            cell.setStaticObject(null);
-            return true;
-        }
-
+        // Priority: remove top-most content first (character → objects → static terrain).
+        // This lets the user erase items/containers without having to first clear the floor.
         if (cell.getOccupyingCharacter() != null) {
             pushUndoSnapshot();
             cell.setOccupyingCharacter(null);
@@ -117,12 +113,18 @@ public class MapEditor {
         }
 
         List<GameObject> objects = cell.getObjects();
-        if (objects.isEmpty()) {
-            return false;
+        if (!objects.isEmpty()) {
+            pushUndoSnapshot();
+            return cell.removeObject(objects.get(objects.size() - 1));
         }
 
-        pushUndoSnapshot();
-        return cell.removeObject(objects.get(objects.size() - 1));
+        if (cell.getStaticObject() != null) {
+            pushUndoSnapshot();
+            cell.setStaticObject(null);
+            return true;
+        }
+
+        return false;
     }
 
     public boolean deleteObject(int x, int y, GameObject obj) {
