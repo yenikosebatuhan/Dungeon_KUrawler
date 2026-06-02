@@ -1508,6 +1508,11 @@ public class GameView {
             case "attack":
                 if (cell.getOccupyingCharacter() instanceof Enemy) {
                     Enemy enemy = (Enemy) cell.getOccupyingCharacter();
+                    // Turn the hero toward the clicked enemy so isOnFacingLine() passes.
+                    // Without this, attack() silently returns false when the hero faces
+                    // a different direction than the target.
+                    hero.setFacingFromDelta(enemy.getRow() - hero.getRow(),
+                                            enemy.getCol() - hero.getCol());
                     if (!hero.attack(enemy)) {
                         showGameMessage("Not enough energy to attack!");
                         AudioManager.getInstance().play("error");
