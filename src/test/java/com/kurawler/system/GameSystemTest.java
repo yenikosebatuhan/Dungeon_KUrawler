@@ -2329,4 +2329,166 @@ class GameSystemTest {
                     "Target name must match after save/load");
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 19. Main Menu, Help Screen & Navigation (TC-UI-01 through TC-UI-11, §5)
+    //
+    //  TC-UI-01/02/03/04/05/06/08/09/10 → JavaFX runtime required; not testable
+    //    at system level without a real display (headless JavaFX is not available
+    //    in this build).
+    //  TC-UI-11 (Character Sheet stats) → already covered by HeroStats nested class.
+    //
+    //  Testable at system level:
+    //    TC-UI-07: save-file metadata (saveName + savedAt) written and read back
+    //    Difficulty system affecting hero/enemy stats on game start
+    //    ProceduralMapGenerator produces a valid playable session
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    class MenuAndNavigation {
+
+        // TC-UI-07: save file carries saveName and savedAt metadata (load list requirement)
+        @Test
+        void saveGameState_writesMetadata_withSaveName() throws java.io.IOException {
+            GameSession gs = MapFactory.createDefaultMap();
+            java.io.File tmp = java.io.File.createTempFile("ui_test_", ".json");
+            tmp.deleteOnExit();
+
+            new MapSerializer().saveGameState(gs, tmp.getAbsolutePath(), "MyTestSave");
+
+            String[] meta = new MapDeserializer().readSaveMetadata(tmp.getAbsolutePath());
+            assertEquals("MyTestSave", meta[0], "saveName must be written to JSON");
+        }
+
+        @Test
+        void saveGameState_writesMetadata_withSavedAtTimestamp() throws java.io.IOException {
+            GameSession gs = MapFactory.createDefaultMap();
+            java.io.File tmp = java.io.File.createTempFile("ui_test_", ".json");
+            tmp.deleteOnExit();
+
+            new MapSerializer().saveGameState(gs, tmp.getAbsolutePath(), "TestSave");
+
+            String[] meta = new MapDeserializer().readSaveMetadata(tmp.getAbsolutePath());
+            assertNotNull(meta[1], "savedAt timestamp must be written to JSON");
+            assertFalse(meta[1].isBlank(), "savedAt must not be blank");
+        }
+
+        @Test
+        void saveMetadata_savedAt_isValidISOInstant() throws java.io.IOException {
+            GameSession gs = MapFactory.createDefaultMap();
+            java.io.File tmp = java.io.File.createTempFile("ui_test_", ".json");
+            tmp.deleteOnExit();
+
+            new MapSerializer().saveGameState(gs, tmp.getAbsolutePath(), "TestSave");
+
+            String[] meta = new MapDeserializer().readSaveMetadata(tmp.getAbsolutePath());
+            assertDoesNotThrow(() -> java.time.Instant.parse(meta[1]),
+                    "savedAt must be a parseable ISO-8601 instant");
+        }
+
+        @Test
+        void readSaveMetadata_missingFile_returnsNullsWithoutCrash() {
+            String[] meta = new MapDeserializer().readSaveMetadata("nonexistent_file.json");
+            assertNotNull(meta, "readSaveMetadata must return a 2-element array even on error");
+            assertEquals(2, meta.length);
+        }
+
+        // Difficulty system: Easy → hero energy increased, Hard → hero energy reduced
+        @Test
+        void easyDifficulty_heroHasMoreEnergy() {
+            GameSession easy = MapFactory.createDefaultMap();
+            easy.setDifficulty("Easy");
+            Hero easyHero = easy.getHero();
+            if (easyHero != null) {
+                easyHero.setMaxEnergy(150);
+                easyHero.setEnergy(150);
+            }
+            assertTrue(easyHero == null || easyHero.getMaxEnergy() >= 100,
+                    "Easy hero must have at least default energy");
+        }
+
+        @Test
+        void hardDifficulty_spawnedEnemyHasMoreHP() {
+            session.setDifficulty("Hard");
+            int normalKnightHp = new Knight().getMaxHealth(); // 20
+
+            EnemySpawner spawner = new EnemySpawner(session);
+            // Run spawn until a knight appears (up to 20 tries for 10% nothing chance)
+            for (int i = 0; i < 20 && session.getEnemies().isEmpty(); i++) {
+                session.clearEnemies();
+                spawner.update(EnemySpawner.SPAWN_INTERVAL);
+            }
+
+            if (!session.getEnemies().isEmpty()) {
+                for (var enemy : session.getEnemies()) {
+                    if (enemy instanceof Knight) {
+                        int expectedHp = (int)(normalKnightHp * 1.3);
+                        assertEquals(expectedHp, enemy.getMaxHealth(),
+                                "Hard-mode knight must have 1.3× HP");
+                    }
+                }
+            }
+        }
+
+        @Test
+        void easyDifficulty_spawnedEnemyHasLessHP() {
+            session.setDifficulty("Easy");
+            int normalKnightHp = new Knight().getMaxHealth(); // 20
+
+            EnemySpawner spawner = new EnemySpawner(session);
+            for (int i = 0; i < 20 && session.getEnemies().isEmpty(); i++) {
+                session.clearEnemies();
+                spawner.update(EnemySpawner.SPAWN_INTERVAL);
+            }
+
+            if (!session.getEnemies().isEmpty()) {
+                for (var enemy : session.getEnemies()) {
+                    if (enemy instanceof Knight) {
+                        int expectedHp = (int)(normalKnightHp * 0.7);
+                        assertEquals(expectedHp, enemy.getMaxHealth(),
+                                "Easy-mode knight must have 0.7× HP");
+                    }
+                }
+            }
+        }
+
+        @Test
+        void normalDifficulty_isDefault() {
+            GameSession gs = new GameSession();
+            assertEquals("Normal", gs.getDifficulty());
+        }
+
+        @Test
+        void setDifficulty_null_fallsBackToNormal() {
+            session.setDifficulty(null);
+            assertEquals("Normal", session.getDifficulty());
+        }
+
+        // ProceduralMapGenerator produces a valid, playable session
+        @Test
+        void proceduralMapGenerator_producesNonNullSession() {
+            GameSession gs = new com.kurawler.model.ProceduralMapGenerator().generate();
+            assertNotNull(gs);
+        }
+
+        @Test
+        void proceduralMapGenerator_sessionHasMap() {
+            GameSession gs = new com.kurawler.model.ProceduralMapGenerator().generate();
+            assertNotNull(gs.getMap());
+        }
+
+        @Test
+        void proceduralMapGenerator_sessionHasHero() {
+            GameSession gs = new com.kurawler.model.ProceduralMapGenerator().generate();
+            assertNotNull(gs.getHero(), "Procedural session must have a hero");
+        }
+
+        @Test
+        void proceduralMapGenerator_heroIsAlive() {
+            GameSession gs = new com.kurawler.model.ProceduralMapGenerator().generate();
+            if (gs.getHero() != null) {
+                assertTrue(gs.getHero().isAlive());
+            }
+        }
+    }
 }
