@@ -3371,4 +3371,167 @@ class GameSystemTest {
                     "Object must not be searchable again once already searched");
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 24. Weapons — EQUIP, Melee, Ranged (TC-WPN-01 through TC-WPN-09, §2.6)
+    //     TC-WPN-02 → CombatMechanics.equipSecondWeapon_firstWeaponIsUnequipped
+    //     TC-WPN-04 → CombatMechanics.attackOutsideMeleeReach_returnsFalse
+    //     TC-WPN-05 → CombatMechanics.heroShoot_projectileFiredInFacingDirection
+    //     TC-WPN-06 → CombatMechanics.projectile_blockedByWall_enemyBehindSafe
+    //     TC-WPN-08 → UI action-list level; not testable headlessly
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    class WeaponsMeleeRanged {
+
+        // TC-WPN-01: equip sword → marked equipped; only one weapon at a time
+        @Test
+        void equipSword_marksItAsEquipped() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            hero.getInventory().addItem(sword);
+            controller.executeAction(new EquipAction(sword));
+            assertEquals(sword, hero.getEquippedWeapon());
+        }
+
+        @Test
+        void onlyOneWeaponEquippedAtATime() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            Weapon axe   = new Weapon("Axe",   "Heavy", 7);
+            hero.getInventory().addItem(sword);
+            hero.getInventory().addItem(axe);
+            controller.executeAction(new EquipAction(sword));
+            controller.executeAction(new EquipAction(axe));
+            // Exactly one equipped weapon at any time
+            int equippedCount = 0;
+            if (sword == hero.getEquippedWeapon()) equippedCount++;
+            if (axe   == hero.getEquippedWeapon()) equippedCount++;
+            assertEquals(1, equippedCount, "Only one weapon must be equipped at a time");
+        }
+
+        @Test
+        void unequippedWeapon_remainsInInventory() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            hero.getInventory().addItem(sword);
+            controller.executeAction(new EquipAction(sword)); // equip
+            controller.executeAction(new EquipAction(sword)); // toggle unequip
+            assertTrue(hero.getInventory().hasItem(sword),
+                    "Unequipped weapon must remain in inventory");
+        }
+
+        // TC-WPN-03: melee attack with weapon on adjacent enemy → enemy loses HP
+        @Test
+        void meleeAttack_withWeapon_adjacentEnemy_enemyLosesHP() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            hero.getInventory().addItem(sword);
+            controller.executeAction(new EquipAction(sword));
+
+            Knight knight = new Knight();
+            knight.moveToCell(map.getCell(3, 4)); // adjacent to hero at (3,3)
+            session.addEnemy(knight);
+
+            int hpBefore = knight.getHealth();
+            hero.attack(knight);
+            assertTrue(knight.getHealth() < hpBefore,
+                    "Adjacent enemy must lose HP when hero attacks with equipped weapon");
+        }
+
+        @Test
+        void meleeAttack_withWeapon_dealMoreDamageThanBareHand() {
+            Knight knight = new Knight();
+            knight.moveToCell(map.getCell(3, 4));
+
+            int bareHandDmg = CombatResolver.calculateFinalDamage(hero, knight);
+
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            hero.getInventory().addItem(sword);
+            controller.executeAction(new EquipAction(sword));
+            int armedDmg = CombatResolver.calculateFinalDamage(hero, knight);
+
+            assertTrue(armedDmg > bareHandDmg,
+                    "Armed hero must deal more damage than bare-hand hero");
+        }
+
+        // TC-WPN-07: arrow hits enemy → enemy takes damage, projectile leaves session
+        @Test
+        void arrow_hitsEnemy_enemyTakesDamage() {
+            // Hero at (3,3) facing right (default); enemy at (3,4)
+            Knight knight = new Knight();
+            knight.moveToCell(map.getCell(3, 4));
+            session.addEnemy(knight);
+            int hpBefore = knight.getHealth();
+
+            GameEngine engine = new GameEngine(controller);
+            engine.start();
+            controller.heroShoot(); // projectile at (3,4) → hits knight immediately
+
+            // Trigger enough frames for PROJECTILE_TICK_INTERVAL (8)
+            for (int i = 0; i < 8; i++) engine.update(16);
+
+            assertTrue(knight.getHealth() < hpBefore,
+                    "Enemy must take damage when hit by projectile");
+        }
+
+        @Test
+        void arrow_hitsEnemy_projectileDisappears() {
+            Knight knight = new Knight();
+            knight.moveToCell(map.getCell(3, 5)); // two tiles right
+            session.addEnemy(knight);
+
+            GameEngine engine = new GameEngine(controller);
+            engine.start();
+            controller.heroShoot();
+
+            // Tick enough frames for projectile to travel and hit
+            for (int i = 0; i < 16; i++) engine.update(16);
+
+            // After hitting, projectile must be removed from session's pending list
+            assertTrue(session.getProjectiles().isEmpty(),
+                    "Projectile must be consumed after hitting target");
+        }
+
+        // TC-WPN-09: attacking (via AttackAction) consumes hero energy
+        @Test
+        void attackAction_consumesHeroEnergy() {
+            Knight knight = new Knight();
+            knight.moveToCell(map.getCell(3, 4));
+            session.addEnemy(knight);
+
+            int energyBefore = hero.getEnergy();
+            controller.executeAction(new AttackAction(hero, knight));
+            assertTrue(hero.getEnergy() < energyBefore,
+                    "Attack must consume hero energy");
+        }
+
+        @Test
+        void attackAction_consumesExactlyOneEnergyUnit() {
+            Knight knight = new Knight();
+            knight.moveToCell(map.getCell(3, 4));
+            session.addEnemy(knight);
+
+            int energyBefore = hero.getEnergy();
+            controller.executeAction(new AttackAction(hero, knight));
+            assertEquals(energyBefore - 1, hero.getEnergy(),
+                    "Each attack must consume exactly 1 energy unit");
+        }
+
+        @Test
+        void attackAction_zeroEnergy_noAttack() {
+            hero.setEnergy(0);
+            Knight knight = new Knight();
+            knight.moveToCell(map.getCell(3, 4));
+            session.addEnemy(knight);
+
+            int hpBefore = knight.getHealth();
+            controller.executeAction(new AttackAction(hero, knight));
+            assertEquals(hpBefore, knight.getHealth(),
+                    "Hero with 0 energy must not deal damage");
+        }
+
+        // Weapon ATK range sanity check
+        @Test
+        void weaponDamage_isPositive() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            assertTrue(sword.getDamage() > 0);
+        }
+    }
 }
