@@ -420,6 +420,9 @@ public class MapDeserializer {
         return new WorldData(maps, startMapId);
     }
 
+    private static final com.kurawler.model.object.StaticObject FLOOR_FILL =
+            new com.kurawler.model.object.StaticObject("Floor", "Stone floor", true, false);
+
     private Map parseMapRoot(LinkedHashMap<String, Object> root) {
         int width = (int) root.get("width");
         int height = (int) root.get("height");
@@ -427,11 +430,25 @@ public class MapDeserializer {
 
         @SuppressWarnings("unchecked")
         List<Object> cells = (List<Object>) root.get("cells");
-        for (Object cellObj : cells) {
-            @SuppressWarnings("unchecked")
-            LinkedHashMap<String, Object> cell = (LinkedHashMap<String, Object>) cellObj;
-            deserializeCell(cell, map);
+        if (cells != null) {
+            for (Object cellObj : cells) {
+                @SuppressWarnings("unchecked")
+                LinkedHashMap<String, Object> cell = (LinkedHashMap<String, Object>) cellObj;
+                deserializeCell(cell, map);
+            }
         }
+
+        // Fill any cell that has no staticObject with an explicit Floor tile so that
+        // game rendering and the editor stay consistent (both show floor, not dark void).
+        for (int r = 0; r < height; r++) {
+            for (int c = 0; c < width; c++) {
+                GridCell cell = map.getCell(r, c);
+                if (cell != null && cell.getStaticObject() == null) {
+                    cell.setStaticObject(FLOOR_FILL);
+                }
+            }
+        }
+
         return map;
     }
 
@@ -531,6 +548,25 @@ public class MapDeserializer {
                 GameObject obj = deserializeObject(objJson);
                 if (obj != null) {
                     cell.addObject(obj);
+                }
+            }
+        }
+
+        if (cellJson.containsKey("character")) {
+            @SuppressWarnings("unchecked")
+            LinkedHashMap<String, Object> charJson = (LinkedHashMap<String, Object>) cellJson.get("character");
+            String type = (String) charJson.get("type");
+            String name = charJson.containsKey("name") ? (String) charJson.get("name") : null;
+            if ("Hero".equals(type)) {
+                Hero hero = new Hero(name != null ? name : "Adventurer");
+                hero.setPosition(cell.getRow(), cell.getCol());
+                hero.setCurrentCell(cell);
+                cell.setOccupyingCharacter(hero);
+            } else {
+                Enemy enemy = createEnemy(type);
+                if (enemy != null) {
+                    if (name != null) enemy.setName(name);
+                    enemy.moveToCell(cell);
                 }
             }
         }

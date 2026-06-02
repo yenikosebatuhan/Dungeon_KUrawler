@@ -307,8 +307,10 @@ public class MapSerializer {
             for (int col = 0; col < map.getWidth(); col++) {
                 GridCell cell = map.getCell(row, col);
                 StaticObject so = cell.getStaticObject();
-                if (so != null || cell.hasObjects()) {
-                    entries.add(buildCellJson(cell, row, col));
+                com.kurawler.model.character.Character ch = cell.getOccupyingCharacter();
+                boolean hasChar = (ch instanceof Enemy && !(ch instanceof ShadowClone)) || ch instanceof Hero;
+                if (so != null || cell.hasObjects() || hasChar) {
+                    entries.add(buildCellJson(cell, row, col, true));
                 }
             }
         }
@@ -321,6 +323,10 @@ public class MapSerializer {
     }
 
     private String buildCellJson(GridCell cell, int row, int col) {
+        return buildCellJson(cell, row, col, false);
+    }
+
+    private String buildCellJson(GridCell cell, int row, int col, boolean includeCharacter) {
         StringBuilder sb = new StringBuilder();
         sb.append("{ \"row\": ").append(row);
         sb.append(", \"col\": ").append(col);
@@ -367,6 +373,23 @@ public class MapSerializer {
             }
             sb.append(", \"objects\": [").append(String.join(", ", objEntries)).append("]");
         }
+
+        if (includeCharacter) {
+            com.kurawler.model.character.Character ch = cell.getOccupyingCharacter();
+            if (ch instanceof Enemy && !(ch instanceof ShadowClone)) {
+                Enemy enemy = (Enemy) ch;
+                String type = enemy instanceof Sorcerer ? "Sorcerer"
+                        : enemy instanceof Knight  ? "Knight"
+                        : enemy instanceof Guard   ? "Guard"
+                        : enemy instanceof Assassin ? "Assassin" : "Guard";
+                sb.append(", \"character\": { \"type\": \"").append(type).append("\"");
+                sb.append(", \"name\": \"").append(escape(enemy.getName())).append("\" }");
+            } else if (ch instanceof Hero) {
+                sb.append(", \"character\": { \"type\": \"Hero\"");
+                sb.append(", \"name\": \"").append(escape(ch.getName())).append("\" }");
+            }
+        }
+
         sb.append(" }");
         return sb.toString();
     }
