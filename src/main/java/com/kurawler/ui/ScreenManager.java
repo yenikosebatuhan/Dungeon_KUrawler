@@ -50,6 +50,12 @@ public class ScreenManager {
     private String lastGameType = "Default";
     private String lastDifficulty = "Normal";
     private String prePlayMapSnapshot;
+    private java.util.LinkedHashMap<String, String> prePlayWorldSnapshot;
+    private String prePlayWorldStartId;
+    // Snapshots for restarting normal (non-editor) custom map games from the very beginning
+    private String lastCustomMapSnapshot;
+    private java.util.LinkedHashMap<String, String> lastCustomWorldSnapshot;
+    private String lastCustomWorldStartId;
 
     public ScreenManager(Stage stage) {
         this.stage = stage;
@@ -134,6 +140,13 @@ public class ScreenManager {
             session.wireObservers();
             lastGameType = "Custom";
             lastDifficulty = "Normal";
+            // Snapshot for restart-from-beginning
+            lastCustomWorldSnapshot = new java.util.LinkedHashMap<>();
+            for (java.util.Map.Entry<String, com.kurawler.model.Map> e : linked.entrySet()) {
+                lastCustomWorldSnapshot.put(e.getKey(), serializer.mapToJson(e.getValue()));
+            }
+            lastCustomWorldStartId = startId;
+            lastCustomMapSnapshot = null;
             showPlayMode(session);
             return;
         }
@@ -151,6 +164,9 @@ public class ScreenManager {
         session.wireObservers();
         lastGameType = "Custom";
         lastDifficulty = "Normal";
+        // Snapshot for restart-from-beginning
+        lastCustomMapSnapshot = serializer.mapToJson(map);
+        lastCustomWorldSnapshot = null;
         showPlayMode(session);
     }
 
@@ -290,10 +306,40 @@ public class ScreenManager {
 
     /** After Play This Map — return to editor, restoring all world maps from the session. */
     public void returnToEditorAfterTest(GameSession session, String statusMessage) {
-        com.kurawler.model.Map map = session.getMap();
         shutdownActiveGameView();
-        restoreHeroForEditor(map);
         pendingEditorStatus = statusMessage;
+
+        if (prePlayWorldSnapshot != null && !prePlayWorldSnapshot.isEmpty()) {
+            java.util.LinkedHashMap<String, com.kurawler.model.Map> restored = new java.util.LinkedHashMap<>();
+            for (java.util.Map.Entry<String, String> e : prePlayWorldSnapshot.entrySet()) {
+                com.kurawler.model.Map m = deserializer.loadMapFromJson(e.getValue());
+                if (m != null) restored.put(e.getKey(), m);
+            }
+            String startId = prePlayWorldStartId != null ? prePlayWorldStartId
+                    : (restored.isEmpty() ? null : restored.keySet().iterator().next());
+            prePlayWorldSnapshot = null;
+            prePlayWorldStartId = null;
+            prePlayMapSnapshot = null;
+            if (!restored.isEmpty()) {
+                new EditorView(this, restored, startId).show(stage);
+                return;
+            }
+        }
+
+        if (prePlayMapSnapshot != null) {
+            com.kurawler.model.Map restored = deserializer.loadMapFromJson(prePlayMapSnapshot);
+            prePlayMapSnapshot = null;
+            if (restored != null) {
+                EditorView ev = new EditorView(this, null);
+                ev.loadMap(restored);
+                ev.show(stage);
+                return;
+            }
+        }
+
+        // Fallback: use current session state
+        com.kurawler.model.Map map = session.getMap();
+        restoreHeroForEditor(map);
         java.util.Map<String, com.kurawler.model.Map> world = session.getWorldMaps();
         EditorView ev;
         if (world != null && !world.isEmpty()) {
@@ -434,6 +480,12 @@ public class ScreenManager {
         com.kurawler.model.Map startMap = maps.containsKey(startMapId)
                 ? maps.get(startMapId) : maps.values().iterator().next();
         String resolvedStart = maps.containsKey(startMapId) ? startMapId : maps.keySet().iterator().next();
+        prePlayWorldSnapshot = new java.util.LinkedHashMap<>();
+        for (java.util.Map.Entry<String, com.kurawler.model.Map> e : maps.entrySet()) {
+            prePlayWorldSnapshot.put(e.getKey(), serializer.mapToJson(e.getValue()));
+        }
+        prePlayWorldStartId = resolvedStart;
+        prePlayMapSnapshot = null;
         GameSession session = new GameSession(startMap);
         session.setEditorTestPlay(true);
         for (java.util.Map.Entry<String, com.kurawler.model.Map> e : maps.entrySet()) {
@@ -598,6 +650,117 @@ public class ScreenManager {
         currentSession = tmSession;
         applyDifficultyToSession(currentSession, lastDifficulty);
         showPlayMode(currentSession);
+    }
+
+    /**
+     * Restarts normal gameplay from the very beginning (not just the current floor).
+     * Default/Story → fresh story dungeon; Random → new procedural dungeon;
+     * Custom → reloads original maps from snapshot.
+     */
+    public void restartFromBeginning() {
+        shutdownActiveGameView();
+        if ("Random".equals(lastGameType)) {
+            currentSession = new com.kurawler.model.ProceduralMapGenerator().generate();
+            applyDifficultyToSession(currentSession, lastDifficulty);
+            showPlayMode(currentSession);
+            return;
+        }
+        if ("Custom".equals(lastGameType)) {
+            if (lastCustomWorldSnapshot != null && !lastCustomWorldSnapshot.isEmpty()) {
+                java.util.LinkedHashMap<String, com.kurawler.model.Map> restored = new java.util.LinkedHashMap<>();
+                for (java.util.Map.Entry<String, String> e : lastCustomWorldSnapshot.entrySet()) {
+                    com.kurawler.model.Map m = deserializer.loadMapFromJson(e.getValue());
+                    if (m != null) restored.put(e.getKey(), m);
+                }
+                if (!restored.isEmpty()) {
+                    String startId = lastCustomWorldStartId != null ? lastCustomWorldStartId
+                            : restored.keySet().iterator().next();
+                    com.kurawler.model.Map startMap = restored.get(startId);
+                    GameSession s = new GameSession(startMap);
+                    for (java.util.Map.Entry<String, com.kurawler.model.Map> e : restored.entrySet()) {
+                        s.registerWorldMap(e.getKey(), e.getValue());
+                    }
+                    s.setCurrentMapId(startId);
+                    prepareSessionForPlay(s);
+                    MapFactory.configureObjectiveForMap(
+                            restored.values().stream().reduce((a, b) -> b).orElse(startMap), s);
+                    s.setAchievementManager(new AchievementManager());
+                    s.wireObservers();
+                    applyDifficultyToSession(s, lastDifficulty);
+                    showPlayMode(s);
+                    return;
+                }
+            }
+            if (lastCustomMapSnapshot != null) {
+                com.kurawler.model.Map m = deserializer.loadMapFromJson(lastCustomMapSnapshot);
+                if (m != null) {
+                    GameSession s = new GameSession(m);
+                    prepareSessionForPlay(s);
+                    MapFactory.configureObjectiveForMap(m, s);
+                    s.setAchievementManager(new AchievementManager());
+                    s.wireObservers();
+                    applyDifficultyToSession(s, lastDifficulty);
+                    showPlayMode(s);
+                    return;
+                }
+            }
+        }
+        // Default (story dungeon) and fallback
+        currentSession = MapFactory.createDefaultMap();
+        applyDifficultyToSession(currentSession, lastDifficulty);
+        showPlayMode(currentSession);
+    }
+
+    /**
+     * Restarts editor test play from the pre-play snapshot, so the map returns
+     * to exactly the state it was in when Play was pressed in the editor.
+     * Works for single-map, world, and TeamMatch editor test sessions.
+     */
+    public void restartEditorTestPlay(GameSession session) {
+        if (prePlayWorldSnapshot != null && !prePlayWorldSnapshot.isEmpty()) {
+            java.util.LinkedHashMap<String, com.kurawler.model.Map> restored = new java.util.LinkedHashMap<>();
+            for (java.util.Map.Entry<String, String> e : prePlayWorldSnapshot.entrySet()) {
+                com.kurawler.model.Map m = deserializer.loadMapFromJson(e.getValue());
+                if (m != null) restored.put(e.getKey(), m);
+            }
+            if (!restored.isEmpty()) {
+                String startId = prePlayWorldStartId != null ? prePlayWorldStartId
+                        : restored.keySet().iterator().next();
+                GameSession newSession = new GameSession(restored.get(startId));
+                newSession.setEditorTestPlay(true);
+                for (java.util.Map.Entry<String, com.kurawler.model.Map> e : restored.entrySet()) {
+                    newSession.registerWorldMap(e.getKey(), e.getValue());
+                }
+                newSession.setCurrentMapId(startId);
+                prepareSessionForPlay(newSession);
+                showPlayMode(newSession);
+                return;
+            }
+        }
+        if (prePlayMapSnapshot != null) {
+            com.kurawler.model.Map map = deserializer.loadMapFromJson(prePlayMapSnapshot);
+            if (map != null) {
+                if (session instanceof TeamMatchSession) {
+                    TeamMatchSession tmSession = new TeamMatchSession(map);
+                    tmSession.initializeMatch();
+                    tmSession.setEditorTestPlay(true);
+                    prepareSessionForPlay(tmSession);
+                    showPlayMode(tmSession);
+                } else {
+                    GameSession newSession = new GameSession(map);
+                    newSession.setEditorTestPlay(true);
+                    prepareSessionForPlay(newSession);
+                    showPlayMode(newSession);
+                }
+                return;
+            }
+        }
+        // Fallback: regular restart
+        if (session instanceof TeamMatchSession) {
+            restartTeamMatch();
+        } else {
+            MapFactory.restartCurrentFloor(session);
+        }
     }
 
     private void applyDifficultyToSession(GameSession session, String difficulty) {

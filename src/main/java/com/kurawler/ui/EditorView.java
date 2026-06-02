@@ -169,11 +169,24 @@ public class EditorView {
         editor.setMap(map);
     }
 
-    /** Clears all cells to the default open floor (null static = patterned floor). */
-    private void pavePlainFloor(Map map) {
+    /** Fills cells that have no staticObject with an explicit Floor tile (fixes game rendering after load). */
+    private void fillNullCells(Map map) {
+        StaticObject floor = new StaticObject("Floor", "Stone floor", true, false);
         for (int row = 0; row < map.getHeight(); row++) {
             for (int col = 0; col < map.getWidth(); col++) {
-                map.getCell(row, col).setStaticObject(null);
+                if (map.getCell(row, col).getStaticObject() == null) {
+                    map.getCell(row, col).setStaticObject(floor);
+                }
+            }
+        }
+    }
+
+    /** Clears all cells to an explicit Floor tile so game rendering matches the editor. */
+    private void pavePlainFloor(Map map) {
+        StaticObject floor = new StaticObject("Floor", "Stone floor", true, false);
+        for (int row = 0; row < map.getHeight(); row++) {
+            for (int col = 0; col < map.getWidth(); col++) {
+                map.getCell(row, col).setStaticObject(floor);
             }
         }
     }
@@ -310,6 +323,9 @@ public class EditorView {
         load.setOnAction(e -> {
             com.kurawler.persistence.MapDeserializer.WorldData data = screenManager.showLoadWorldDialog();
             if (data != null) {
+                for (Map loadedMap : data.maps.values()) {
+                    fillNullCells(loadedMap);
+                }
                 editor.loadWorld(data.maps, data.startMapId);
                 mapSelector.getItems().setAll(editor.getWorldMaps().keySet());
                 mapSelector.setValue(editor.getCurrentMapId());

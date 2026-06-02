@@ -1611,8 +1611,9 @@ public class GameView {
             }
         });
 
+        boolean isEditorPlay = controller.getSession().isEditorTestPlay();
         Button restartBtn  = popupButton("Restart Level", "#e17055");
-        Button mainMenuBtn = popupButton("Main Menu", "#e8c84a");
+        Button mainMenuBtn = popupButton(isEditorPlay ? "Return to Level Editor" : "Main Menu", "#e8c84a");
         Button resumeBtn   = popupButton("Resume", "#a09070");
 
         Runnable closePopup = popup::close;
@@ -1652,22 +1653,25 @@ public class GameView {
         });
         restartBtn.setOnAction(e -> {
             AudioManager.getInstance().play("button");
-            if (controller.getSession() instanceof TeamMatchSession) {
-                // Team Match has no "floor" to restart in place — rebuild the whole match.
+            GameSession s = controller.getSession();
+            if (s.isEditorTestPlay()) {
+                leavePlay[0] = true;
+                closePopup.run();
+                shutdown();
+                screenManager.restartEditorTestPlay(s);
+                return;
+            }
+            if (s instanceof TeamMatchSession) {
                 leavePlay[0] = true;
                 closePopup.run();
                 shutdown();
                 screenManager.restartTeamMatch();
                 return;
             }
-            leavePlay[0] = false;
+            leavePlay[0] = true;
             closePopup.run();
-            boolean ok = com.kurawler.model.MapFactory.restartCurrentFloor(controller.getSession());
-            if (ok) {
-                if (gameLoop != null) gameLoop.refreshMap();
-                render();
-                showGameMessage("Level restarted.");
-            }
+            shutdown();
+            screenManager.restartFromBeginning();
         });
 
         VBox panel = new VBox(12, title, subtitle, saveBtn, loadBtn, musicBtn, restartBtn, mainMenuBtn, resumeBtn);
