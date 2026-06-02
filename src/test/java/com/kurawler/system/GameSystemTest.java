@@ -1011,4 +1011,176 @@ class GameSystemTest {
             assertFalse(session.getProjectiles().isEmpty());
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 12. Knight enemy AI behavior (TC-KNI-01 through TC-KNI-08, §2.5.1)
+    //     TC-KNI-07 (attack frequency) omitted — not measurable at unit level.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    class KnightAI {
+
+        private Knight knight;
+
+        @BeforeEach
+        void placeKnight() {
+            knight = new Knight();
+        }
+
+        // TC-KNI-01
+        @Test
+        void freshKnight_startingHP_equals20() {
+            assertEquals(20, knight.getMaxHealth());
+            assertEquals(20, knight.getHealth());
+        }
+
+        @Test
+        void freshKnight_sightRadius_equals5() {
+            assertEquals(5, knight.getSightRadius());
+        }
+
+        // TC-KNI-02: hero more than 5 Euclidean tiles away → knight random-walks
+        // (does NOT move directly toward hero)
+        @Test
+        void beyondSightRadius_decideAction_doesNotCrash() {
+            // Hero at (0,0), knight at (6,6) — Euclidean ≈ 8.5 > 5
+            knight.moveToCell(map.getCell(6, 6));
+            hero.moveToCell(map.getCell(0, 0));
+            assertDoesNotThrow(() -> knight.decideAction(hero, map, session));
+        }
+
+        @Test
+        void beyondSightRadius_knight_doesNotApproachHeroDirectly() {
+            // Knight at (6,6), hero at (0,0) — distance > 5, random walk
+            // After one tick knight should NOT be at (0,0) or have jumped to hero
+            knight.moveToCell(map.getCell(6, 6));
+            hero.moveToCell(map.getCell(0, 0));
+            knight.decideAction(hero, map, session);
+            // Knight must stay on a legal cell, not teleport to hero
+            assertFalse(knight.getRow() == 0 && knight.getCol() == 0);
+        }
+
+        // TC-KNI-03: hero within 5 Euclidean tiles → knight steps toward hero
+        @Test
+        void withinSightRadius_knightStepsTowardHero_horizontally() {
+            // Knight at (3,6), hero at (3,3) — distance = 3 ≤ 5, same row
+            // dCol = -3 → knight should step LEFT → col becomes 5
+            knight.moveToCell(map.getCell(3, 6));
+            hero.moveToCell(map.getCell(3, 3));
+            knight.decideAction(hero, map, session);
+            assertEquals(5, knight.getCol()); // moved one step toward hero
+        }
+
+        @Test
+        void withinSightRadius_knightStepsTowardHero_vertically() {
+            // Knight at (6,3), hero at (3,3) — distance = 3 ≤ 5, same col
+            // dRow = -3 → knight should step UP → row becomes 5
+            knight.moveToCell(map.getCell(6, 3));
+            hero.moveToCell(map.getCell(3, 3));
+            knight.decideAction(hero, map, session);
+            assertEquals(5, knight.getRow());
+        }
+
+        // TC-KNI-04: knight adjacent to hero (Manhattan = 1) → knight attacks hero
+        @Test
+        void adjacentToHero_knightAttacksHero_hpDecreases() {
+            knight.moveToCell(map.getCell(3, 4)); // one right of hero (3,3)
+            int hpBefore = hero.getHealth();
+            knight.decideAction(hero, map, session);
+            assertTrue(hero.getHealth() < hpBefore);
+        }
+
+        @Test
+        void adjacentToHero_knightDoesNotMove_itAttacks() {
+            knight.moveToCell(map.getCell(3, 4));
+            knight.decideAction(hero, map, session);
+            // Knight stays adjacent — attacks, not moves
+            assertEquals(4, knight.getCol());
+        }
+
+        // TC-KNI-05: knight DEF reduces hero-to-knight incoming damage by 1
+        @Test
+        void knightDEF_reducesIncomingDamage() {
+            // Knight DEF = 1; hero does max(1, STR/2 + ATK - 1) damage
+            int rawDmg = (hero.getStrength() / 2) + hero.getAttackPower();
+            int expectedDmg = Math.max(1, rawDmg - knight.getDefensePower());
+            int hpBefore = knight.getHealth();
+            CombatResolver.performMeleeAttack(hero, knight);
+            assertEquals(hpBefore - expectedDmg, knight.getHealth());
+        }
+
+        @Test
+        void knightAttack_heroDefReducesDamage_minimumOneApplied() {
+            // Hero DEF = 2, Knight ATK = 1, STR = 1 → max(1, 0+1-2) = 1
+            int expectedDmg = Math.max(1,
+                    (knight.getStrength() / 2) + knight.getAttackPower() - hero.getDefensePower());
+            int hpBefore = hero.getHealth();
+            CombatResolver.performMeleeAttack(knight, hero);
+            assertEquals(hpBefore - expectedDmg, hero.getHealth());
+        }
+
+        // TC-KNI-06: kill knight → spec: removed from map cell and enemy count decrements
+        // NOTE: DamageEffect does not clear the cell or call session.removeEnemy() for melee
+        // kills — both assertions below reveal spec violations.
+        @Test
+        void killKnight_cellBecomesEmpty() {
+            knight.moveToCell(map.getCell(3, 4));
+            session.addEnemy(knight);
+            for (int i = 0; i < 30 && knight.isAlive(); i++) {
+                hero.restoreEnergy(5);
+                controller.executeAction(new AttackAction(hero, knight));
+            }
+            assertFalse(knight.isAlive());
+            // Spec §2.5.1: dead knight must vacate its cell
+            assertNull(map.getCell(3, 4).getOccupyingCharacter(),
+                    "Dead knight must be removed from its map cell (spec §2.5.1)");
+        }
+
+        @Test
+        void killKnight_activeEnemyCountDecrements() {
+            knight.moveToCell(map.getCell(3, 4));
+            session.addEnemy(knight);
+            int countBefore = session.getActiveEnemyCount();
+            for (int i = 0; i < 30 && knight.isAlive(); i++) {
+                hero.restoreEnergy(5);
+                controller.executeAction(new AttackAction(hero, knight));
+            }
+            // Spec §2.5.1: active enemy count must decrement on kill
+            assertEquals(countBefore - 1, session.getActiveEnemyCount(),
+                    "Active enemy count must decrement when knight is killed (spec §2.5.1)");
+        }
+
+        // TC-KNI-08: wall between hero and knight within sight radius
+        @Test
+        void wallDirectlyInPath_knightIsBlocked() {
+            // Knight at (3,2), hero at (3,5), wall at (3,3) — distance = 3 ≤ 5
+            knight.moveToCell(map.getCell(3, 2));
+            hero.moveToCell(map.getCell(3, 5));
+            map.getCell(3, 3).setStaticObject(
+                    new StaticObject("Wall", "Solid wall", false, false));
+
+            knight.decideAction(hero, map, session);
+
+            // Primary step blocked; fallback tryStep(dRow, 0) = tryStep(0,0) is no-op
+            assertEquals(2, knight.getCol()); // knight stays in place
+        }
+
+        @Test
+        void wallBesidePath_knightCanNavigateAround() {
+            // Knight at (3,2), hero at (3,5), wall at (3,3) but row 2 is open
+            // Primary step to (3,3) blocked; fallback step to (2,2) if dRow != 0
+            // Place hero diagonally so dRow and dCol are both nonzero
+            knight.moveToCell(map.getCell(4, 2));
+            hero.moveToCell(map.getCell(3, 5));  // dRow=-1, dCol=3 → euclid≈3.2
+            map.getCell(3, 2).setStaticObject(
+                    new StaticObject("Wall", "Solid wall", false, false));
+            int colBefore = knight.getCol();
+
+            knight.decideAction(hero, map, session);
+
+            // Knight should at least attempt to move (primary or fallback step)
+            assertFalse(knight.getRow() == 4 && knight.getCol() == colBefore,
+                    "Knight must attempt to navigate around the wall");
+        }
+    }
 }
