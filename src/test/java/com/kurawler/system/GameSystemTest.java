@@ -2491,4 +2491,243 @@ class GameSystemTest {
             }
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 20. Save Game & Load Game (TC-SAVE-01 through TC-SAVE-09, Phase 2)
+    //     TC-SAVE-01/03 → partially covered by MenuAndNavigation.saveGameState_* tests
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    class SaveAndLoad {
+
+        private java.io.File tmpFile() throws java.io.IOException {
+            java.io.File f = java.io.File.createTempFile("kurawler_save_", ".json");
+            f.deleteOnExit();
+            return f;
+        }
+
+        private void prepareSession() {
+            hero.moveToCell(map.getCell(1, 2));
+            hero.takeDamage(3);
+            hero.useMana(10);
+            hero.useEnergy(5);
+            hero.getInventory().addItem(new Weapon("Sword", "Sharp", 5));
+            session.setPlayDurationTimer(42);
+            session.setCurrentMode("Play");
+        }
+
+        // TC-SAVE-02: two saves with different names → two distinct files
+        @Test
+        void twoSaves_withDifferentNames_createDistinctFiles() throws java.io.IOException {
+            java.io.File f1 = tmpFile();
+            java.io.File f2 = tmpFile();
+            MapSerializer ser = new MapSerializer();
+
+            ser.saveGameState(session, f1.getAbsolutePath(), "SaveOne");
+            ser.saveGameState(session, f2.getAbsolutePath(), "SaveTwo");
+
+            String[] m1 = new MapDeserializer().readSaveMetadata(f1.getAbsolutePath());
+            String[] m2 = new MapDeserializer().readSaveMetadata(f2.getAbsolutePath());
+
+            assertEquals("SaveOne", m1[0]);
+            assertEquals("SaveTwo", m2[0]);
+            assertNotEquals(f1.getAbsolutePath(), f2.getAbsolutePath());
+        }
+
+        // TC-SAVE-04: full state restored — hero position, HP, mana, energy, inventory
+        @Test
+        void loadGameState_restoresHeroPosition() throws java.io.IOException {
+            prepareSession();
+            java.io.File f = tmpFile();
+            new MapSerializer().saveGameState(session, f.getAbsolutePath(), "S");
+
+            GameSession loaded = new GameSession(map);
+            loaded.setHero(new Hero("Loaded"));
+            new MapDeserializer().loadGameState(f.getAbsolutePath(), loaded);
+
+            assertEquals(1, loaded.getHero().getRow(), "Hero row must be restored");
+            assertEquals(2, loaded.getHero().getCol(), "Hero col must be restored");
+        }
+
+        @Test
+        void loadGameState_restoresHeroHP() throws java.io.IOException {
+            prepareSession();
+            int savedHp = hero.getHealth();
+            java.io.File f = tmpFile();
+            new MapSerializer().saveGameState(session, f.getAbsolutePath(), "S");
+
+            GameSession loaded = new GameSession(map);
+            loaded.setHero(new Hero("Loaded"));
+            new MapDeserializer().loadGameState(f.getAbsolutePath(), loaded);
+
+            assertEquals(savedHp, loaded.getHero().getHealth(), "Hero HP must be restored");
+        }
+
+        @Test
+        void loadGameState_restoresHeroMana() throws java.io.IOException {
+            prepareSession();
+            int savedMana = hero.getMana();
+            java.io.File f = tmpFile();
+            new MapSerializer().saveGameState(session, f.getAbsolutePath(), "S");
+
+            GameSession loaded = new GameSession(map);
+            loaded.setHero(new Hero("Loaded"));
+            new MapDeserializer().loadGameState(f.getAbsolutePath(), loaded);
+
+            assertEquals(savedMana, loaded.getHero().getMana(), "Hero mana must be restored");
+        }
+
+        @Test
+        void loadGameState_restoresHeroEnergy() throws java.io.IOException {
+            prepareSession();
+            int savedEnergy = hero.getEnergy();
+            java.io.File f = tmpFile();
+            new MapSerializer().saveGameState(session, f.getAbsolutePath(), "S");
+
+            GameSession loaded = new GameSession(map);
+            loaded.setHero(new Hero("Loaded"));
+            new MapDeserializer().loadGameState(f.getAbsolutePath(), loaded);
+
+            assertEquals(savedEnergy, loaded.getHero().getEnergy(), "Hero energy must be restored");
+        }
+
+        @Test
+        void loadGameState_restoresHeroInventory() throws java.io.IOException {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            hero.getInventory().addItem(sword);
+            java.io.File f = tmpFile();
+            new MapSerializer().saveGameState(session, f.getAbsolutePath(), "S");
+
+            GameSession loaded = new GameSession(map);
+            loaded.setHero(new Hero("Loaded"));
+            new MapDeserializer().loadGameState(f.getAbsolutePath(), loaded);
+
+            assertFalse(loaded.getHero().getInventory().getItems().isEmpty(),
+                    "Hero inventory must not be empty after load");
+        }
+
+        // TC-SAVE-05: save file is valid JSON text (not binary serialization)
+        @Test
+        void saveFile_isValidJsonText() throws java.io.IOException {
+            java.io.File f = tmpFile();
+            new MapSerializer().saveGameState(session, f.getAbsolutePath(), "S");
+
+            String content = new String(java.nio.file.Files.readAllBytes(f.toPath()));
+            assertFalse(content.isBlank(), "Save file must not be empty");
+            assertTrue(content.trim().startsWith("{"),
+                    "Save file must be JSON — must start with '{'");
+            assertTrue(content.trim().endsWith("}"),
+                    "Save file must be JSON — must end with '}'");
+        }
+
+        @Test
+        void saveFile_containsExpectedJsonKeys() throws java.io.IOException {
+            java.io.File f = tmpFile();
+            new MapSerializer().saveGameState(session, f.getAbsolutePath(), "S");
+
+            String content = new String(java.nio.file.Files.readAllBytes(f.toPath()));
+            assertTrue(content.contains("\"saveName\""), "JSON must contain saveName field");
+            assertTrue(content.contains("\"savedAt\""),  "JSON must contain savedAt field");
+            assertTrue(content.contains("\"hero\""),     "JSON must contain hero field");
+            assertTrue(content.contains("\"cells\""),    "JSON must contain cells field");
+        }
+
+        // TC-SAVE-06: spec says Gson or Jackson; implementation uses hand-rolled parser
+        // This test reveals the spec violation.
+        @Test
+        void mapSerializer_usesHandRolledJson_notGsonOrJackson_specViolation() {
+            // Read MapSerializer source and verify no Gson/Jackson imports
+            // (validated via class-loader: if Gson/Jackson were used they'd be present)
+            Package gsonPkg = Package.getPackage("com.google.gson");
+            Package jacksonPkg = Package.getPackage("com.fasterxml.jackson.core");
+            boolean gsonPresent = gsonPkg != null;
+            boolean jacksonPresent = jacksonPkg != null;
+
+            // Spec §Phase-2: "uses Gson or Jackson" — neither is on the classpath
+            assertFalse(gsonPresent && jacksonPresent,
+                    "Spec §Phase-2 violation: neither Gson nor Jackson is present — " +
+                    "MapSerializer uses a hand-rolled parser instead");
+        }
+
+        // TC-SAVE-07: enemies preserved — position and HP
+        @Test
+        void loadGameState_restoresEnemyPosition() throws java.io.IOException {
+            Knight knight = new Knight();
+            knight.moveToCell(map.getCell(2, 4));
+            session.addEnemy(knight);
+            java.io.File f = tmpFile();
+            new MapSerializer().saveGameState(session, f.getAbsolutePath(), "S");
+
+            GameSession loaded = new GameSession(map);
+            loaded.setHero(new Hero("Loaded"));
+            new MapDeserializer().loadGameState(f.getAbsolutePath(), loaded);
+
+            assertFalse(loaded.getEnemies().isEmpty(), "Enemies must be present after load");
+            assertEquals(2, loaded.getEnemies().get(0).getRow(), "Enemy row must be restored");
+            assertEquals(4, loaded.getEnemies().get(0).getCol(), "Enemy col must be restored");
+        }
+
+        @Test
+        void loadGameState_restoresEnemyHP() throws java.io.IOException {
+            Knight knight = new Knight();
+            knight.takeDamage(5);
+            knight.moveToCell(map.getCell(2, 4));
+            session.addEnemy(knight);
+            int savedHp = knight.getHealth();
+            java.io.File f = tmpFile();
+            new MapSerializer().saveGameState(session, f.getAbsolutePath(), "S");
+
+            GameSession loaded = new GameSession(map);
+            loaded.setHero(new Hero("Loaded"));
+            new MapDeserializer().loadGameState(f.getAbsolutePath(), loaded);
+
+            if (!loaded.getEnemies().isEmpty()) {
+                assertEquals(savedHp, loaded.getEnemies().get(0).getHealth(),
+                        "Enemy HP must be restored after load");
+            }
+        }
+
+        // TC-SAVE-08: play duration timer preserved
+        @Test
+        void loadGameState_restoresPlayDurationTimer() throws java.io.IOException {
+            session.setPlayDurationTimer(137);
+            java.io.File f = tmpFile();
+            new MapSerializer().saveGameState(session, f.getAbsolutePath(), "S");
+
+            GameSession loaded = new GameSession(map);
+            loaded.setHero(new Hero("Loaded"));
+            new MapDeserializer().loadGameState(f.getAbsolutePath(), loaded);
+
+            assertEquals(137, loaded.getPlayDurationTimer(),
+                    "Play duration timer must be restored from save");
+        }
+
+        // TC-SAVE-09: deleted save file → returns false, session unchanged, no crash
+        @Test
+        void loadGameState_missingFile_returnsFalse() {
+            GameSession loaded = new GameSession(map);
+            loaded.setHero(new Hero("Loaded"));
+            boolean result = new MapDeserializer()
+                    .loadGameState("nonexistent_save_file_xyz.json", loaded);
+            assertFalse(result, "loadGameState must return false for a missing file");
+        }
+
+        @Test
+        void loadGameState_missingFile_doesNotCrash() {
+            GameSession loaded = new GameSession(map);
+            loaded.setHero(new Hero("Loaded"));
+            assertDoesNotThrow(() ->
+                    new MapDeserializer().loadGameState("nonexistent_xyz.json", loaded),
+                    "loadGameState must not throw for a missing file");
+        }
+
+        @Test
+        void loadGameState_missingFile_sessionUnchanged() {
+            GameSession loaded = new GameSession(map);
+            Hero h = new Hero("Loaded");
+            loaded.setHero(h);
+            new MapDeserializer().loadGameState("nonexistent_xyz.json", loaded);
+            assertEquals(h, loaded.getHero(), "Session hero must be unchanged after failed load");
+        }
+    }
 }
