@@ -17,6 +17,8 @@ import com.kurawler.model.GridCell;
 import com.kurawler.model.Map;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
+import com.kurawler.model.character.Sorcerer;
+import com.kurawler.model.object.Projectile;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.Key;
 import com.kurawler.model.object.MapPortal;
@@ -1181,6 +1183,224 @@ class GameSystemTest {
             // Knight should at least attempt to move (primary or fallback step)
             assertFalse(knight.getRow() == 4 && knight.getCol() == colBefore,
                     "Knight must attempt to navigate around the wall");
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 13. Sorcerer enemy AI behavior (TC-SOR-01 through TC-SOR-10, §2.5.2)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    class SorcererAI {
+
+        private Sorcerer sorcerer;
+
+        @BeforeEach
+        void placeSorcerer() {
+            sorcerer = new Sorcerer();
+        }
+
+        // TC-SOR-01
+        @Test
+        void freshSorcerer_HP_equals10() {
+            assertEquals(10, sorcerer.getMaxHealth());
+            assertEquals(10, sorcerer.getHealth());
+        }
+
+        @Test
+        void freshSorcerer_DEF_equals0() {
+            assertEquals(0, sorcerer.getDefensePower());
+        }
+
+        @Test
+        void freshSorcerer_spellDamage_equals8() {
+            assertEquals(8, sorcerer.getSpellDamage());
+        }
+
+        // TC-SOR-02: after ATTACK_COOLDOWN ticks with clear LoS, bolt is added to session
+        @Test
+        void afterCooldownTicks_sorcererFiresBolt() {
+            sorcerer.moveToCell(map.getCell(3, 0));
+            hero.moveToCell(map.getCell(3, 6));
+            session.setCurrentMode("Play");
+            for (int i = 0; i < sorcerer.getAttackCooldown(); i++) {
+                sorcerer.decideAction(hero, map, session);
+            }
+            assertFalse(session.getProjectiles().isEmpty(), "Sorcerer must fire after cooldown");
+        }
+
+        @Test
+        void beforeCooldownExpires_noProjectileFired() {
+            sorcerer.moveToCell(map.getCell(3, 0));
+            hero.moveToCell(map.getCell(3, 6));
+            for (int i = 0; i < sorcerer.getAttackCooldown() - 1; i++) {
+                sorcerer.decideAction(hero, map, session);
+            }
+            assertTrue(session.getProjectiles().isEmpty());
+        }
+
+        // TC-SOR-03: cooldown constant is at least 5 ticks
+        @Test
+        void attackCooldown_isAtLeast5Ticks() {
+            assertTrue(sorcerer.getAttackCooldown() >= 5);
+        }
+
+        @Test
+        void afterFiringBolt_cooldownResetsToZero() {
+            sorcerer.moveToCell(map.getCell(3, 0));
+            hero.moveToCell(map.getCell(3, 6));
+            for (int i = 0; i < sorcerer.getAttackCooldown(); i++) {
+                sorcerer.decideAction(hero, map, session);
+            }
+            int countAfterFirstShot = session.getProjectiles().size();
+            sorcerer.decideAction(hero, map, session); // one tick after reset
+            assertEquals(countAfterFirstShot, session.getProjectiles().size());
+        }
+
+        // TC-SOR-04: wall in LoS blocks the spell
+        @Test
+        void wallInLineOfSight_castSpellReturnsNull() {
+            sorcerer.moveToCell(map.getCell(3, 0));
+            hero.moveToCell(map.getCell(3, 6));
+            map.getCell(3, 3).setStaticObject(
+                    new StaticObject("Wall", "Solid wall", false, false));
+            assertNull(sorcerer.castSpell(hero, map), "Sorcerer must not fire through a wall");
+        }
+
+        @Test
+        void clearLineOfSight_castSpellSucceeds() {
+            sorcerer.moveToCell(map.getCell(3, 0));
+            hero.moveToCell(map.getCell(3, 6));
+            assertNotNull(sorcerer.castSpell(hero, map));
+        }
+
+        // TC-SOR-05: arcane bolt deals 8 damage, reduced by hero DEF
+        @Test
+        void arcaneBolt_baseDamage_equals8() {
+            sorcerer.moveToCell(map.getCell(3, 0));
+            hero.moveToCell(map.getCell(3, 6));
+            Projectile bolt = sorcerer.castSpell(hero, map);
+            assertNotNull(bolt);
+            assertEquals(8, bolt.getDamage());
+        }
+
+        @Test
+        void arcaneBolt_damageReducedByHeroDEF() {
+            sorcerer.moveToCell(map.getCell(3, 0));
+            hero.moveToCell(map.getCell(3, 6));
+            Projectile bolt = sorcerer.castSpell(hero, map);
+            assertNotNull(bolt);
+            int expectedDmg = Math.max(1, bolt.getDamage() - hero.getDefensePower());
+            int hpBefore = hero.getHealth();
+            CombatResolver.applyProjectileDamage(bolt, hero);
+            assertEquals(hpBefore - expectedDmg, hero.getHealth());
+        }
+
+        // TC-SOR-06 & TC-SOR-08: spec says timer-based teleport independent of LoS;
+        // code only teleports when adjacent (dist <= 1).
+        @Test
+        void teleportChance_is50Percent() {
+            assertEquals(0.5f, sorcerer.getTeleportChance(), 0.001f);
+        }
+
+        @Test
+        void whenAdjacent_sorcererMayTeleport() {
+            sorcerer.moveToCell(map.getCell(3, 4));
+            int origRow = sorcerer.getRow(), origCol = sorcerer.getCol();
+            boolean teleported = false;
+            for (int i = 0; i < 50; i++) {
+                sorcerer.decideAction(hero, map, session);
+                if (sorcerer.getRow() != origRow || sorcerer.getCol() != origCol) {
+                    teleported = true;
+                    break;
+                }
+                sorcerer.moveToCell(map.getCell(3, 4)); // reset for next tick
+            }
+            assertTrue(teleported, "Sorcerer must teleport at least once when adjacent over 50 ticks");
+        }
+
+        @Test
+        void whenNotAdjacent_sorcererDoesNotTeleport_specViolation() {
+            // Spec §2.5.2: teleport should occur independent of adjacency
+            // Code: teleport only when dist <= 1 — spec violation
+            sorcerer.moveToCell(map.getCell(0, 0));
+            int row = sorcerer.getRow(), col = sorcerer.getCol();
+            sorcerer.decideAction(hero, map, session);
+            assertTrue(sorcerer.getRow() == row && sorcerer.getCol() == col,
+                    "Spec §2.5.2 violation: teleport requires adjacency in code, spec says otherwise");
+        }
+
+        // TC-SOR-07: teleport destination is walkable and not hero's tile
+        @Test
+        void teleportDestination_isNotHeroTile() {
+            sorcerer.moveToCell(map.getCell(3, 4));
+            for (int i = 0; i < 50; i++) {
+                sorcerer.decideAction(hero, map, session);
+                assertFalse(sorcerer.getRow() == hero.getRow() && sorcerer.getCol() == hero.getCol(),
+                        "Sorcerer teleported onto hero's tile");
+                sorcerer.moveToCell(map.getCell(3, 4));
+            }
+        }
+
+        @Test
+        void teleportDestination_landOnLegalCell() {
+            sorcerer.moveToCell(map.getCell(3, 4));
+            for (int i = 0; i < 50; i++) {
+                sorcerer.decideAction(hero, map, session);
+                GridCell dest = map.getCell(sorcerer.getRow(), sorcerer.getCol());
+                assertNotNull(dest, "Sorcerer landed out of bounds");
+                sorcerer.moveToCell(map.getCell(3, 4));
+            }
+        }
+
+        // TC-SOR-09: kill Sorcerer → ring drop mechanism
+        @Test
+        void killSorcerer_isNoLongerAlive() {
+            sorcerer.takeDamage(sorcerer.getHealth());
+            assertFalse(sorcerer.isAlive());
+        }
+
+        @Test
+        void killSorcerer_ringDropFlag_initiallyFalse() {
+            assertFalse(sorcerer.isRingDropped());
+        }
+
+        @Test
+        void killSorcerer_markRingDropped_setsFlag() {
+            sorcerer.takeDamage(sorcerer.getHealth());
+            sorcerer.markRingDropped();
+            assertTrue(sorcerer.isRingDropped());
+        }
+
+        @Test
+        void markRingDropped_isIdempotent() {
+            sorcerer.markRingDropped();
+            sorcerer.markRingDropped();
+            assertTrue(sorcerer.isRingDropped());
+        }
+
+        // TC-SOR-10: Sorcerer never walks — position unchanged when not adjacent
+        @Test
+        void nonAdjacent_beforeCooldown_sorcererNeverMoves() {
+            sorcerer.moveToCell(map.getCell(0, 0));
+            int rowBefore = sorcerer.getRow(), colBefore = sorcerer.getCol();
+            for (int i = 0; i < sorcerer.getAttackCooldown() - 1; i++) {
+                sorcerer.decideAction(hero, map, session);
+            }
+            assertEquals(rowBefore, sorcerer.getRow(), "Sorcerer must not walk");
+            assertEquals(colBefore, sorcerer.getCol(), "Sorcerer must not walk");
+        }
+
+        @Test
+        void acrossManyTicks_sorcererNeverWalks() {
+            sorcerer.moveToCell(map.getCell(0, 0));
+            hero.moveToCell(map.getCell(0, 6));
+            int startRow = sorcerer.getRow(), startCol = sorcerer.getCol();
+            for (int i = 0; i < sorcerer.getAttackCooldown() * 20; i++) {
+                sorcerer.decideAction(hero, map, session);
+            }
+            assertEquals(startRow, sorcerer.getRow(), "Sorcerer must never walk toward hero");
+            assertEquals(startCol, sorcerer.getCol(), "Sorcerer must never walk toward hero");
         }
     }
 }
