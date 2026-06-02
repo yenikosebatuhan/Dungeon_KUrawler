@@ -1,8 +1,13 @@
 package com.kurawler.system;
 
 import com.kurawler.action.AttackAction;
+import com.kurawler.action.DiscardAction;
+import com.kurawler.action.EatAction;
 import com.kurawler.action.MoveAction;
+import com.kurawler.action.ReadAction;
+import com.kurawler.action.SearchAction;
 import com.kurawler.action.TakeAction;
+import com.kurawler.action.WearAction;
 import com.kurawler.controller.GameController;
 import com.kurawler.engine.CombatResolver;
 import com.kurawler.model.GameSession;
@@ -13,6 +18,9 @@ import com.kurawler.model.character.Knight;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.Key;
 import com.kurawler.model.object.MapPortal;
+import com.kurawler.model.object.Scroll;
+import com.kurawler.model.object.StaticObject;
+import com.kurawler.model.object.Wearable;
 import com.kurawler.model.object.Weapon;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -490,6 +498,159 @@ class GameSystemTest {
             controller.executeAction(new TakeAction(key));   // turn 3 (item not on hero cell — no-op effect but turn advances)
 
             assertEquals(3, session.getTurnCount());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 9. Item interaction & action availability (TC-ACT-01 through TC-ACT-07)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    class ItemInteraction {
+
+        // TC-ACT-01: actions on items not in inventory produce no effects
+        @Test
+        void eatAction_itemNotInInventory_producesNoEffect() {
+            Consumable potion = new Consumable("Potion", "Heals 5", 5);
+            int hpBefore = hero.getHealth();
+            controller.executeAction(new EatAction(potion));
+            assertEquals(hpBefore, hero.getHealth());
+        }
+
+        @Test
+        void wearAction_itemNotInInventory_producesNoEffect() {
+            Wearable armor = new Wearable("Armor", "Plate", 5);
+            int defBefore = hero.getDefensePower();
+            controller.executeAction(new WearAction(armor));
+            assertEquals(defBefore, hero.getDefensePower());
+        }
+
+        @Test
+        void readAction_itemNotInInventory_producesNoEffect() {
+            Scroll scroll = new Scroll("Scroll", "Ancient text", "...", 10);
+            hero.takeDamage(5);
+            int hpBefore = hero.getHealth();
+            controller.executeAction(new ReadAction(scroll));
+            assertEquals(hpBefore, hero.getHealth());
+        }
+
+        // TC-ACT-02: potion in inventory → EAT via pipeline restores HP
+        @Test
+        void eatAction_potionInInventory_restoresHP() {
+            hero.takeDamage(8);
+            Consumable potion = new Consumable("Potion", "Heals 5", 5);
+            hero.getInventory().addItem(potion);
+            int hpBefore = hero.getHealth();
+            controller.executeAction(new EatAction(potion));
+            assertTrue(hero.getHealth() > hpBefore);
+        }
+
+        @Test
+        void eatAction_potionInInventory_removesItemAfterUse() {
+            Consumable potion = new Consumable("Potion", "Heals 5", 5);
+            hero.getInventory().addItem(potion);
+            controller.executeAction(new EatAction(potion));
+            assertFalse(hero.getInventory().hasItem(potion));
+        }
+
+        // TC-ACT-03: scroll in inventory → READ via pipeline applies effect
+        @Test
+        void readAction_healingScrollInInventory_restoresHP() {
+            hero.takeDamage(6);
+            Scroll healScroll = new Scroll("Healing Scroll", "Glowing text", "Heal!", 6);
+            hero.getInventory().addItem(healScroll);
+            int hpBefore = hero.getHealth();
+            controller.executeAction(new ReadAction(healScroll));
+            assertTrue(hero.getHealth() > hpBefore);
+        }
+
+        @Test
+        void readAction_scrollInInventory_removesScrollAfterRead() {
+            Scroll scroll = new Scroll("Scroll", "Text", "...", 3);
+            hero.getInventory().addItem(scroll);
+            controller.executeAction(new ReadAction(scroll));
+            assertFalse(hero.getInventory().hasItem(scroll));
+        }
+
+        // TC-ACT-04: armor in inventory → WEAR via pipeline increases defense
+        @Test
+        void wearAction_armorInInventory_increasesDefense() {
+            Wearable armor = new Wearable("Plate Armor", "Heavy plate", 4);
+            hero.getInventory().addItem(armor);
+            int defBefore = hero.getDefensePower();
+            controller.executeAction(new WearAction(armor));
+            assertTrue(hero.getDefensePower() > defBefore);
+        }
+
+        @Test
+        void wearAction_armorInInventory_armorBecomesEquipped() {
+            Wearable armor = new Wearable("Plate Armor", "Heavy plate", 4);
+            hero.getInventory().addItem(armor);
+            controller.executeAction(new WearAction(armor));
+            assertEquals(armor, hero.getEquippedArmor());
+        }
+
+        // TC-ACT-05: non-searchable decorative object → SearchAction produces no effect
+        @Test
+        void searchAction_nonSearchableObject_producesNoEffect() {
+            StaticObject decoration = new StaticObject("Vase", "Decorative vase", true, false);
+            map.getCell(2, 3).setStaticObject(decoration);
+            int turnBefore = session.getTurnCount();
+            controller.executeAction(new SearchAction(decoration));
+            // Turn advances but no game-state change; object remains unsearched
+            assertFalse(decoration.wasSearched());
+        }
+
+        // TC-ACT-06: inventory full → TAKE blocked, EAT on existing item still works
+        @Test
+        void inventoryFull_eatAction_onExistingConsumable_stillWorks() {
+            Consumable potion = new Consumable("Potion", "Heals 5", 5);
+            hero.getInventory().addItem(potion);
+            // Fill remaining 7 slots
+            for (int i = 0; i < 7; i++) {
+                hero.getInventory().addItem(new Weapon("W" + i, "", i));
+            }
+            assertTrue(hero.getInventory().isFull());
+            hero.takeDamage(5);
+            int hpBefore = hero.getHealth();
+            controller.executeAction(new EatAction(potion));
+            assertTrue(hero.getHealth() > hpBefore);
+        }
+
+        @Test
+        void inventoryFull_takeAction_onFloorItem_isStillBlocked() {
+            for (int i = 0; i < 8; i++) {
+                hero.getInventory().addItem(new Weapon("W" + i, "", i));
+            }
+            Consumable potion = new Consumable("Potion", "Floor potion", 5);
+            map.getCell(3, 3).addObject(potion);
+            controller.executeAction(new TakeAction(potion));
+            assertFalse(hero.getInventory().hasItem(potion));
+        }
+
+        // TC-ACT-07: discard item from inventory → removed from inventory, dropped on cell
+        @Test
+        void discardAction_removesItemFromInventory() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            hero.getInventory().addItem(sword);
+            controller.executeAction(new DiscardAction(sword));
+            assertFalse(hero.getInventory().hasItem(sword));
+        }
+
+        @Test
+        void discardAction_dropsItemOnHeroCell() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            hero.getInventory().addItem(sword);
+            controller.executeAction(new DiscardAction(sword));
+            assertTrue(map.getCell(hero.getRow(), hero.getCol()).getObjects().contains(sword));
+        }
+
+        @Test
+        void discardAction_itemNotInInventory_producesNoEffect() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            int invSizeBefore = hero.getInventory().getItemCount();
+            controller.executeAction(new DiscardAction(sword));
+            assertEquals(invSizeBefore, hero.getInventory().getItemCount());
         }
     }
 }
