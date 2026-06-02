@@ -3,8 +3,10 @@ package com.kurawler.system;
 import com.kurawler.action.AttackAction;
 import com.kurawler.action.BreakAction;
 import com.kurawler.action.EquipAction;
+import com.kurawler.action.SearchAction;
 import com.kurawler.editor.LevelEditor;
 import com.kurawler.editor.RandomItemGenerator;
+import com.kurawler.model.MapFactory;
 import com.kurawler.engine.EnemySpawner;
 import com.kurawler.engine.GameEngine;
 import com.kurawler.model.object.Ring;
@@ -2150,6 +2152,181 @@ class GameSystemTest {
 
             assertEquals(rowBeforePause, knight.getRow());
             assertEquals(colBeforePause, knight.getCol());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 18. Game objective – find the hidden target item (TC-OBJ-01 through TC-OBJ-08)
+    //     TC-OBJ-04 → WinCondition.heroCollectsObjectiveKey_winConditionMet
+    //     TC-OBJ-05 → CombatSystem.heroDies_gameOverTriggered
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    class GameObjective {
+
+        // TC-OBJ-01: starting a new game sets a non-null target objective
+        @Test
+        void newGame_targetObjectiveIsSet() {
+            GameSession newGame = MapFactory.createDefaultMap();
+            assertNotNull(newGame.getTargetObjective(),
+                    "A new game must have a target objective item");
+        }
+
+        @Test
+        void newGame_targetObjective_hasNonBlankName() {
+            GameSession newGame = MapFactory.createDefaultMap();
+            String name = newGame.getTargetObjective().getName();
+            assertNotNull(name);
+            assertFalse(name.isBlank());
+        }
+
+        // TC-OBJ-02: target item is NOT directly on any floor cell (hidden in container)
+        @Test
+        void newGame_targetItem_isNotLyingOnFloor() {
+            GameSession newGame = MapFactory.createDefaultMap();
+            var target = newGame.getTargetObjective();
+
+            // Scan all registered maps: target must NOT appear in any cell's object list
+            for (var mapEntry : newGame.getWorldMaps().entrySet()) {
+                com.kurawler.model.Map m = mapEntry.getValue();
+                for (int r = 0; r < m.getHeight(); r++) {
+                    for (int c = 0; c < m.getWidth(); c++) {
+                        assertFalse(m.getCell(r, c).getObjects().contains(target),
+                                "Target item must not be on a floor cell (map=" + mapEntry.getKey()
+                                + " r=" + r + " c=" + c + ")");
+                    }
+                }
+            }
+        }
+
+        @Test
+        void configureObjectiveForMap_targetHiddenInChest() {
+            // On a map with at least one StaticContainer, target goes inside the chest
+            Map testMap = new Map(10, 10);
+            StaticContainer chest = new StaticContainer("Chest", "Test chest");
+            testMap.getCell(5, 5).addObject(chest);
+
+            GameSession gs = new GameSession(testMap);
+            gs.setHero(new Hero("Test"));
+            MapFactory.configureObjectiveForMap(testMap, gs);
+
+            assertNotNull(gs.getTargetObjective(), "Objective must be set");
+            assertTrue(chest.getContents().contains(gs.getTargetObjective()),
+                    "Target must be inside the chest, not on the floor");
+        }
+
+        // TC-OBJ-03: searching a searchable location that hides the target reveals it
+        @Test
+        void searchReveal_targetItemAppearsOnCell() {
+            StaticObject shelf = new StaticObject("Bookshelf", "Ancient shelf", true, true);
+            Key target = new Key("Crystal Orb", "The prize", "objective");
+            shelf.setHiddenItem(target);
+            map.getCell(2, 2).setStaticObject(shelf);
+            session.setTargetObjective(target);
+
+            controller.executeAction(new SearchAction(shelf));
+
+            // After search, item should be placed on the cell
+            assertTrue(map.getCell(2, 2).getObjects().contains(target),
+                    "Searching the shelf must reveal the hidden target on the cell");
+        }
+
+        @Test
+        void searchReveal_thenTake_winConditionMet() {
+            StaticObject shelf = new StaticObject("Bookshelf", "Ancient shelf", true, true);
+            Key target = new Key("Crystal Orb", "The prize", "objective");
+            shelf.setHiddenItem(target);
+            map.getCell(3, 3).setStaticObject(shelf); // hero's cell
+            session.setTargetObjective(target);
+
+            hero.moveToCell(map.getCell(3, 3));
+            controller.executeAction(new SearchAction(shelf));
+            controller.executeAction(new TakeAction(target));
+
+            assertTrue(session.checkWinCondition(),
+                    "After searching and taking the target, win condition must be met");
+        }
+
+        @Test
+        void searchAfterAlreadySearched_producesNoEffect() {
+            StaticObject shelf = new StaticObject("Shelf", "Dusty shelf", true, true);
+            Key item = new Key("Fake Key", "Decoy", "decoy");
+            shelf.setHiddenItem(item);
+            map.getCell(2, 2).setStaticObject(shelf);
+
+            controller.executeAction(new SearchAction(shelf)); // first search
+            int objectsAfterFirst = map.getCell(2, 2).getObjects().size();
+
+            controller.executeAction(new SearchAction(shelf)); // second search (already searched)
+            assertEquals(objectsAfterFirst, map.getCell(2, 2).getObjects().size(),
+                    "Second search must not duplicate items");
+        }
+
+        // TC-OBJ-06: 3 separate games → at least 2 different chest choices for target
+        @Test
+        void multipleGames_targetLocation_varies() {
+            // configureObjectiveForMap picks a random chest; run enough times to see variation
+            Map testMap = new Map(10, 10);
+            StaticContainer chest1 = new StaticContainer("Chest1", "First chest");
+            StaticContainer chest2 = new StaticContainer("Chest2", "Second chest");
+            testMap.getCell(2, 2).addObject(chest1);
+            testMap.getCell(7, 7).addObject(chest2);
+
+            boolean chest1Used = false, chest2Used = false;
+            for (int i = 0; i < 30; i++) {
+                // Reset chests
+                chest1.getContentsMutable().clear();
+                chest2.getContentsMutable().clear();
+
+                GameSession gs = new GameSession(testMap);
+                gs.setHero(new Hero("H"));
+                MapFactory.configureObjectiveForMap(testMap, gs);
+
+                if (chest1.getContents().contains(gs.getTargetObjective())) chest1Used = true;
+                if (chest2.getContents().contains(gs.getTargetObjective())) chest2Used = true;
+                if (chest1Used && chest2Used) break;
+            }
+            assertTrue(chest1Used && chest2Used,
+                    "Target placement must vary across games (randomised chest selection)");
+        }
+
+        // TC-OBJ-07: configureObjectiveForMap on a map with no chests → fallback places target
+        @Test
+        void noChestMap_configureObjective_stillSetsTarget() {
+            Map testMap = new Map(10, 10);
+            // No StaticContainer on the map
+            GameSession gs = new GameSession(testMap);
+            gs.setHero(new Hero("H"));
+            MapFactory.configureObjectiveForMap(testMap, gs);
+            // Falls back to placeTargetObjective which creates searchable spots
+            assertNotNull(gs.getTargetObjective(),
+                    "Target objective must be set even when no chests exist on the map");
+        }
+
+        // TC-OBJ-08: save then load → target objective is restored
+        @Test
+        void saveAndLoad_targetObjective_isRestored() {
+            GameSession newGame = MapFactory.createDefaultMap();
+            String targetName = newGame.getTargetObjective().getName();
+
+            MapSerializer serializer = new MapSerializer();
+            MapDeserializer deserializer = new MapDeserializer();
+
+            java.io.File tmp;
+            try {
+                tmp = java.io.File.createTempFile("kurawler_test_", ".json");
+                tmp.deleteOnExit();
+            } catch (java.io.IOException e) {
+                throw new RuntimeException("Could not create temp file", e);
+            }
+
+            serializer.saveGameState(newGame, tmp.getAbsolutePath());
+            deserializer.loadGameState(tmp.getAbsolutePath(), newGame);
+
+            assertNotNull(newGame.getTargetObjective(),
+                    "Target objective must survive a save/load cycle");
+            assertEquals(targetName, newGame.getTargetObjective().getName(),
+                    "Target name must match after save/load");
         }
     }
 }
