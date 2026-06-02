@@ -2,7 +2,10 @@ package com.kurawler.system;
 
 import com.kurawler.action.AttackAction;
 import com.kurawler.action.BreakAction;
+import com.kurawler.action.EquipAction;
 import com.kurawler.engine.EnemySpawner;
+import com.kurawler.engine.GameEngine;
+import com.kurawler.model.object.Ring;
 import com.kurawler.action.DiscardAction;
 import com.kurawler.action.EatAction;
 import com.kurawler.action.MoveAction;
@@ -1579,6 +1582,223 @@ class GameSystemTest {
         @Test
         void nullSession_spawnerConstructor_throwsException() {
             assertThrows(IllegalArgumentException.class, () -> new EnemySpawner(null));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 15. Combat mechanics & damage formula (TC-CMB-01 through TC-CMB-10, §3, §2.6)
+    //     TC-CMB-03 → KnightAI.knightAttack_heroDefReducesDamage_minimumOneApplied
+    //     TC-CMB-06 → CombatSystem.heroDies_gameOverTriggered
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    class CombatMechanics {
+
+        private Knight knight;
+
+        @BeforeEach
+        void setup() {
+            knight = new Knight();
+            knight.moveToCell(map.getCell(3, 4)); // adjacent to hero at (3,3)
+            session.addEnemy(knight);
+        }
+
+        // TC-CMB-01: bare-hand attack (no weapon) — formula: max(1, STR/2 - enemy.DEF)
+        @Test
+        void bareHandAttack_damageMatchesFormulaWithNoWeapon() {
+            assertNull(hero.getEquippedWeapon());
+            int expectedDmg = Math.max(1,
+                    hero.getStrength() / 2 + hero.getAttackPower() - knight.getDefensePower());
+            int hpBefore = knight.getHealth();
+            CombatResolver.performMeleeAttack(hero, knight);
+            assertEquals(hpBefore - expectedDmg, knight.getHealth());
+        }
+
+        @Test
+        void bareHandAttack_neverDealsZeroDamage() {
+            hero.setStrength(0);
+            int hpBefore = knight.getHealth();
+            CombatResolver.performMeleeAttack(hero, knight);
+            assertTrue(knight.getHealth() < hpBefore, "Minimum 1 damage must be dealt");
+        }
+
+        // TC-CMB-02: equipped weapon increases damage above bare-hand
+        @Test
+        void equippedWeapon_increasesDamageAboveBareHand() {
+            int bareHandDmg = CombatResolver.calculateFinalDamage(hero, knight);
+
+            Weapon sword = new Weapon("Sword", "Sharp blade", 5);
+            hero.getInventory().addItem(sword);
+            controller.executeAction(new EquipAction(sword));
+
+            int armedDmg = CombatResolver.calculateFinalDamage(hero, knight);
+            assertTrue(armedDmg > bareHandDmg,
+                    "Armed damage must exceed bare-hand damage");
+        }
+
+        @Test
+        void equippedWeapon_damageFormula_includesWeaponATK() {
+            Weapon sword = new Weapon("Sword", "Sharp blade", 5);
+            hero.getInventory().addItem(sword);
+            controller.executeAction(new EquipAction(sword));
+
+            int expected = Math.max(1,
+                    hero.getStrength() / 2 + hero.getAttackPower() + sword.getDamage()
+                    - knight.getDefensePower());
+            assertEquals(expected, CombatResolver.calculateFinalDamage(hero, knight));
+        }
+
+        // TC-CMB-04: armor reduces incoming damage
+        @Test
+        void equippingArmor_reducesIncomingDamage() {
+            // Use Sorcerer (ATK=8, STR=5) so damage > 1 without armor
+            Sorcerer sor = new Sorcerer();
+            int dmgWithoutArmor = CombatResolver.calculateFinalDamage(sor, hero);
+
+            Wearable armor = new Wearable("Plate Armor", "Heavy plate", 4);
+            hero.getInventory().addItem(armor);
+            controller.executeAction(new WearAction(armor));
+            int dmgWithArmor = CombatResolver.calculateFinalDamage(sor, hero);
+
+            assertTrue(dmgWithArmor < dmgWithoutArmor,
+                    "Armor must reduce incoming damage");
+        }
+
+        @Test
+        void armor_defBonusAddedToHeroDEF() {
+            Wearable armor = new Wearable("Plate Armor", "Heavy plate", 4);
+            hero.getInventory().addItem(armor);
+            int defBefore = hero.getDefensePower();
+            controller.executeAction(new WearAction(armor));
+            assertEquals(defBefore + armor.getDefenseBonus(), hero.getDefensePower());
+        }
+
+        // TC-CMB-05: ring DEF bonus reflected in reduced incoming damage
+        @Test
+        void equippingRing_addsDEFBonus() {
+            Ring ring = Ring.sorcererDrop(); // +1 DEF
+            hero.getInventory().addItem(ring);
+            int defBefore = hero.getDefensePower();
+            controller.executeAction(new WearAction(ring));
+            assertEquals(defBefore + ring.getDefenseBonus(), hero.getDefensePower());
+        }
+
+        @Test
+        void equippingRing_reducesIncomingDamage() {
+            Sorcerer sor = new Sorcerer();
+            int dmgWithoutRing = CombatResolver.calculateFinalDamage(sor, hero);
+
+            Ring ring = new Ring("Power Ring", "Magical ring", 3);
+            hero.getInventory().addItem(ring);
+            controller.executeAction(new WearAction(ring));
+            int dmgWithRing = CombatResolver.calculateFinalDamage(sor, hero);
+
+            assertTrue(dmgWithRing < dmgWithoutRing);
+        }
+
+        // TC-CMB-07: projectile fired in facing direction
+        @Test
+        void heroShoot_projectileFiredInFacingDirection() {
+            // Hero moves right → facing (0, +1)
+            controller.executeAction(new MoveAction(0, 1)); // hero now at (3,4)
+            // Move back so hero is at (3,3) facing right
+            hero.moveToCell(map.getCell(3, 3));
+
+            controller.heroShoot();
+
+            assertFalse(session.getProjectiles().isEmpty());
+            Projectile bolt = session.getProjectiles().get(0);
+            assertEquals(hero.getFacingRow(), bolt.getDirectionRow());
+            assertEquals(hero.getFacingCol(), bolt.getDirectionCol());
+        }
+
+        @Test
+        void heroShoot_projectileStartsAdjacentToHero() {
+            controller.heroShoot();
+            assertFalse(session.getProjectiles().isEmpty());
+            Projectile bolt = session.getProjectiles().get(0);
+            assertEquals(hero.getRow() + hero.getFacingRow(), bolt.getPositionRow());
+            assertEquals(hero.getCol() + hero.getFacingCol(), bolt.getPositionCol());
+        }
+
+        // TC-CMB-08: projectile blocked by wall — enemy behind wall takes no damage
+        @Test
+        void projectile_blockedByWall_enemyBehindSafe() {
+            // Hero at (3,3) facing right, wall at (3,5), enemy at (3,6)
+            map.getCell(3, 5).setStaticObject(
+                    new StaticObject("Wall", "Solid wall", false, false));
+            Knight distant = new Knight();
+            distant.moveToCell(map.getCell(3, 6));
+            session.addEnemy(distant);
+            int enemyHpBefore = distant.getHealth();
+
+            GameEngine engine = new GameEngine(controller);
+            engine.start(); // sets mode to "Play"
+            controller.heroShoot(); // fires right (facingCol=+1 default)
+
+            // Trigger enough frames to run updateProjectiles (PROJECTILE_TICK_INTERVAL=8)
+            for (int i = 0; i < 8; i++) {
+                engine.update(16);
+            }
+
+            assertEquals(enemyHpBefore, distant.getHealth(),
+                    "Enemy behind wall must take no damage from blocked projectile");
+        }
+
+        // TC-CMB-09: Hero.attack() on enemy outside melee reach (Manhattan > 1) → false
+        @Test
+        void attackOutsideMeleeReach_returnsFalse() {
+            Knight distant = new Knight();
+            distant.moveToCell(map.getCell(3, 5)); // Manhattan dist = 2 from hero at (3,3)
+            assertFalse(hero.attack(distant),
+                    "Hero.attack() must return false when target is beyond melee reach");
+        }
+
+        @Test
+        void attackOutsideMeleeReach_enemyHPUnchanged() {
+            Knight distant = new Knight();
+            distant.moveToCell(map.getCell(1, 1)); // far away
+            int hpBefore = distant.getHealth();
+            hero.attack(distant);
+            assertEquals(hpBefore, distant.getHealth());
+        }
+
+        // TC-CMB-10: equipping a second weapon automatically unequips the first
+        @Test
+        void equipSecondWeapon_firstWeaponIsUnequipped() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            Weapon axe   = new Weapon("Axe",   "Heavy", 7);
+            hero.getInventory().addItem(sword);
+            hero.getInventory().addItem(axe);
+
+            controller.executeAction(new EquipAction(sword)); // equip sword
+            assertEquals(sword, hero.getEquippedWeapon());
+
+            controller.executeAction(new EquipAction(axe));  // equip axe
+            assertEquals(axe, hero.getEquippedWeapon());
+        }
+
+        @Test
+        void equipSecondWeapon_firstRemainsInInventory() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            Weapon axe   = new Weapon("Axe",   "Heavy", 7);
+            hero.getInventory().addItem(sword);
+            hero.getInventory().addItem(axe);
+
+            controller.executeAction(new EquipAction(sword));
+            controller.executeAction(new EquipAction(axe));
+
+            // First weapon not discarded — still in inventory
+            assertTrue(hero.getInventory().hasItem(sword));
+        }
+
+        @Test
+        void equipSameWeaponTwice_unequipsIt() {
+            Weapon sword = new Weapon("Sword", "Sharp", 5);
+            hero.getInventory().addItem(sword);
+            controller.executeAction(new EquipAction(sword)); // equip
+            controller.executeAction(new EquipAction(sword)); // toggle unequip
+            assertNull(hero.getEquippedWeapon());
         }
     }
 }
