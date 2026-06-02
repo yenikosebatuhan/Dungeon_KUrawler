@@ -21,25 +21,28 @@ public class Knight extends Enemy {
     }
 
     /**
-     * @modifies this.equippedMatchWeapon, this.attackPower
-     * @effects Stores the weapon and sets attackPower to 4 + weapon.getDamage().
+     * @modifies this.equippedMatchWeapon
+     * @effects Stores the equipped Team Match weapon (does not mutate base ATK;
+     *          the weapon's damage is added on top in calculateDamage()).
      */
     public void equipMatchWeapon(Weapon weapon) {
         this.equippedMatchWeapon = weapon;
-        if (weapon != null) {
-            setAttackPower(4 + weapon.getDamage());
-        }
     }
 
     public Weapon getEquippedMatchWeapon() { return equippedMatchWeapon; }
     public void setUnlimitedVision(boolean v) { this.unlimitedVision = v; }
 
     /**
-     * PDF §2.5.1: Knight melee deals 4 HP before DEF (via attackPower, not STR stack).
+     * PDF §2.5.1: Knight melee deals its base ATK before DEF. In Team Match, an
+     * equipped weapon's ATK is added on top of the base attack power.
      */
     @Override
     public int calculateDamage() {
-        return getAttackPower();
+        int damage = getAttackPower();
+        if (equippedMatchWeapon != null) {
+            damage += equippedMatchWeapon.getDamage();
+        }
+        return damage;
     }
 
     /**
