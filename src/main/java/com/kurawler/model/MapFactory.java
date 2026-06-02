@@ -131,6 +131,12 @@ public class MapFactory {
             hero.getCurrentCell().setOccupyingCharacter(null);
         }
         hero.moveToCell(spawn);
+
+        hero.setHealth(hero.getMaxHealth());
+        hero.setMana(hero.getMaxMana());
+        hero.setEnergy(hero.getMaxEnergy());
+        session.setPlayDurationTimer(0);
+
         return true;
     }
 
