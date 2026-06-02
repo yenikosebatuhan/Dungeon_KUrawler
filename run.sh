@@ -25,6 +25,11 @@ javac -encoding UTF-8 \
 cp -r src/main/resources/assets out/assets
 
 echo "Launching Dungeon KUrawler..."
+# Windows java.exe uses ';' as classpath separator; Unix uses ':'
+case "$OSTYPE" in
+  msys*|cygwin*|win32*) CP_SEP=";" ;;
+  *) CP_SEP=":" ;;
+esac
 java --module-path "$JAVAFX_LIB" \
      --add-modules javafx.controls,javafx.media \
-     -cp "out:$GSON_JAR" com.kurawler.Main
+     -cp "out${CP_SEP}${GSON_JAR}" com.kurawler.Main
