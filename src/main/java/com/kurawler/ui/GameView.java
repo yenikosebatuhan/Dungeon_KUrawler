@@ -117,6 +117,9 @@ public class GameView {
     private Scene playScene;
     private boolean playActive;
     private boolean endScreenShown;
+    private Stage activeContainerPopup;
+    /** Invalidates pending Platform.runLater chest popup refreshes after win/shutdown. */
+    private int containerPopupGeneration;
 
     private final java.util.Map<Object, double[]> smoothPositions = new java.util.HashMap<>();
     private long animTick = 0;
@@ -229,7 +232,9 @@ public class GameView {
             canvas.requestFocus();
         }));
         stage.focusedProperty().addListener((obs, wasFocused, nowFocused) -> {
-            if (nowFocused) {
+            if (!nowFocused) {
+                clearHeldMovementKeys();
+            } else {
                 Platform.runLater(() -> canvas.requestFocus());
             }
         });
@@ -308,6 +313,7 @@ public class GameView {
     }
 
     private void handleHudClick(MouseEvent event) {
+        clearHeldMovementKeys();
         double x = event.getX();
         double y = event.getY();
         HudLayout layout = computeHudLayout(hudCanvas.getWidth(), HUD_HEIGHT);
@@ -410,6 +416,7 @@ public class GameView {
 
     /** Resets frame timing after a modal popup so deltaTime does not jump by seconds. */
     private void resumeAnimationTimer() {
+        clearHeldMovementKeys();
         animationLastNanoTime = System.nanoTime();
         if (animationTimer != null) {
             animationTimer.start();
@@ -417,6 +424,7 @@ public class GameView {
     }
 
     private void startGameLoop(GameSession session) {
+        clearHeldMovementKeys();
         animationLastNanoTime = System.nanoTime();
 
         if (session instanceof TeamMatchSession) {
@@ -478,8 +486,29 @@ public class GameView {
         animationTimer.start();
     }
 
+    private void closeActiveContainerPopup() {
+        containerPopupGeneration++;
+        if (activeContainerPopup != null) {
+            activeContainerPopup.hide();
+            activeContainerPopup.close();
+            activeContainerPopup = null;
+        }
+    }
+
+    private void scheduleContainerContentsPopup(Object containerObj, GameSession session) {
+        final int epoch = containerPopupGeneration;
+        Platform.runLater(() -> {
+            if (epoch != containerPopupGeneration || !isPlaySceneActive() || endScreenShown) {
+                return;
+            }
+            showContainerContentsPopup(containerObj, session);
+        });
+    }
+
     /** Stops loop and UI; editor test play returns to editor without YOU DIED on editor. */
     public void shutdown() {
+        closeActiveContainerPopup();
+        clearHeldMovementKeys();
         playActive = false;
         endScreenShown = true;
         if (animationTimer != null) {
@@ -498,6 +527,7 @@ public class GameView {
     }
 
     private void handlePlayEnded(GameSession session, boolean died) {
+        closeActiveContainerPopup();
         if (session.isEditorTestPlay()) {
             Platform.runLater(() -> {
                 if (!isPlaySceneActive()) {
@@ -522,6 +552,7 @@ public class GameView {
         if (endScreenShown || !isPlaySceneActive()) {
             return;
         }
+        closeActiveContainerPopup();
         endScreenShown = true;
         AudioManager.getInstance().playMusic("gameover", false);
         Platform.runLater(() -> {
@@ -539,6 +570,7 @@ public class GameView {
         if (endScreenShown || !isPlaySceneActive()) {
             return;
         }
+        closeActiveContainerPopup();
         endScreenShown = true;
         AudioManager.getInstance().playMusic("victory", false);
         GameSession session = controller.getSession();
@@ -690,6 +722,7 @@ public class GameView {
         if (!isPlaySceneActive()) {
             return;
         }
+        closeActiveContainerPopup();
         Stage popup = new Stage();
         popup.initOwner(stage);
         popup.initModality(javafx.stage.Modality.APPLICATION_MODAL);
@@ -778,6 +811,7 @@ public class GameView {
      * BUG-04 / SECTION 2.4: Displays the Character Sheet (Stats & Equipment)
      */
     private void showCharacterSheetPopup(GameSession session) {
+        clearHeldMovementKeys();
         if (animationTimer != null) animationTimer.stop();
         Hero hero = session.getHero();
 
@@ -881,6 +915,12 @@ public class GameView {
 
         playCanvas.addEventHandler(KeyEvent.KEY_PRESSED, this::handleKeyPress);
         playCanvas.addEventHandler(KeyEvent.KEY_RELEASED, this::handleKeyRelease);
+        // Catch releases even when focus moved to HUD buttons or modal popups.
+        scene.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
+            if (playActive && isMovementKey(e.getCode())) {
+                handleKeyRelease(e);
+            }
+        });
 
         Runnable focusGame = () -> {
             if (stage != null) {
@@ -1012,13 +1052,15 @@ public class GameView {
                     controller.useFirstConsumable();
                 }
                 break;
-            case C:             
+            case C:
+                clearHeldMovementKeys();
                 AudioManager.getInstance().play("button");
-                showCharacterSheetPopup(controller.getSession()); 
+                showCharacterSheetPopup(controller.getSession());
                 break;
-            case I:             
+            case I:
+                clearHeldMovementKeys();
                 AudioManager.getInstance().play("button");
-                showInventoryPopup(); 
+                showInventoryPopup();
                 break;
             case F:
                 String shootResult = controller.heroShoot();
@@ -1035,6 +1077,7 @@ public class GameView {
                 togglePause();
                 break;
             case ESCAPE:
+                clearHeldMovementKeys();
                 event.consume();
                 showInGameMenu();
                 return;
@@ -1075,8 +1118,9 @@ public class GameView {
                 GridCell c = map.getCell(hero.getRow() + dir[0] * step, hero.getCol() + dir[1] * step);
                 if (c == null) break;
                 if (c.getStaticObject() != null && !c.getStaticObject().isPassable()) break;
-                if (c.getOccupyingCharacter() instanceof Enemy) {
-                    hitEnemy = (Enemy) c.getOccupyingCharacter();
+                Character occ = c.getOccupyingCharacter();
+                if (occ instanceof Enemy && hero.isAttackableTargetForSession(session, occ)) {
+                    hitEnemy = (Enemy) occ;
                     break;
                 }
             }
@@ -1399,6 +1443,7 @@ public class GameView {
             return;
         }
 
+        clearHeldMovementKeys();
         if (animationTimer != null) animationTimer.stop();
 
         Stage popup = new Stage();
@@ -1508,7 +1553,12 @@ public class GameView {
             case "attack":
                 if (cell.getOccupyingCharacter() instanceof Enemy) {
                     Enemy enemy = (Enemy) cell.getOccupyingCharacter();
-                    if (!hero.attack(enemy)) {
+                    if (session instanceof TeamMatchSession tm && !tm.canDamage(hero, enemy)) {
+                        showGameMessage("You cannot attack allies.");
+                        AudioManager.getInstance().play("error");
+                        break;
+                    }
+                    if (!hero.attack(enemy, session)) {
                         showGameMessage("Not enough energy to attack!");
                         AudioManager.getInstance().play("error");
                         break;
@@ -1528,7 +1578,7 @@ public class GameView {
                 StaticContainer shelf = MapFactory.resolveBookshelfContainer(map, row, col);
                 if (shelf != null) {
                     AudioManager.getInstance().play("interact");
-                    Platform.runLater(() -> showContainerContentsPopup(shelf, session));
+                    scheduleContainerContentsPopup(shelf, session);
                 }
                 break;
             case "open_container":
@@ -1542,7 +1592,7 @@ public class GameView {
                         }
                         AudioManager.getInstance().play("interact");
                         // Wait for any previous popup to close, then open contents
-                        Platform.runLater(() -> showContainerContentsPopup(sc, session));
+                        scheduleContainerContentsPopup(sc, session);
                         break;
                     }
                 }
@@ -1556,6 +1606,7 @@ public class GameView {
     }
 
     private void showInGameMenu() {
+        clearHeldMovementKeys();
         if (animationTimer != null) {
             animationTimer.stop();
         }
@@ -1848,6 +1899,10 @@ public class GameView {
 
                 Character occupant = cell.getOccupyingCharacter();
                 if (occupant != null && occupant.isAlive() && !(occupant instanceof Hero)) {
+                    if (occupant.getRow() != r || occupant.getCol() != c) {
+                        occupant.moveToCell(cell);
+                        smoothPositions.remove(occupant);
+                    }
                     double targetX = c * TILE_SIZE, targetY = r * TILE_SIZE;
                     double[] pos = lerpPosition(occupant, targetX, targetY);
                     boolean enemyMoving = Math.abs(pos[0] - targetX) > 1.5
@@ -2269,6 +2324,7 @@ public class GameView {
         AchievementManager am = session.getAchievementManager();
         if (am == null) return;
 
+        clearHeldMovementKeys();
         if (animationTimer != null) animationTimer.stop();
 
         Stage popup = new Stage();
@@ -2786,7 +2842,7 @@ public class GameView {
             btn.setOnAction(e -> {
                 AudioManager.getInstance().play("interact");
                 popup.close();
-                Platform.runLater(() -> showContainerContentsPopup(bag, session));
+                scheduleContainerContentsPopup(bag, session);
             });
             actionRow.getChildren().add(btn);
         }
@@ -2823,6 +2879,7 @@ public class GameView {
     }
 
     private void showItemActionPopup(Item item, GameSession session) {
+        clearHeldMovementKeys();
         if (animationTimer != null) animationTimer.stop();
         Hero hero = session.getHero();
 
@@ -2943,7 +3000,7 @@ public class GameView {
             btn.setOnAction(e -> {
                 AudioManager.getInstance().play("interact");
                 popup.close();
-                Platform.runLater(() -> showContainerContentsPopup(bag, session));
+                scheduleContainerContentsPopup(bag, session);
             });
             actions.getChildren().add(btn);
         }
@@ -2982,6 +3039,10 @@ public class GameView {
     }
 
     private void showContainerContentsPopup(Object containerObj, GameSession session) {
+        if (!isPlaySceneActive() || endScreenShown) {
+            return;
+        }
+        clearHeldMovementKeys();
         if (animationTimer != null) {
             animationTimer.stop();
         }
@@ -3080,7 +3141,7 @@ public class GameView {
                             return;
                         }
                         popup.close();
-                        Platform.runLater(() -> showContainerContentsPopup(containerObj, session));
+                        scheduleContainerContentsPopup(containerObj, session);
                     });
                 }
 
@@ -3100,10 +3161,12 @@ public class GameView {
         popup.setScene(new Scene(root, popW, popH));
         popup.setOnShown(e -> centerPopup(popup));
         popup.setOnHidden(e -> {
+            activeContainerPopup = null;
             resumeAnimationTimer();
             Platform.runLater(() -> canvas.requestFocus());
             render();
         });
+        activeContainerPopup = popup;
         popup.showAndWait();
     }
 

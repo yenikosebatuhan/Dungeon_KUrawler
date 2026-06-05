@@ -76,25 +76,12 @@ public class MapEditor {
         }
 
         pushUndoSnapshot();
-        cell.setOccupyingCharacter(character);
-        character.setPosition(cell.getRow(), cell.getCol());
+        Character displaced = cell.getOccupyingCharacter();
+        if (displaced != null && displaced != character) {
+            displaced.moveToCell(null);
+        }
+        character.moveToCell(cell);
         return true;
-    }
-
-    public boolean addItemToContainer(Item item, int x, int y) {
-        GridCell cell = currentMap.getCellAt(x, y);
-        if (item == null || cell == null) {
-            return false;
-        }
-
-        for (GameObject obj : cell.getObjects()) {
-            if (obj instanceof StaticContainer) {
-                pushUndoSnapshot();
-                ((StaticContainer) obj).addItem(item);
-                return true;
-            }
-        }
-        return false;
     }
 
     public boolean deleteObject(int x, int y) {
@@ -147,7 +134,8 @@ public class MapEditor {
             return false;
         }
 
-        cell.setOccupyingCharacter(null);
+        pushUndoSnapshot();
+        cell.getOccupyingCharacter().moveToCell(null);
         return true;
     }
 
@@ -179,6 +167,25 @@ public class MapEditor {
 
     public GameObject generateRandomItem(int x, int y) {
         return itemGenerator.generateAndPlaceRandomItem(currentMap, x, y);
+    }
+
+    /** Adds loot to a chest/crate already placed on the cell (editor drag onto container). */
+    public boolean addItemToContainer(Item item, int x, int y) {
+        if (item == null) {
+            return false;
+        }
+        GridCell cell = currentMap.getCellAt(x, y);
+        if (cell == null) {
+            return false;
+        }
+        for (GameObject obj : cell.getObjects()) {
+            if (obj instanceof StaticContainer) {
+                pushUndoSnapshot();
+                ((StaticContainer) obj).addItem(item);
+                return true;
+            }
+        }
+        return false;
     }
 
     public Map getCurrentMap() {

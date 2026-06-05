@@ -25,6 +25,7 @@ import com.kurawler.model.object.Weapon;
 import com.kurawler.ui.TileRenderer.AssetKind;
 import com.kurawler.ui.TileRenderer.EditorAsset;
 import javafx.geometry.Insets;
+import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.Scene;
@@ -602,8 +603,8 @@ public class EditorView {
     private void handleDragOver(DragEvent e) {
         if (e.getDragboard().hasString()) {
             e.acceptTransferModes(TransferMode.COPY);
-            hoverRow = tileRow(e.getY());
-            hoverCol = tileCol(e.getX());
+            hoverRow = tileRow(e);
+            hoverCol = tileCol(e);
             render();
         }
         e.consume();
@@ -613,8 +614,8 @@ public class EditorView {
         Dragboard board = e.getDragboard();
         boolean success = false;
         if (board.hasString()) {
-            int row = tileRow(e.getY());
-            int col = tileCol(e.getX());
+            int row = tileRow(e);
+            int col = tileCol(e);
             lastEditMessage = null;
             success = applyPayloadAt(board.getString(), row, col);
             setStatus(lastEditMessage != null
@@ -657,8 +658,8 @@ public class EditorView {
 
     /** Paints the current selection at the cursor, interpolating across skipped cells. */
     private void paintAt(MouseEvent e) {
-        int row = tileRow(e.getY());
-        int col = tileCol(e.getX());
+        int row = tileRow(e);
+        int col = tileCol(e);
         if (row == lastPaintRow && col == lastPaintCol) {
             return;
         }
@@ -976,11 +977,31 @@ public class EditorView {
         }
     }
 
-    private int tileRow(double y) {
+    private int tileRow(MouseEvent e) {
+        Point2D local = canvas.sceneToLocal(e.getSceneX(), e.getSceneY());
+        return tileRowAt(local.getY());
+    }
+
+    private int tileCol(MouseEvent e) {
+        Point2D local = canvas.sceneToLocal(e.getSceneX(), e.getSceneY());
+        return tileColAt(local.getX());
+    }
+
+    private int tileRow(DragEvent e) {
+        Point2D local = canvas.sceneToLocal(e.getSceneX(), e.getSceneY());
+        return tileRowAt(local.getY());
+    }
+
+    private int tileCol(DragEvent e) {
+        Point2D local = canvas.sceneToLocal(e.getSceneX(), e.getSceneY());
+        return tileColAt(local.getX());
+    }
+
+    private int tileRowAt(double y) {
         return Math.max(0, Math.min(editor.getMap().getHeight() - 1, (int) (y / TILE_SIZE)));
     }
 
-    private int tileCol(double x) {
+    private int tileColAt(double x) {
         return Math.max(0, Math.min(editor.getMap().getWidth() - 1, (int) (x / TILE_SIZE)));
     }
 

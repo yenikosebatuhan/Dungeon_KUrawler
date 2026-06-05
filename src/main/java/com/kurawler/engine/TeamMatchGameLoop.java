@@ -6,11 +6,11 @@ import com.kurawler.model.Team;
 import com.kurawler.model.TeamMatchSession;
 import com.kurawler.model.character.Character;
 import com.kurawler.model.character.Enemy;
+import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.Sorcerer;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Projectile;
-import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.Weapon;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,10 +27,10 @@ public class TeamMatchGameLoop {
     private final TeamMatchSession session;
     private boolean running;
 
-    /** Knight pace: 60 frames/step, sped up 50% → 60 / 1.5 = 40 frames per step. */
-    private static final int ENEMY_TICK_INTERVAL     = 40;
-    /** Match classic GameLoop.PROJECTILE_TICK_INTERVAL (14) so projectiles travel at the same speed. */
-    private static final int PROJECTILE_TICK_INTERVAL = 14;
+    /** Match classic GameLoop enemy pace. */
+    private static final int ENEMY_TICK_INTERVAL     = 18;
+    /** Match classic GameLoop.PROJECTILE_TICK_INTERVAL exactly. */
+    private static final int PROJECTILE_TICK_INTERVAL = 8;
 
     private int enemyTickCounter       = 0;
     private int projectileTickCounter  = 0;
@@ -124,70 +124,17 @@ public class TeamMatchGameLoop {
             if (!member.isAlive() || !(member instanceof Enemy)) continue;
             Enemy enemy = (Enemy) member;
 
-            if (enemy instanceof Sorcerer) continue;
-
-            if (enemy instanceof Knight knight) {
-                maybePickUpWeapon(knight);
-                maybePickUpPotion(knight);
-
-                // Lowest HP priority: seek health potion when below 40% HP
-                if (knight.getHealth() < 0.4 * knight.getMaxHealth()) {
-                    GridCell potionCell = session.findNearestHealPotionCell(knight);
-                    if (potionCell != null) {
-                        moveKnightToward(knight, potionCell.getRow(), potionCell.getCol());
-                        continue;
-                    }
-                }
-
-                if (knight.getEquippedMatchWeapon() == null) {
-                    GridCell weaponCell = session.findNearestWeaponCell(knight);
-                    if (weaponCell != null) {
-                        moveKnightToward(knight, weaponCell.getRow(), weaponCell.getCol());
-                    }
-                    continue;
-                }
+            // TeamMatch-specific: Knight weapon pickup (classic mode has no weapons on ground)
+            if (enemy instanceof Knight) {
+                maybePickUpWeapon((Knight) enemy);
             }
 
+            if (enemy instanceof Sorcerer) {
+                continue;
+            }
             Character target = session.findNearestEnemy(member);
             if (target != null && target.isAlive()) {
                 enemy.decideAction(target, session.getMap(), session);
-            }
-        }
-    }
-
-    private void moveKnightToward(Knight knight, int targetRow, int targetCol) {
-        int dRow = targetRow - knight.getRow();
-        int dCol = targetCol - knight.getCol();
-        Map map = session.getMap();
-        if (Math.abs(dRow) >= Math.abs(dCol)) {
-            if (!knightStep(knight, Integer.signum(dRow), 0, map))
-                knightStep(knight, 0, Integer.signum(dCol), map);
-        } else {
-            if (!knightStep(knight, 0, Integer.signum(dCol), map))
-                knightStep(knight, Integer.signum(dRow), 0, map);
-        }
-    }
-
-    // isBlocked() rejects walls and furniture/props but not dropped items, so
-    // knights can still step onto weapon/potion tiles to pick them up.
-    private boolean knightStep(Knight knight, int dRow, int dCol, Map map) {
-        if (dRow == 0 && dCol == 0) return false;
-        int nr = knight.getRow() + dRow;
-        int nc = knight.getCol() + dCol;
-        GridCell cell = map.getCell(nr, nc);
-        if (cell == null || cell.isBlocked()) return false;
-        knight.moveToCell(cell);
-        return true;
-    }
-
-    private void maybePickUpPotion(Knight knight) {
-        GridCell cell = session.getMap().getCell(knight.getRow(), knight.getCol());
-        if (cell == null) return;
-        for (GameObject obj : new ArrayList<>(cell.getObjects())) {
-            if (obj instanceof Consumable cons && cons.getHealAmount() > 0) {
-                knight.heal(cons.getHealAmount());
-                cell.removeObject(obj);
-                break;
             }
         }
     }
@@ -236,34 +183,37 @@ public class TeamMatchGameLoop {
 
             Character occupant = cell.getOccupyingCharacter();
             if (occupant != null && occupant.isAlive()) {
-                // Determine which team fired this projectile
-                Team firingTeam = findFiringTeam(p);
+                Team firingTeam = resolveProjectileTeam(p);
                 Team targetTeam = session.getTeamForCharacter(occupant);
-                // Only damage opponents
-                if (firingTeam == null || !firingTeam.equals(targetTeam)) {
-                    CombatResolver.applyProjectileDamage(p, occupant);
-                    activeProjectiles.remove(p);
-                    if (!occupant.isAlive()) {
-                        cell.setOccupyingCharacter(null);
-                    }
+                if (firingTeam == null || targetTeam == null) {
+                    continue;
+                }
+                if (firingTeam.equals(targetTeam)) {
+                    continue;
+                }
+                CombatResolver.applyProjectileDamage(p, occupant);
+                activeProjectiles.remove(p);
+                if (!occupant.isAlive()) {
+                    cell.setOccupyingCharacter(null);
                 }
             }
         }
     }
 
-    /**
-     * Best-effort: find which team fired a projectile by checking position proximity
-     * to team members. Falls back to null (hits anyone) if undetermined.
-     */
-    private Team findFiringTeam(Projectile p) {
-        // "Hero Bolt" is always Team B
+    private Team resolveProjectileTeam(Projectile p) {
+        String teamName = p.getSourceTeamName();
+        if (teamName != null) {
+            if (teamName.equals(session.getTeamA().getName())) {
+                return session.getTeamA();
+            }
+            if (teamName.equals(session.getTeamB().getName())) {
+                return session.getTeamB();
+            }
+        }
         if ("Hero Bolt".equals(p.getName()) || "Arrow".equals(p.getName()) || "Bomb".equals(p.getName())
-                || "Staff Bolt".equals(p.getName())) {
+                || "Staff Bolt".equals(p.getName()) || "Weapon Strike".equals(p.getName())) {
             return session.getTeamB();
         }
-        // Arcane Bolt — identify by which sorcerer is closest to the origin
-        // Since we can't store the owner in Projectile easily, treat all Arcane Bolts as
-        // coming from "the other team" relative to Hero (conservative — hits anyone not Hero).
         return null;
     }
 
