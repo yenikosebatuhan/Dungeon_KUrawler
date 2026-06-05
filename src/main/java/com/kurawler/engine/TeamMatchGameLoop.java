@@ -27,10 +27,10 @@ public class TeamMatchGameLoop {
     private final TeamMatchSession session;
     private boolean running;
 
-    /** Match classic GameLoop enemy pace. */
-    private static final int ENEMY_TICK_INTERVAL     = 18;
-    /** Match classic GameLoop.PROJECTILE_TICK_INTERVAL exactly. */
-    private static final int PROJECTILE_TICK_INTERVAL = 8;
+    /** Knight pace: 60 frames/step, sped up 50% → 60 / 1.5 = 40 frames per step. */
+    private static final int ENEMY_TICK_INTERVAL     = 40;
+    /** Match classic GameLoop.PROJECTILE_TICK_INTERVAL (14). */
+    private static final int PROJECTILE_TICK_INTERVAL = 14;
 
     private int enemyTickCounter       = 0;
     private int projectileTickCounter  = 0;
