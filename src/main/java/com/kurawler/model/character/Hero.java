@@ -4,6 +4,7 @@ import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Inventory;
 import com.kurawler.model.Map;
+import com.kurawler.model.TeamMatchSession;
 import com.kurawler.model.WeaponCatalog;
 import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.Item;
@@ -187,11 +188,22 @@ public class Hero extends Character implements HeroSubject {
     }
 
     public boolean attack(Enemy target) {
-        return attack(target, MELEE_REACH);
+        return attack(target, MELEE_REACH, null);
+    }
+
+    public boolean attack(Enemy target, GameSession session) {
+        return attack(target, MELEE_REACH, session);
     }
 
     public boolean attack(Enemy target, int maxManhattanReach) {
+        return attack(target, maxManhattanReach, null);
+    }
+
+    public boolean attack(Enemy target, int maxManhattanReach, GameSession session) {
         if (target == null || !target.isAlive()) return false;
+        if (session instanceof TeamMatchSession tm && !tm.canDamage(this, target)) {
+            return false;
+        }
         if (getEnergy() < ATTACK_ENERGY_COST) return false;
 
         int dRow = Math.abs(target.getRow() - getRow());
@@ -560,11 +572,22 @@ public class Hero extends Character implements HeroSubject {
             if (cell.getStaticObject() != null && !cell.getStaticObject().isPassable()) {
                 return null;
             }
-            if (cell.getOccupyingCharacter() instanceof Enemy enemy && enemy.isAlive()) {
-                return enemy;
+            Character occupant = cell.getOccupyingCharacter();
+            if (isAttackableTargetForSession(session, occupant)) {
+                return (Enemy) occupant;
             }
         }
         return null;
+    }
+
+    public boolean isAttackableTargetForSession(GameSession session, Character occupant) {
+        if (!(occupant instanceof Enemy enemy) || !enemy.isAlive()) {
+            return false;
+        }
+        if (session instanceof TeamMatchSession tm) {
+            return tm.canDamage(this, occupant);
+        }
+        return true;
     }
 
     private boolean isOnFacingLine(Enemy target) {
@@ -583,7 +606,7 @@ public class Hero extends Character implements HeroSubject {
     public boolean attackFacingEnemy(GameSession session) {
         int reach = meleeFacingReach();
         Enemy target = findFirstEnemyInDirection(session, reach);
-        return target != null && attack(target, reach);
+        return target != null && attack(target, reach, session);
     }
 
     public boolean canMeleeFacingEnemy(GameSession session) {

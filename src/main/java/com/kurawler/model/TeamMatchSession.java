@@ -189,6 +189,35 @@ public class TeamMatchSession extends GameSession {
         return null;
     }
 
+    /** True only when attacker and target are on different teams (Team Match). */
+    public boolean canDamage(Character attacker, Character target) {
+        if (attacker == null || target == null || !target.isAlive()) {
+            return false;
+        }
+        Team attackerTeam = getTeamForCharacter(attacker);
+        Team targetTeam = getTeamForCharacter(target);
+        if (attackerTeam == null || targetTeam == null) {
+            return false;
+        }
+        return attackerTeam != targetTeam;
+    }
+
+    @Override
+    public void addProjectile(com.kurawler.model.object.Projectile p) {
+        if (p != null && getHero() != null && isHeroOwnedProjectile(p.getName())) {
+            Team heroTeam = getTeamForCharacter(getHero());
+            if (heroTeam != null) {
+                p.setSourceTeamName(heroTeam.getName());
+            }
+        }
+        super.addProjectile(p);
+    }
+
+    private static boolean isHeroOwnedProjectile(String name) {
+        return "Hero Bolt".equals(name) || "Arrow".equals(name) || "Bomb".equals(name)
+                || "Staff Bolt".equals(name) || "Weapon Strike".equals(name);
+    }
+
     public Character findNearestEnemy(Character c) {
         Team opposing = getOpposingTeam(c);
         if (opposing == null) return null;

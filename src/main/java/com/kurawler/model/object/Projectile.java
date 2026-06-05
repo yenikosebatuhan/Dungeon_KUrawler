@@ -20,9 +20,8 @@ public class Projectile extends GameObject {
     /** Tiles moved after spawn; compared to maxRange (0 = unlimited). */
     private int stepsTraveled;
     private int maxRange;
-
-    /** Which team fired this projectile. Null only outside of Team Match. */
-    private com.kurawler.model.Team ownerTeam;
+    /** Team Match: name of firing team ("Team A" / "Team B") so allies are never damaged. */
+    private String sourceTeamName;
 
     /**
      * Creates a projectile with a name, description, damage, and direction.
@@ -155,9 +154,13 @@ public class Projectile extends GameObject {
         return maxRange > 0 && stepsTraveled >= maxRange;
     }
 
-    public com.kurawler.model.Team getOwnerTeam() { return ownerTeam; }
+    public void setSourceTeamName(String teamName) {
+        this.sourceTeamName = teamName;
+    }
 
-    public void setOwnerTeam(com.kurawler.model.Team team) { this.ownerTeam = team; }
+    public String getSourceTeamName() {
+        return sourceTeamName;
+    }
 
     /**
      * Parses a direction string into row/col direction components.

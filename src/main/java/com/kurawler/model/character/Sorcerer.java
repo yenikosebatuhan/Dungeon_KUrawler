@@ -3,6 +3,8 @@ package com.kurawler.model.character;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Map;
+import com.kurawler.model.Team;
+import com.kurawler.model.TeamMatchSession;
 import com.kurawler.model.object.Projectile;
 import java.util.ArrayList;
 import java.util.List;
@@ -76,6 +78,12 @@ public class Sorcerer extends Enemy {
 
         Projectile p = castSpellToward(target);
         if (p != null) {
+            if (session instanceof TeamMatchSession tm) {
+                Team team = tm.getTeamForCharacter(this);
+                if (team != null) {
+                    p.setSourceTeamName(team.getName());
+                }
+            }
             session.addProjectile(p);
             triggerCastAnim();
         }

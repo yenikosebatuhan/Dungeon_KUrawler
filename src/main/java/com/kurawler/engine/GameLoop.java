@@ -127,7 +127,9 @@ public class GameLoop {
             projectileTickCounter = 0;
             updateProjectiles();
         }
-        enemySpawner.update(deltaTime);
+        if (!session.isEditorTestPlay()) {
+            enemySpawner.update(deltaTime);
+        }
         updatePlayTimer(deltaTime);
 
         // Phase II features added in this PR:
