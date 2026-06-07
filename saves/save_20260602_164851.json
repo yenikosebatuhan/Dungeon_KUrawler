@@ -1,0 +1,4262 @@
+{
+  "saveName": "save_20260602_164851",
+  "savedAt": "2026-06-02T13:48:55.549370Z",
+  "width": 26,
+  "height": 14,
+  "playDurationTimer": 20,
+  "currentMode": "Play",
+  "difficulty": "Normal",
+  "enemiesDefeatedCount": 0,
+  "itemsCollectedCount": 0,
+  "floorsClearedCount": 2,
+  "targetObjective": {
+    "type": "Key",
+    "name": "Dragon Gem",
+    "description": "A precious artifact — find it to win!",
+    "keyId": "objective"
+  },
+  "hero": {
+    "name": "Adventurer",
+    "row": 2,
+    "col": 5,
+    "hp": 17,
+    "maxHp": 17,
+    "mana": 20,
+    "energy": 47,
+    "maxEnergy": 100,
+    "str": 14,
+    "def": 2,
+    "equippedWeapon": "",
+    "equippedWearable": "",
+    "equippedShield": "",
+    "equippedRing": "",
+    "inventory": [
+      {
+        "type": "Consumable",
+        "name": "Mana Potion",
+        "description": "Restores 25 mana",
+        "healAmount": 0,
+        "manaAmount": 25,
+        "energyAmount": 0
+      }
+    ]
+  },
+  "achievements": {
+    "totalMoves": 65,
+    "shadowCloneMoves": 0,
+    "enemiesKilled": 2,
+    "itemsCollected": 1,
+    "damageTaken": 0,
+    "unlocked": [
+      "First Blood",
+      "Explorer"
+    ]
+  },
+  "enemies": [
+    {
+      "type": "Sorcerer",
+      "name": "Sorcerer",
+      "row": 1,
+      "col": 7,
+      "hp": 10,
+      "atk": 8,
+      "mana": 60,
+      "energy": 40,
+      "str": 0,
+      "def": 0
+    }
+  ],
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 4,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 5,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 6,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 7,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 8,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 9,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 10,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 11,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 12,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 13,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 14,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 15,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 16,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 17,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 18,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 19,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 20,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 21,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 22,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 23,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 24,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 25,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 4,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 5,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 6,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      },
+      "objects": [
+        {
+          "type": "Ring",
+          "name": "Sorcerer\u0027s Ring",
+          "description": "A faintly glowing band of dark silver. +1 DEF when worn.",
+          "defenseBonus": 1
+        }
+      ]
+    },
+    {
+      "row": 1,
+      "col": 7,
+      "walkable": false,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 8,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 9,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 10,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 11,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 12,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 13,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 14,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 15,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 16,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 17,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 18,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 19,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 20,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 21,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 22,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 23,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 24,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 25,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 3,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 4,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 5,
+      "walkable": false,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 6,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 7,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 8,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 9,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 10,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 11,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 12,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 13,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 14,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 15,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 16,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 17,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 18,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 19,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 20,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 21,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      },
+      "objects": [
+        {
+          "type": "Weapon",
+          "name": "Bronze Sword",
+          "description": "Found in the dungeon.",
+          "damage": 6
+        }
+      ]
+    },
+    {
+      "row": 2,
+      "col": 22,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 23,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 24,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 25,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 2,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 3,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 4,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      },
+      "objects": [
+        {
+          "type": "Scroll",
+          "name": "Spell Book",
+          "description": "Arcane tome",
+          "text": "Runes flare and mend your wounds.",
+          "healAmount": 14,
+          "manaAmount": 0,
+          "energyAmount": 0
+        }
+      ]
+    },
+    {
+      "row": 3,
+      "col": 5,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 6,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 7,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 8,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 9,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 10,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 11,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 12,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 13,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 14,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 15,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 16,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 17,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 18,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 19,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 20,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 21,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 22,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 23,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 24,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 25,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 0,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 1,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 2,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 3,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      },
+      "objects": [
+        {
+          "type": "StaticContainer",
+          "name": "Bronze Treasure Chest",
+          "description": "An old wooden chest — the lock is broken.",
+          "contents": [
+            {
+              "type": "Consumable",
+              "name": "Health Potion",
+              "description": "Restores 10 HP",
+              "healAmount": 10,
+              "manaAmount": 0,
+              "energyAmount": 0
+            },
+            {
+              "type": "Consumable",
+              "name": "Mana Potion",
+              "description": "Restores 30 mana",
+              "healAmount": 0,
+              "manaAmount": 30,
+              "energyAmount": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "row": 4,
+      "col": 4,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall Shelf",
+        "description": "Ledges along the wall — press E to browse.",
+        "passable": true,
+        "searchable": true
+      },
+      "objects": [
+        {
+          "type": "StaticContainer",
+          "name": "Bookshelf",
+          "description": "Ledges along the wall — press E to browse.",
+          "contents": []
+        }
+      ]
+    },
+    {
+      "row": 4,
+      "col": 5,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 6,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 7,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 8,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 9,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      },
+      "objects": [
+        {
+          "type": "Consumable",
+          "name": "Energy Potion",
+          "description": "Restores 40 EN",
+          "healAmount": 0,
+          "manaAmount": 0,
+          "energyAmount": 40
+        }
+      ]
+    },
+    {
+      "row": 4,
+      "col": 10,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      },
+      "objects": [
+        {
+          "type": "Weapon",
+          "name": "War Hammer",
+          "description": "Found in the dungeon.",
+          "damage": 9
+        }
+      ]
+    },
+    {
+      "row": 4,
+      "col": 11,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 12,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 13,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 14,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 15,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 16,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 17,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 18,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 19,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 20,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 21,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 22,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 23,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 24,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 25,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 0,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 1,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 2,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      },
+      "objects": [
+        {
+          "type": "Weapon",
+          "name": "Mallet",
+          "description": "Found in the dungeon.",
+          "damage": 6
+        }
+      ]
+    },
+    {
+      "row": 5,
+      "col": 3,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 4,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      },
+      "objects": [
+        {
+          "type": "Consumable",
+          "name": "Mana Potion",
+          "description": "Restores 25 mana",
+          "healAmount": 0,
+          "manaAmount": 25,
+          "energyAmount": 0
+        }
+      ]
+    },
+    {
+      "row": 5,
+      "col": 5,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 6,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 7,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 8,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 9,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 10,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 11,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 12,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 13,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 14,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 15,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 16,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 17,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 18,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 19,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 20,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 21,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 22,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 23,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 24,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 25,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 0,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 1,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 2,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 3,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 4,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 5,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 6,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 7,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 8,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 9,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 10,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 11,
+      "walkable": false,
+      "staticObject": {
+        "name": "Barrel",
+        "description": "An old barrel — smash it to see inside.",
+        "passable": false,
+        "searchable": true,
+        "hiddenItem": {
+          "type": "Consumable",
+          "name": "Mana Potion",
+          "description": "Restores 25 mana",
+          "healAmount": 0,
+          "manaAmount": 25,
+          "energyAmount": 0
+        }
+      }
+    },
+    {
+      "row": 6,
+      "col": 12,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 13,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 14,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 15,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 16,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 17,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 18,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 19,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 20,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 21,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 22,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 23,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 24,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 25,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 0,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 1,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 2,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 3,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 4,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 5,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 6,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 7,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 8,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 9,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 10,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 11,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      },
+      "objects": [
+        {
+          "type": "Weapon",
+          "name": "Blue Pickaxe",
+          "description": "Found in the dungeon.",
+          "damage": 9
+        }
+      ]
+    },
+    {
+      "row": 7,
+      "col": 12,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 13,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 14,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 15,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 16,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 17,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 18,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 19,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 20,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 21,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 22,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 23,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      },
+      "objects": [
+        {
+          "type": "StaticContainer",
+          "name": "Gold Banded Chest",
+          "description": "A heavy chest sealed with a silver lock. Find the silver key.",
+          "contents": [
+            {
+              "type": "Wearable",
+              "name": "Heavy Armor",
+              "description": "Heavy armor (+4 DEF)",
+              "defenseBonus": 4
+            },
+            {
+              "type": "Key",
+              "name": "Gold Key",
+              "description": "A gold key to the vault.",
+              "keyId": "gold"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "row": 7,
+      "col": 24,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 25,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 0,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 1,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 2,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 3,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 4,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 5,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      },
+      "objects": [
+        {
+          "type": "Consumable",
+          "name": "Health Potion",
+          "description": "Restores 10 HP",
+          "healAmount": 10,
+          "manaAmount": 0,
+          "energyAmount": 0
+        }
+      ]
+    },
+    {
+      "row": 8,
+      "col": 6,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 7,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 8,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 9,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 10,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 11,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 12,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 13,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 14,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 15,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 16,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 17,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 18,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 19,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 20,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 21,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 22,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 23,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 24,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 25,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 0,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 1,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 2,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 3,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 4,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 5,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 6,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 7,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 8,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 9,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 10,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 11,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 12,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 13,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 14,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 15,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 16,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 17,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 18,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 19,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      },
+      "objects": [
+        {
+          "type": "Scroll",
+          "name": "Healing Scroll",
+          "description": "Glowing parchment",
+          "text": "Heals wounds.",
+          "healAmount": 10,
+          "manaAmount": 0,
+          "energyAmount": 0
+        }
+      ]
+    },
+    {
+      "row": 9,
+      "col": 20,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 21,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 22,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 23,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 24,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 9,
+      "col": 25,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 0,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 1,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 2,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 3,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 4,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 5,
+      "walkable": false,
+      "staticObject": {
+        "name": "Gargoyle Pool",
+        "description": "Stagnant water glistens.",
+        "passable": true,
+        "searchable": true,
+        "hiddenItem": {
+          "type": "Consumable",
+          "name": "Health Potion",
+          "description": "Restores 10 HP",
+          "healAmount": 10,
+          "manaAmount": 0,
+          "energyAmount": 0
+        }
+      }
+    },
+    {
+      "row": 10,
+      "col": 6,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 7,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 8,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 9,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 10,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      },
+      "objects": [
+        {
+          "type": "Weapon",
+          "name": "Emerald Staff",
+          "description": "Found in the dungeon.",
+          "damage": 7
+        }
+      ]
+    },
+    {
+      "row": 10,
+      "col": 11,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 12,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 13,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 14,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 15,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 16,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 17,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 18,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 19,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 20,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 21,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 22,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 23,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 24,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 10,
+      "col": 25,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 0,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 1,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 2,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 3,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 4,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 5,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 6,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 7,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 8,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 9,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 10,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 11,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 12,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 13,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 14,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 15,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      },
+      "objects": [
+        {
+          "type": "Wearable",
+          "name": "Chain Mail",
+          "description": "Worn chain mail (+8 DEF)",
+          "defenseBonus": 8
+        }
+      ]
+    },
+    {
+      "row": 11,
+      "col": 16,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 17,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 18,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 19,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 20,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 21,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 22,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 23,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 24,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 11,
+      "col": 25,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 0,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 1,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 2,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 3,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 4,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 5,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 6,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 7,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 8,
+      "walkable": false,
+      "staticObject": {
+        "name": "Stone Column",
+        "description": "A cracked pillar — search the base.",
+        "passable": false,
+        "searchable": true
+      }
+    },
+    {
+      "row": 12,
+      "col": 9,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 10,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 11,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 12,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 13,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 14,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 15,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 16,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 17,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 18,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 19,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 20,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 21,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 22,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 23,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 24,
+      "walkable": true,
+      "staticObject": {
+        "name": "Floor",
+        "description": "Stone floor",
+        "passable": true,
+        "searchable": false
+      }
+    },
+    {
+      "row": 12,
+      "col": 25,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 0,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 1,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 2,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 3,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 4,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 5,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 6,
+      "walkable": false,
+      "staticObject": {
+        "type": "MapPortal",
+        "name": "Iron Door",
+        "description": "A heavy door to the treasure vault.",
+        "targetMapId": "vault",
+        "targetRow": 0,
+        "targetCol": 6,
+        "requiredKeyId": "gold",
+        "unlocked": false,
+        "stairsMode": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 7,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 8,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 9,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 10,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 11,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 12,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 13,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 14,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 15,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 16,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 17,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 18,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 19,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 20,
+      "walkable": true,
+      "staticObject": {
+        "type": "MapPortal",
+        "name": "Wooden Door",
+        "description": "Back to the entry hall.",
+        "targetMapId": "hall",
+        "targetRow": 0,
+        "targetCol": 20,
+        "unlocked": true,
+        "stairsMode": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 21,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 22,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 23,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 24,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    },
+    {
+      "row": 13,
+      "col": 25,
+      "walkable": false,
+      "staticObject": {
+        "name": "Wall",
+        "description": "Dark stone wall",
+        "passable": false,
+        "searchable": false
+      }
+    }
+  ]
+}
