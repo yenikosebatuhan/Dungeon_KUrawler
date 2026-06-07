@@ -6,16 +6,18 @@ import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.object.Projectile;
+import com.kurawler.model.object.Weapon;
 
 /**
  * Resolves combat interactions between characters and projectiles.
  *
- * <p>Sophisticated Damage Formula: {@code Max(1, (attacker.STR / 2 + weapon.ATK) - defender.DEF)}.</p>
+ * <p>Melee damage formula (PDF §3):
+ * {@code Max(1, (attacker.STR / 2 + attacker.ATK) - defender.DEF)}.</p>
  */
 public class CombatResolver {
 
     /**
-     * Performs a melee attack from attacker to defender using the new formula.
+     * Performs a melee attack from attacker to defender using the PDF formula.
      *
      * @requires attacker != null && defender != null
      * @modifies defender.health
@@ -38,44 +40,43 @@ public class CombatResolver {
     }
 
     /**
-     * Calculates the exact damage applying STR, ATK, and subtracting the defender's DEF.
-     * Ensures damage is at least 1.
-     *
-     * @requires attacker != null && defender != null
-     * @modifies none
-     * @effects Calculates and returns the final damage value as an integer based on the 
-     * formula: Max(1, (attacker.STR / 2 + attacker.ATK) - defender.DEF). 
-     * If the attacker is a Hero, the equipped weapon's damage is included in ATK.
-     * Does not mutate the state of the attacker or the defender.
+     * Generated melee damage before DEF: {@code (STR / 2) + ATK}.
+     * Hero/Knight weapon bonuses are included in ATK.
+     */
+    public static int calculateGeneratedDamage(Character attacker) {
+        if (attacker == null) {
+            return 0;
+        }
+        return (attacker.getStrength() / 2) + resolveAttackPower(attacker);
+    }
+
+    /**
+     * Final melee damage after DEF: {@code Max(1, generated - defender.DEF)}.
      */
     public static int calculateFinalDamage(Character attacker, Character defender) {
-        int str = attacker.getStrength();
-        int atk = attacker.getAttackPower(); // Default base ATK
+        if (attacker == null || defender == null) {
+            return 1;
+        }
+        int generated = calculateGeneratedDamage(attacker);
+        return Math.max(1, generated - defender.getDefensePower());
+    }
 
-        // Add equipped weapon damage if the attacker is a Hero
-        if (attacker instanceof Hero) {
-            Hero hero = (Hero) attacker;
-            if (hero.getEquippedWeapon() != null) {
-                atk += hero.getEquippedWeapon().getDamage();
-            } else {
-                atk = 1; // unarmed — low base damage
+    /**
+     * Resolves total ATK for the PDF formula, including equipped weapons where applicable.
+     */
+    static int resolveAttackPower(Character attacker) {
+        if (attacker instanceof Hero hero) {
+            return hero.getMeleeAttackPower();
+        }
+        if (attacker instanceof Knight knight) {
+            int atk = knight.getAttackPower();
+            Weapon weapon = knight.getEquippedMatchWeapon();
+            if (weapon != null) {
+                atk += weapon.getDamage();
             }
+            return atk;
         }
-
-        int def = defender.getDefensePower();
-
-        if (attacker instanceof Hero) {
-            return Math.max(1, ((Hero) attacker).calculateDamage() - def);
-        }
-
-        if (attacker instanceof Knight) {
-            return Math.max(1, ((Knight) attacker).calculateDamage() - def);
-        }
-
-        // Sophisticated PDF formula
-        int damage = (str / 2) + atk - def;
-        
-        return Math.max(1, damage); // Minimum damage is 1
+        return attacker.getAttackPower();
     }
 
     /**
@@ -93,8 +94,7 @@ public class CombatResolver {
         if (target instanceof ShadowClone) {
             return;
         }
-        
-        // Projectiles bypass normal STR formula but still respect DEF
+
         int damage = projectile.getDamage() - target.getDefensePower();
         target.takeDamage(Math.max(1, damage));
     }

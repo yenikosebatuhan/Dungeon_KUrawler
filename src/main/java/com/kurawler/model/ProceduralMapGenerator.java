@@ -36,6 +36,7 @@ public class ProceduralMapGenerator {
         connectRooms(map, rooms);
 
         GameSession session = new GameSession(map);
+        session.setSavedGameType("Random");
 
         int[] spawnRoom = rooms.get(0);
         int heroR = spawnRoom[0] + spawnRoom[2] / 2;

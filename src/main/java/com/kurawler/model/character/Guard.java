@@ -1,7 +1,6 @@
 package com.kurawler.model.character;
 
 import com.kurawler.model.GameSession;
-import com.kurawler.model.GridCell;
 import com.kurawler.model.Map;
 import java.util.Random;
 
@@ -11,11 +10,6 @@ public class Guard extends Enemy {
 
     public Guard() {
         super("Guard", 18, 3, 1, 1, 0, 80);
-    }
-
-    @Override
-    public int calculateDamage() {
-        return getAttackPower();
     }
 
     @Override
@@ -34,28 +28,16 @@ public class Guard extends Enemy {
         double euclid = Math.sqrt(dRow * dRow + dCol * dCol);
         if (euclid <= SIGHT_RADIUS) {
             if (Math.abs(dRow) >= Math.abs(dCol)) {
-                if (!tryStep(Integer.signum(dRow), 0, map)) {
-                    tryStep(0, Integer.signum(dCol), map);
+                if (!tryEnemyStep(Integer.signum(dRow), 0, map, session)) {
+                    tryEnemyStep(0, Integer.signum(dCol), map, session);
                 }
-            } else if (!tryStep(0, Integer.signum(dCol), map)) {
-                tryStep(Integer.signum(dRow), 0, map);
+            } else if (!tryEnemyStep(0, Integer.signum(dCol), map, session)) {
+                tryEnemyStep(Integer.signum(dRow), 0, map, session);
             }
         } else {
             int[][] dirs = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
             int[] d = dirs[RNG.nextInt(dirs.length)];
-            tryStep(d[0], d[1], map);
+            tryEnemyStep(d[0], d[1], map, session);
         }
-    }
-
-    private boolean tryStep(int dRow, int dCol, Map map) {
-        if (dRow == 0 && dCol == 0) {
-            return false;
-        }
-        GridCell cell = map.getCell(getRow() + dRow, getCol() + dCol);
-        if (cell == null || cell.isBlocked()) {
-            return false;
-        }
-        moveToCell(cell);
-        return true;
     }
 }

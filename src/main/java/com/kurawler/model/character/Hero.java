@@ -33,7 +33,9 @@ public class Hero extends Character implements HeroSubject {
     private static final int STAFF_SPELL_DAMAGE_BONUS = 10;
     private static final int RANGED_DAMAGE = 6;
     private static final int MELEE_REACH = 1;
-    /** Space melee: enemy up to this many tiles straight ahead. */
+    /** 3×3 interaction grid: Chebyshev reach 1 (eight neighbors). */
+    private static final int INTERACTION_ATTACK_REACH = 1;
+    /** Space melee: flail hits adjacent tile; other melee weapons reach two tiles ahead. */
     private static final int MELEE_FACING_REACH = 2;
     private static final int ARROW_AMMO_ON_EQUIP = 3;
     private static final int BOMB_MAX_RANGE = 5;
@@ -102,18 +104,31 @@ public class Hero extends Character implements HeroSubject {
     }
 
     /**
-     * Returns the total damage including strength and equipped weapon.
-     *
-     * @requires none
-     * @modifies none
-     * @effects Returns calculated damage as strength + weapon damage.
+     * PDF §3 generated damage: (STR / 2) + ATK, including equipped melee weapons.
      */
     @Override
     public int calculateDamage() {
-        return getStrength() + getTotalMeleeWeaponDamage();
+        return com.kurawler.engine.CombatResolver.calculateGeneratedDamage(this);
     }
 
-    /** Sum of equipped melee weapon bonuses (primary + optional secondary, max 2). */
+    /** Total ATK shown in HUD and used in the PDF damage formula's ATK term. */
+    public int getMeleeAttackPower() {
+        return getStrength() + getEquippedWeaponAttackBonus();
+    }
+
+    /** Damage bonus from equipped weapons (melee, bow, staff, bomb, plus optional second melee). */
+    public int getEquippedWeaponAttackBonus() {
+        int total = 0;
+        if (equippedWeapon != null) {
+            total += equippedWeapon.getDamage();
+        }
+        if (secondaryMeleeWeapon != null) {
+            total += secondaryMeleeWeapon.getDamage();
+        }
+        return total;
+    }
+
+    /** Sum of equipped melee weapon bonuses only (primary + optional secondary, max 2). */
     public int getTotalMeleeWeaponDamage() {
         int total = 0;
         if (equippedWeapon != null && countsTowardMeleeStack(equippedWeapon)) {
@@ -187,12 +202,27 @@ public class Hero extends Character implements HeroSubject {
         return true;
     }
 
-    public boolean attack(Enemy target) {
-        return attack(target, MELEE_REACH, null);
+    public boolean attack(Enemy target, GameSession session) {
+        return attackInInteractionGrid(target, session);
     }
 
-    public boolean attack(Enemy target, GameSession session) {
-        return attack(target, MELEE_REACH, session);
+    /**
+     * Click / E-key attack: any living enemy in the hero's 3×3 interaction area
+     * (eight neighbors including diagonals). Hits the clicked tile directly.
+     */
+    public boolean attackInInteractionGrid(Enemy target, GameSession session) {
+        if (!canInitiateAttack(target, session)) {
+            return false;
+        }
+        int dRow = Math.abs(target.getRow() - getRow());
+        int dCol = Math.abs(target.getCol() - getCol());
+        if (dRow > INTERACTION_ATTACK_REACH || dCol > INTERACTION_ATTACK_REACH) {
+            return false;
+        }
+        if (dRow == 0 && dCol == 0) {
+            return false;
+        }
+        return resolveMeleeAttack(target);
     }
 
     public boolean attack(Enemy target, int maxManhattanReach) {
@@ -200,25 +230,40 @@ public class Hero extends Character implements HeroSubject {
     }
 
     public boolean attack(Enemy target, int maxManhattanReach, GameSession session) {
-        if (target == null || !target.isAlive()) return false;
-        if (session instanceof TeamMatchSession tm && !tm.canDamage(this, target)) {
+        if (!canInitiateAttack(target, session)) {
             return false;
         }
-        if (getEnergy() < ATTACK_ENERGY_COST) return false;
 
         int dRow = Math.abs(target.getRow() - getRow());
         int dCol = Math.abs(target.getCol() - getCol());
-        if (dRow + dCol > maxManhattanReach) return false;
-        if (!isOnFacingLine(target)) return false;
+        if (dRow + dCol > maxManhattanReach) {
+            return false;
+        }
+        if (!isOnFacingLine(target)) {
+            return false;
+        }
 
+        return resolveMeleeAttack(target);
+    }
+
+    private boolean canInitiateAttack(Enemy target, GameSession session) {
+        if (target == null || !target.isAlive()) {
+            return false;
+        }
+        if (session instanceof TeamMatchSession tm && !tm.canDamage(this, target)) {
+            return false;
+        }
+        return getEnergy() >= ATTACK_ENERGY_COST;
+    }
+
+    private boolean resolveMeleeAttack(Enemy target) {
         useEnergy(ATTACK_ENERGY_COST);
-        
+
         boolean wasAlive = target.isAlive();
-        
-        // --- BUG-07 FIX: Route Hero attacks through centralized CombatResolver ---
+
         int damage = com.kurawler.engine.CombatResolver.calculateFinalDamage(this, target);
         target.takeDamage(damage);
-        
+
         notifyAttackResolved(damage, wasAlive && !target.isAlive());
         return true;
     }
@@ -519,6 +564,23 @@ public class Hero extends Character implements HeroSubject {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Turns toward a map cell before a Space-style attack (click menu or E key).
+     * Cardinal facing matches {@link #attackDirection()} (horizontal axis wins ties).
+     */
+    public void faceToward(int targetRow, int targetCol) {
+        int dr = targetRow - getRow();
+        int dc = targetCol - getCol();
+        if (dr == 0 && dc == 0) {
+            return;
+        }
+        if (Math.abs(dc) >= Math.abs(dr)) {
+            setFacingFromDelta(0, dc);
+        } else {
+            setFacingFromDelta(dr, 0);
+        }
     }
 
     /**

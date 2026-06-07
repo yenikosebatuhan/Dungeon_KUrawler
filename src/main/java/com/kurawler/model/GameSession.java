@@ -14,8 +14,8 @@ import java.util.HashMap;
 import java.util.List;
 
 public class GameSession {
-    private Map map;
-    private final java.util.Map<String, Map> worldMaps = new HashMap<>();
+    private com.kurawler.model.Map map;
+    private final java.util.Map<String, com.kurawler.model.Map> worldMaps = new HashMap<>();
     private String currentMapId;
     private String lastPortalMessage;
     private boolean mapChanged;
@@ -24,8 +24,8 @@ public class GameSession {
     private AchievementManager achievementManager;
     private int turnCount;
     private final List<Enemy> enemies;
-    private final List<Projectile> projectiles; 
-    
+    private final List<Projectile> projectiles;
+
     private int playDurationTimer;
     private int activeEnemyCount;
     private int enemiesDefeatedCount;
@@ -34,6 +34,12 @@ public class GameSession {
     private String currentMode;
     private String difficulty = "Normal";
     private Item targetObjective;
+    /** Launch mode for save/load filtering: Default, Custom, Random, TeamMatch, Play, Design. */
+    private String savedGameType = "Play";
+    /** Wall-clock anchor for Shadow Clone Scroll auto-spawn (persisted across save/load). */
+    private long lastShadowCloneScrollSpawnMs;
+    /** Elapsed ms toward the next procedural enemy spawn (PDF §2.5). */
+    private long enemySpawnAccumulatorMs;
     /** True when playing a map launched from the level editor (no game-over popup on editor). */
     private boolean editorTestPlay;
 
@@ -45,10 +51,13 @@ public class GameSession {
     private Wearable floorEntryShield;
     private Wearable floorEntryRing;
 
+    /** Team Match save/load: enemy → team name ("Team A" / "Team B"). */
+    private final java.util.Map<Enemy, String> savedEnemyTeamNames = new HashMap<>();
+
     public GameSession() {
         this.turnCount = 0;
         this.enemies = new ArrayList<>();
-        this.projectiles = new ArrayList<>(); 
+        this.projectiles = new ArrayList<>();
         this.playDurationTimer = 0;
         this.activeEnemyCount = 0;
         this.currentMode = "Design";
@@ -57,37 +66,43 @@ public class GameSession {
         this.floorsClearedCount = 1;
     }
 
-    public GameSession(Map map) {
+    public GameSession(com.kurawler.model.Map map) {
         this();
         this.map = map;
     }
 
-    // --- PROJECTILE MANAGEMENT (NEW) ---
     public List<Projectile> getProjectiles() {
         return projectiles;
     }
 
     public void addProjectile(Projectile p) {
-        if (p != null) projectiles.add(p);
+        if (p != null) {
+            projectiles.add(p);
+        }
     }
 
     public void removeProjectile(Projectile p) {
         projectiles.remove(p);
     }
 
-    // --- CANER'S CORE METHODS ---
     public void startGame() {
         this.currentMode = "Play";
         this.playDurationTimer = 0;
     }
-    
+
     public void pauseGame() { /* Pause logic */ }
-    
+
     public boolean checkWinCondition() {
-        if (hero == null || targetObjective == null) return false;
+        if (hero == null || targetObjective == null) {
+            return false;
+        }
         Inventory inv = hero.getInventory();
-        if (inv == null) return false;
-        if (inv.hasItem(targetObjective)) return true;
+        if (inv == null) {
+            return false;
+        }
+        if (inv.hasItem(targetObjective)) {
+            return true;
+        }
         for (Item item : inv.getItems()) {
             if (isSameObjective(item, targetObjective)) {
                 return true;
@@ -97,8 +112,12 @@ public class GameSession {
     }
 
     private boolean isSameObjective(Item item, Item target) {
-        if (item == null || target == null) return false;
-        if (!item.getName().equals(target.getName())) return false;
+        if (item == null || target == null) {
+            return false;
+        }
+        if (!item.getName().equals(target.getName())) {
+            return false;
+        }
         if (item instanceof Key && target instanceof Key) {
             return ((Key) item).getKeyId().equals(((Key) target).getKeyId());
         }
@@ -107,6 +126,31 @@ public class GameSession {
 
     public String getCurrentMode() { return currentMode; }
     public void setCurrentMode(String mode) { this.currentMode = mode; }
+
+    public String getSavedGameType() {
+        return savedGameType != null ? savedGameType : "Play";
+    }
+
+    public void setSavedGameType(String savedGameType) {
+        this.savedGameType = savedGameType != null ? savedGameType : "Play";
+    }
+
+    public long getLastShadowCloneScrollSpawnMs() {
+        return lastShadowCloneScrollSpawnMs;
+    }
+
+    public void setLastShadowCloneScrollSpawnMs(long lastShadowCloneScrollSpawnMs) {
+        this.lastShadowCloneScrollSpawnMs = Math.max(0L, lastShadowCloneScrollSpawnMs);
+    }
+
+    public long getEnemySpawnAccumulatorMs() {
+        return enemySpawnAccumulatorMs;
+    }
+
+    public void setEnemySpawnAccumulatorMs(long enemySpawnAccumulatorMs) {
+        this.enemySpawnAccumulatorMs = Math.max(0L, enemySpawnAccumulatorMs);
+    }
+
     public String getDifficulty() { return difficulty; }
     public void setDifficulty(String difficulty) {
         this.difficulty = difficulty != null ? difficulty : "Normal";
@@ -122,15 +166,10 @@ public class GameSession {
         return 100;
     }
 
-    /** New game: sets max energy from difficulty and fills current energy to that cap. */
     public void applyDifficultyHeroStats() {
         applyDifficultyHeroStats(true);
     }
 
-    /**
-     * @param fillToMax true for a new game (e.g. Easy → 150/150); false only adjusts max
-     *                  and clamps overflow without refilling.
-     */
     public void applyDifficultyHeroStats(boolean fillToMax) {
         Hero hero = getHero();
         if (hero == null) {
@@ -155,20 +194,18 @@ public class GameSession {
     public void decrementEnemyCount() { if (this.activeEnemyCount > 0) this.activeEnemyCount--; }
     public void resetActiveEnemyCount() { this.activeEnemyCount = 0; }
 
-    // --- TEAM'S METHODS ---
-    public Map getMap() { return map; }
-    public void setMap(Map map) { this.map = map; }
+    public com.kurawler.model.Map getMap() { return map; }
+    public void setMap(com.kurawler.model.Map map) { this.map = map; }
 
-    public java.util.Map<String, Map> getWorldMaps() { return worldMaps; }
+    public java.util.Map<String, com.kurawler.model.Map> getWorldMaps() { return worldMaps; }
 
-    public void registerWorldMap(String mapId, Map worldMap) {
+    public void registerWorldMap(String mapId, com.kurawler.model.Map worldMap) {
         if (mapId != null && worldMap != null) {
             worldMaps.put(mapId, worldMap);
         }
     }
 
     public String getCurrentMapId() { return currentMapId; }
-
     public void setCurrentMapId(String mapId) { this.currentMapId = mapId; }
 
     public void setLastPortalMessage(String message) {
@@ -181,13 +218,8 @@ public class GameSession {
         return msg;
     }
 
-    /**
-     * Moves the hero to another registered map (door / stairs).
-     *
-     * @return true if the transition succeeded
-     */
     public boolean transitionHeroTo(String mapId, int row, int col) {
-        Map next = worldMaps.get(mapId);
+        com.kurawler.model.Map next = worldMaps.get(mapId);
         if (next == null) {
             lastPortalMessage = "That passage leads nowhere.";
             return false;
@@ -206,10 +238,11 @@ public class GameSession {
         for (int r = 0; r < next.getHeight(); r++) {
             for (int c = 0; c < next.getWidth(); c++) {
                 GridCell cell = next.getCell(r, c);
-                if (cell == null) continue;
-                if (cell.getOccupyingCharacter() instanceof Enemy) {
-                    Enemy e = (Enemy) cell.getOccupyingCharacter();
-                    if (e.isAlive()) addEnemy(e);
+                if (cell == null) {
+                    continue;
+                }
+                if (cell.getOccupyingCharacter() instanceof Enemy e && e.isAlive()) {
+                    addEnemy(e);
                 }
             }
         }
@@ -233,14 +266,30 @@ public class GameSession {
     }
 
     private static String mapDisplayName(String mapId) {
-        if ("gatehouse".equals(mapId))  return "The Gatehouse";
-        if ("armory".equals(mapId))     return "The Armory";
-        if ("innervault".equals(mapId)) return "The Inner Vault";
+        if ("hall".equals(mapId)) {
+            return "Entry Hall";
+        }
+        if ("catacombs".equals(mapId)) {
+            return "Catacombs";
+        }
+        if ("vault".equals(mapId)) {
+            return "Treasure Vault";
+        }
         return mapId;
     }
+
     public Hero getHero() { return hero; }
     public void setHero(Hero hero) { this.hero = hero; }
     public ShadowClone getShadowClone() { return shadowClone; }
+
+    /** True when an active shadow clone occupies {@code (row, col)} — enemies may not enter that tile. */
+    public boolean isActiveShadowCloneAt(int row, int col) {
+        if (shadowClone == null || !shadowClone.isAlive() || shadowClone.isExpired()) {
+            return false;
+        }
+        return shadowClone.getRow() == row && shadowClone.getCol() == col;
+    }
+
     public void setShadowClone(ShadowClone shadowClone) {
         if (this.shadowClone != null) {
             this.shadowClone.setOnMove(null);
@@ -251,6 +300,7 @@ public class GameSession {
         this.shadowClone = shadowClone;
         wireShadowClone();
     }
+
     public AchievementManager getAchievementManager() { return achievementManager; }
     public void setAchievementManager(AchievementManager achievementManager) {
         this.achievementManager = achievementManager;
@@ -258,7 +308,9 @@ public class GameSession {
     }
 
     private void wireShadowClone() {
-        if (shadowClone == null) return;
+        if (shadowClone == null) {
+            return;
+        }
         shadowClone.setOnMove(achievementManager != null
                 ? achievementManager::onShadowCloneMoved
                 : null);
@@ -268,7 +320,9 @@ public class GameSession {
     }
 
     public void wireObservers() {
-        if (hero == null) return;
+        if (hero == null) {
+            return;
+        }
         hero.clearObservers();
         if (shadowClone != null) {
             hero.addObserver(shadowClone);
@@ -285,86 +339,87 @@ public class GameSession {
         enemies.clear();
         resetActiveEnemyCount();
     }
-    public void addEnemy(Enemy enemy) { 
+    public void addEnemy(Enemy enemy) {
         if (enemy != null && !enemies.contains(enemy)) {
-            enemies.add(enemy); 
+            enemies.add(enemy);
             incrementEnemyCount();
         }
     }
-    public boolean removeEnemy(Enemy enemy) { 
+    public boolean removeEnemy(Enemy enemy) {
         boolean removed = enemies.remove(enemy);
-        if (removed) decrementEnemyCount();
+        if (removed) {
+            decrementEnemyCount();
+            savedEnemyTeamNames.remove(enemy);
+        }
         return removed;
     }
     public Enemy getEnemyAt(int row, int col) {
         for (Enemy e : enemies) {
-            if (e.getRow() == row && e.getCol() == col && e.isAlive()) return e;
+            if (e.getRow() == row && e.getCol() == col && e.isAlive()) {
+                return e;
+            }
         }
         return null;
     }
+
+    /** Records team assignment while deserializing Team Match saves. */
+    public void setEnemyTeamName(Enemy enemy, String teamName) {
+        if (enemy != null && teamName != null && !teamName.isBlank()) {
+            savedEnemyTeamNames.put(enemy, teamName);
+        }
+    }
+
+    public String getSavedEnemyTeamName(Enemy enemy) {
+        return savedEnemyTeamNames.get(enemy);
+    }
+
     public boolean isGameOver() { return hero != null && !hero.isAlive(); }
-
     public boolean isEditorTestPlay() { return editorTestPlay; }
-
     public void setEditorTestPlay(boolean editorTestPlay) {
         this.editorTestPlay = editorTestPlay;
     }
     public int getEnemiesDefeatedCount() { return enemiesDefeatedCount; }
     public void incrementEnemiesDefeated() { this.enemiesDefeatedCount++; }
     public void setEnemiesDefeatedCount(int count) { this.enemiesDefeatedCount = Math.max(0, count); }
-
     public int getItemsCollectedCount() { return itemsCollectedCount; }
     public void incrementItemsCollected() { this.itemsCollectedCount++; }
     public void setItemsCollectedCount(int count) { this.itemsCollectedCount = Math.max(0, count); }
-
     public int getFloorsClearedCount() { return floorsClearedCount; }
     public void incrementFloorsCleared() { this.floorsClearedCount++; }
     public void setFloorsClearedCount(int count) { this.floorsClearedCount = Math.max(0, count); }
 
-    // -----------------------------------------------------------------------
-    // Floor-entry inventory snapshot — used by "Restart Level"
-    // -----------------------------------------------------------------------
-
-    /**
-     * Records the hero's current inventory and equipped items at the moment
-     * of entering a floor. Call this whenever the hero transitions to a new
-     * floor (or at game start before the first floor).
-     */
     public void snapshotFloorInventory() {
         floorEntryInventorySnapshot = new ArrayList<>();
-        if (hero == null) return;
+        if (hero == null) {
+            return;
+        }
         floorEntryInventorySnapshot.addAll(hero.getInventory().getItems());
         floorEntryWeapon = hero.getEquippedWeapon();
-        floorEntryArrow  = hero.getEquippedArrow();
-        floorEntryArmor  = hero.getEquippedArmor();
+        floorEntryArrow = hero.getEquippedArrow();
+        floorEntryArmor = hero.getEquippedArmor();
         floorEntryShield = hero.getEquippedShield();
-        floorEntryRing   = hero.getEquippedRing();
+        floorEntryRing = hero.getEquippedRing();
     }
 
-    /**
-     * Strips any item the hero picked up AFTER entering the current floor,
-     * restoring the inventory (and equipped slots) to the floor-entry state.
-     * Items that were consumed or discarded during the floor are gone for good.
-     */
     public void restoreFloorInventory() {
-        if (hero == null) return;
-
-        // Remove items acquired on this floor (not present in the snapshot)
-        for (Item item : hero.getInventory().getItems()) {
+        if (hero == null) {
+            return;
+        }
+        for (Item item : new ArrayList<>(hero.getInventory().getItems())) {
             if (!floorEntryInventorySnapshot.contains(item)) {
                 hero.getInventory().removeItem(item);
-                // Unequip if the removed item happened to be equipped
                 if (item instanceof Weapon) {
-                    if (hero.getEquippedWeapon() == item) hero.setEquippedWeapon(null);
-                    if (hero.getEquippedArrow()  == item) hero.setEquippedArrow(null);
+                    if (hero.getEquippedWeapon() == item) {
+                        hero.setEquippedWeapon(null);
+                    }
+                    if (hero.getEquippedArrow() == item) {
+                        hero.setEquippedArrow(null);
+                    }
                 } else if (item instanceof Wearable) {
                     hero.unequipWearable((Wearable) item);
                 }
             }
         }
-
-        // Restore equipped slots that were active at floor entry
-        // (the item is still in inventory, just needs re-equipping)
         if (hero.getEquippedWeapon() == null && floorEntryWeapon != null
                 && hero.getInventory().hasItem(floorEntryWeapon)) {
             hero.setEquippedWeapon(floorEntryWeapon);
@@ -385,5 +440,41 @@ public class GameSession {
                 && !hero.isWearableEquipped(floorEntryRing)) {
             hero.equipWearable(floorEntryRing);
         }
+    }
+
+    /** Restart Level: refill hero vitals to their current maximums. */
+    public void restoreHeroToFullVitality() {
+        if (hero == null) {
+            return;
+        }
+        hero.setHealth(hero.getMaxHealth());
+        hero.setMana(hero.getMaxMana());
+        hero.setEnergy(hero.getMaxEnergy());
+    }
+
+    /** Copies runtime play state from another session that shares the same map instance. */
+    public void copyPlayStateFrom(GameSession other) {
+        if (other == null) {
+            return;
+        }
+        setHero(other.getHero());
+        clearEnemies();
+        for (Enemy enemy : other.getEnemies()) {
+            addEnemy(enemy);
+        }
+        savedEnemyTeamNames.clear();
+        savedEnemyTeamNames.putAll(other.savedEnemyTeamNames);
+        setShadowClone(other.getShadowClone());
+        setAchievementManager(other.getAchievementManager());
+        setPlayDurationTimer(other.getPlayDurationTimer());
+        setDifficulty(other.getDifficulty());
+        setSavedGameType(other.getSavedGameType());
+        setLastShadowCloneScrollSpawnMs(other.getLastShadowCloneScrollSpawnMs());
+        setEnemySpawnAccumulatorMs(other.getEnemySpawnAccumulatorMs());
+        setEnemiesDefeatedCount(other.getEnemiesDefeatedCount());
+        setItemsCollectedCount(other.getItemsCollectedCount());
+        setFloorsClearedCount(other.getFloorsClearedCount());
+        setTargetObjective(other.getTargetObjective());
+        setEditorTestPlay(other.isEditorTestPlay());
     }
 }

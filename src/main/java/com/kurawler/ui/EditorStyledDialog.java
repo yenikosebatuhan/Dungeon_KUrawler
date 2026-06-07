@@ -3,6 +3,10 @@ package com.kurawler.ui;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -10,8 +14,10 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.Priority;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
@@ -164,6 +170,115 @@ public final class EditorStyledDialog {
         return Optional.ofNullable(result.get());
     }
 
+    /**
+     * List picker with an optional trash control per row. When {@code onDelete} returns
+     * {@code true}, the row is removed; if the list becomes empty the dialog closes.
+     */
+    public static <T> Optional<T> chooseDeletableItem(Stage owner, String title, String subtitle,
+                                                      List<T> items, Function<T, String> labelFn,
+                                                      Predicate<T> onDelete) {
+        if (items == null || items.isEmpty()) {
+            return Optional.empty();
+        }
+
+        ObservableList<T> backing = FXCollections.observableArrayList(items);
+        AtomicReference<T> result = new AtomicReference<>(null);
+
+        Stage popup = basePopup(owner);
+        int w = 440;
+        int h = Math.min(420, 180 + backing.size() * 32);
+
+        StackPane root = themedRoot(w, h);
+
+        Label titleLbl = titleLabel(title);
+        Label subLbl = subtitleLabel(subtitle);
+
+        ListView<T> list = new ListView<>(backing);
+        list.getSelectionModel().select(0);
+        list.setPrefHeight(h - 140);
+        list.setPrefWidth(360);
+        list.setStyle("-fx-background-color: " + FIELD_BG + "; "
+                + "-fx-control-inner-background: " + FIELD_BG + "; "
+                + "-fx-text-fill: #e0e0e0; -fx-border-color: " + BORDER + "; "
+                + "-fx-border-width: 1;");
+
+        if (onDelete != null) {
+            list.setCellFactory(lv -> new ListCell<>() {
+                private final Label text = new Label();
+                private final Button trash = createTrashButton();
+                private final HBox row = new HBox(8, text, trash);
+
+                {
+                    HBox.setHgrow(text, Priority.ALWAYS);
+                    text.setMaxWidth(Double.MAX_VALUE);
+                    row.setAlignment(Pos.CENTER_LEFT);
+                    row.setMaxWidth(Double.MAX_VALUE);
+                    setContentDisplay(javafx.scene.control.ContentDisplay.GRAPHIC_ONLY);
+                }
+
+                @Override
+                protected void updateItem(T item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setGraphic(null);
+                        trash.setOnAction(null);
+                    } else {
+                        text.setText(labelFn.apply(item));
+                        trash.setOnAction(e -> {
+                            e.consume();
+                            if (onDelete.test(item)) {
+                                backing.remove(item);
+                                if (backing.isEmpty()) {
+                                    popup.close();
+                                }
+                            }
+                        });
+                        setGraphic(row);
+                    }
+                }
+            });
+        }
+
+        Button loadBtn = dialogButton("Load", "#55efc4");
+        Button cancelBtn = dialogButton("Cancel", "#a09070");
+
+        Runnable confirm = () -> {
+            T selected = list.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                result.set(selected);
+            }
+            popup.close();
+        };
+
+        loadBtn.setOnAction(e -> confirm.run());
+        cancelBtn.setOnAction(e -> popup.close());
+        list.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2) {
+                confirm.run();
+            }
+        });
+
+        HBox buttons = new HBox(12, loadBtn, cancelBtn);
+        buttons.setAlignment(Pos.CENTER);
+
+        VBox content = new VBox(12, titleLbl, subLbl, list, buttons);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new Insets(20));
+        root.getChildren().add(content);
+
+        Scene scene = new Scene(root, w, h);
+        scene.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ESCAPE) {
+                popup.close();
+            } else if (e.getCode() == KeyCode.ENTER) {
+                confirm.run();
+            }
+        });
+        finishPopup(popup, owner, scene);
+
+        return Optional.ofNullable(result.get());
+    }
+
     public static void showMessage(Stage owner, String title, String message) {
         Stage popup = basePopup(owner);
         int w = 380;
@@ -236,6 +351,41 @@ public final class EditorStyledDialog {
         label.setFont(Font.font("Monospaced", 12));
         label.setTextFill(Color.web(GOLD_DIM));
         return label;
+    }
+
+    private static Button createTrashButton() {
+        Button btn = new Button();
+        btn.setGraphic(trashIconGraphic());
+        btn.setPrefSize(28, 28);
+        btn.setMinSize(28, 28);
+        btn.setMaxSize(28, 28);
+        String base = "-fx-background-color: transparent; -fx-border-color: transparent; "
+                + "-fx-padding: 2; -fx-cursor: hand;";
+        String hover = "-fx-background-color: #e74c3c22; -fx-border-color: #e74c3c88; "
+                + "-fx-border-width: 1; -fx-background-radius: 4; -fx-border-radius: 4; "
+                + "-fx-padding: 2; -fx-cursor: hand;";
+        btn.setStyle(base);
+        btn.setOnMouseEntered(e -> btn.setStyle(hover));
+        btn.setOnMouseExited(e -> btn.setStyle(base));
+        return btn;
+    }
+
+    private static Canvas trashIconGraphic() {
+        Canvas canvas = new Canvas(16, 16);
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        gc.setStroke(Color.web("#e74c3c"));
+        gc.setFill(Color.web("#e74c3c", 0.9));
+        gc.setLineWidth(1.2);
+        gc.strokeLine(3, 5, 13, 5);
+        gc.strokeLine(5, 5, 6, 3);
+        gc.strokeLine(10, 3, 11, 5);
+        gc.fillRoundRect(4.5, 6, 7, 8, 1.5, 1.5);
+        gc.setStroke(Color.web("#0e0c0a"));
+        gc.setLineWidth(0.9);
+        gc.strokeLine(7, 8.5, 7, 12);
+        gc.strokeLine(9, 8.5, 9, 12);
+        gc.strokeLine(11, 8.5, 11, 12);
+        return canvas;
     }
 
     private static Button dialogButton(String text, String accent) {

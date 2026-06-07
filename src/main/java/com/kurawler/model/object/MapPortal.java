@@ -11,8 +11,8 @@ public class MapPortal extends StaticObject {
     private final int targetRow;
     private final int targetCol;
     private final String requiredKeyId;
-    private boolean unlocked;
     private final boolean stairsMode;
+    private boolean unlocked;
 
     /** Backwards-compatible constructor (door / portal, not stairs). */
     public MapPortal(String name, String description, String targetMapId,
@@ -24,7 +24,6 @@ public class MapPortal extends StaticObject {
     public MapPortal(String name, String description, String targetMapId,
                      int targetRow, int targetCol, String requiredKeyId,
                      boolean startsOpen, boolean stairsMode) {
-        // Stairs are always walkable; doors/portals are only passable when unlocked.
         super(name, description, stairsMode || startsOpen, stairsMode);
         this.targetMapId = targetMapId;
         this.targetRow = targetRow;
@@ -37,13 +36,15 @@ public class MapPortal extends StaticObject {
     public String getTargetMapId() { return targetMapId; }
     public int getTargetRow() { return targetRow; }
     public int getTargetCol() { return targetCol; }
-    public String getRequiredKeyId() { return requiredKeyId; }
     public boolean isUnlocked() { return unlocked; }
     public boolean isStairsMode() { return stairsMode; }
 
-    /** Stairs portals are searchable; door/portal portals use ENTER. */
+    public String getRequiredKeyId() { return requiredKeyId; }
+
     @Override
-    public boolean isSearchable() { return stairsMode; }
+    public boolean isSearchable() {
+        return stairsMode;
+    }
 
     public boolean tryUnlock(Hero hero) {
         if (unlocked) {
@@ -75,7 +76,7 @@ public class MapPortal extends StaticObject {
             return "";
         }
         if ("gold".equals(requiredKeyId)) {
-            return "Locked. Find the Golden Key (SEARCH a shelf in Entry Hall or Catacombs).";
+            return "Locked. Find the Golden Key (press E on a bookshelf in Entry Hall or Catacombs).";
         }
         return "Locked — you need the right key.";
     }

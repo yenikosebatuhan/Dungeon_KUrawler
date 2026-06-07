@@ -87,9 +87,6 @@ public class MainMenuScreen {
         ornament2.setTextFill(Color.web("#8b6914", 0.7));
         ornament2.setEffect(new DropShadow(4, 0, 1, Color.web("#000000", 0.5)));
 
-        Button saveBtn = smallStoneButton("Save");
-        saveBtn.setOnAction(e -> screenManager.showSaveDialog());
-
         Button loadBtn = smallStoneButton("Load");
         loadBtn.setOnAction(e -> screenManager.showLoadDialogAndStart());
 
@@ -98,7 +95,7 @@ public class MainMenuScreen {
 
         Button exitBtn = smallStoneButton("Exit");
         exitBtn.setOnAction(e -> Platform.exit());
-        
+
         Button musicBtn = smallStoneButton("Music: " + (AudioManager.getInstance().isMusicEnabled() ? "ON" : "OFF"));
         musicBtn.setOnAction(e -> {
             AudioManager audio = AudioManager.getInstance();
@@ -107,11 +104,11 @@ public class MainMenuScreen {
             musicBtn.setText("Music: " + (newState ? "ON" : "OFF"));
             audio.play("button");
             if (newState) {
-                audio.playMusic("menu", true); 
+                audio.playMusic("menu", true);
             }
         });
 
-        HBox bottomRow = new HBox(12, saveBtn, loadBtn, musicBtn, helpBtn, exitBtn);
+        HBox bottomRow = new HBox(12, loadBtn, musicBtn, helpBtn, exitBtn);
         bottomRow.setAlignment(Pos.CENTER);
 
         Label version = new Label("v2.0 \u2022 KU Spring 2026");

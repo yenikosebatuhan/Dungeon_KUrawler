@@ -1,7 +1,6 @@
 package com.kurawler.model.character;
 
 import com.kurawler.model.GameSession;
-import com.kurawler.model.GridCell;
 import com.kurawler.model.Map;
 import com.kurawler.model.object.Weapon;
 import java.util.Random;
@@ -33,20 +32,23 @@ public class Knight extends Enemy {
     public void setUnlimitedVision(boolean v) { this.unlimitedVision = v; }
 
     /**
-     * PDF §2.5.1: Knight melee deals its base ATK before DEF. In Team Match, an
-     * equipped weapon's ATK is added on top of the base attack power.
+     * PDF §3: Knight melee deals (STR / 2 + ATK) before DEF. Team Match weapon ATK is included.
      */
     @Override
     public int calculateDamage() {
-        int damage = getAttackPower();
-        if (equippedMatchWeapon != null) {
-            damage += equippedMatchWeapon.getDamage();
-        }
-        return damage;
+        return com.kurawler.engine.CombatResolver.calculateGeneratedDamage(this);
     }
 
     /**
-     * @effects If orthogonally adjacent to target, melee attack. Within SIGHT_RADIUS,
+     * PDF §2.5.1: hero is visible when {@code ceil(Euclidean distance) ≤ SIGHT_RADIUS}.
+     */
+    private static boolean withinSight(int dRow, int dCol) {
+        double euclid = Math.sqrt((double) dRow * dRow + (double) dCol * dCol);
+        return (int) Math.ceil(euclid) <= SIGHT_RADIUS;
+    }
+
+    /**
+     * @effects If orthogonally adjacent to target, melee attack. Within sight range,
      *          steps toward target; otherwise moves randomly.
      */
     @Override
@@ -62,38 +64,38 @@ public class Knight extends Enemy {
             return;
         }
 
-        double euclid = Math.sqrt(dRow * dRow + dCol * dCol);
-        if (unlimitedVision || euclid <= SIGHT_RADIUS) {
-            if (Math.abs(dRow) >= Math.abs(dCol)) {
-                if (!tryStep(Integer.signum(dRow), 0, map)) {
-                    tryStep(0, Integer.signum(dCol), map);
-                }
-            } else {
-                if (!tryStep(0, Integer.signum(dCol), map)) {
-                    tryStep(Integer.signum(dRow), 0, map);
-                }
-            }
+        if (unlimitedVision || withinSight(dRow, dCol)) {
+            moveToward(target.getRow(), target.getCol(), map, session);
         } else {
             int[][] dirs = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
             int[] d = dirs[RNG.nextInt(4)];
-            tryStep(d[0], d[1], map);
+            tryEnemyStep(d[0], d[1], map, session);
         }
     }
 
-    private boolean tryStep(int dRow, int dCol, Map map) {
+    /** One step toward a map cell (weapon pickup, Team Match chase, etc.). */
+    public void moveToward(int targetRow, int targetCol, Map map) {
+        moveToward(targetRow, targetCol, map, null);
+    }
+
+    public void moveToward(int targetRow, int targetCol, Map map, GameSession session) {
+        if (map == null || !isAlive()) {
+            return;
+        }
+        int dRow = targetRow - getRow();
+        int dCol = targetCol - getCol();
         if (dRow == 0 && dCol == 0) {
-            return false;
+            return;
         }
-        int nr = getRow() + dRow;
-        int nc = getCol() + dCol;
-        GridCell cell = map.getCell(nr, nc);
-        // isBlocked() rejects walls, columns and furniture/props (searchable statics)
-        // but not dropped items, so knights can still step onto weapon/potion tiles.
-        if (cell == null || cell.isBlocked()) {
-            return false;
+        if (Math.abs(dRow) >= Math.abs(dCol)) {
+            if (!tryEnemyStep(Integer.signum(dRow), 0, map, session)) {
+                tryEnemyStep(0, Integer.signum(dCol), map, session);
+            }
+        } else {
+            if (!tryEnemyStep(0, Integer.signum(dCol), map, session)) {
+                tryEnemyStep(Integer.signum(dRow), 0, map, session);
+            }
         }
-        moveToCell(cell);
-        return true;
     }
 
     public int getSightRadius() { return SIGHT_RADIUS; }

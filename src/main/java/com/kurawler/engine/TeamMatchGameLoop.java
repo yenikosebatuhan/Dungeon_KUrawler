@@ -18,9 +18,8 @@ import java.util.List;
 /**
  * Team Match game loop.
  *
- * Enemy AI is intentionally delegated to each enemy's own decideAction() so
- * that combat dynamics stay in sync with classic mode automatically.
- * Only weapon-pickup (a Team Match-specific mechanic) lives here.
+ * Enemy AI: knights seek weapons then opponents; sorcerers use timed spell/teleport.
+ * Weapon pickup is handled when a knight steps onto a weapon tile.
  */
 public class TeamMatchGameLoop {
 
@@ -106,7 +105,7 @@ public class TeamMatchGameLoop {
             }
             Character target = session.findNearestEnemy(member);
             Character avoid = target != null && target.isAlive() ? target : null;
-            sorcerer.tickTeleport(deltaMs, map, avoid);
+            sorcerer.tickTeleport(deltaMs, map, avoid, session);
             if (target != null && target.isAlive()) {
                 sorcerer.tickSpellAttack(deltaMs, target, map, session);
             }
@@ -114,27 +113,38 @@ public class TeamMatchGameLoop {
     }
 
     /**
-     * For every non-hero character on both teams:
-     * 1. If it's a Knight without a weapon, try to pick one up first.
-     * 2. Delegate AI entirely to enemy.decideAction(nearestOpponent) —
-     *    the same code path used by classic GameLoop.
+     * Team Match AI:
+     * <ul>
+     *   <li>Knights without a weapon move toward the nearest ground weapon</li>
+     *   <li>Knights with a weapon (and Sorcerers' opponents) chase the nearest enemy</li>
+     * </ul>
      */
     private void updateAllEnemies() {
+        Map map = session.getMap();
         for (Character member : getAllCharacters()) {
-            if (!member.isAlive() || !(member instanceof Enemy)) continue;
+            if (!member.isAlive() || !(member instanceof Enemy)) {
+                continue;
+            }
             Enemy enemy = (Enemy) member;
 
-            // TeamMatch-specific: Knight weapon pickup (classic mode has no weapons on ground)
-            if (enemy instanceof Knight) {
-                maybePickUpWeapon((Knight) enemy);
+            if (enemy instanceof Knight knight) {
+                maybePickUpWeapon(knight);
+                if (knight.getEquippedMatchWeapon() == null) {
+                    GridCell weaponCell = session.findNearestWeaponCell(knight);
+                    if (weaponCell != null) {
+                        knight.moveToward(weaponCell.getRow(), weaponCell.getCol(), map);
+                        continue;
+                    }
+                }
             }
 
             if (enemy instanceof Sorcerer) {
                 continue;
             }
+
             Character target = session.findNearestEnemy(member);
             if (target != null && target.isAlive()) {
-                enemy.decideAction(target, session.getMap(), session);
+                enemy.decideAction(target, map, session);
             }
         }
     }

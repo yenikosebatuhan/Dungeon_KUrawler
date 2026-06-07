@@ -11,7 +11,9 @@ import com.kurawler.model.character.ShadowClone;
 import com.kurawler.model.character.Sorcerer;
 import com.kurawler.model.object.Projectile;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Main game loop that runs at approximately 60 FPS.
@@ -36,12 +38,10 @@ public class GameLoop {
 
     /** Enemy AI runs every this many frames (~2 moves/sec at 60 FPS). */
     private static final int ENEMY_TICK_INTERVAL = 30;
-    /** Projectiles advance one cell every this many frames (~4.5 cells/sec at 60 FPS). */
-    private static final int PROJECTILE_TICK_INTERVAL = 14;
+    private static final int PROJECTILE_TICK_INTERVAL = 8;
     private int enemyTickCounter = 0;
     private int projectileTickCounter = 0;
 
-    private long lastShadowCloneScrollSpawnMs = 0;
     private final java.util.Random rng = new java.util.Random();
 
     /**
@@ -82,9 +82,11 @@ public class GameLoop {
         }
     }
 
-    /** Resets spawn timing after in-game "Restart Level". */
-    public void resetEnemySpawner() {
+    /** Resets spawn timing and play clock after in-game "Restart Level". */
+    public void resetForLevelRestart() {
         enemySpawner = new EnemySpawner(session);
+        playTimeAccumulatorMs = 0;
+        energyRegenAccumulatorMs = 0;
     }
 
     /**
@@ -187,9 +189,8 @@ public class GameLoop {
             if (!(enemy instanceof Sorcerer sorcerer) || !sorcerer.isAlive()) {
                 continue;
             }
-            // Phase II: an active shadow clone draws aggro as if it were the hero.
             Character target = resolveEnemyTarget(hero);
-            sorcerer.tickTeleport(deltaTime, map, target);
+            sorcerer.tickTeleport(deltaTime, map, target, session);
             if (target.isAlive()) {
                 sorcerer.tickSpellAttack(deltaTime, target, map, session);
             }
@@ -218,7 +219,6 @@ public class GameLoop {
             if (enemy instanceof Sorcerer) {
                 continue; // §2.5.2: no walking; spell + teleport use wall-clock timers
             }
-            // Phase II: all enemies treat an active shadow clone as the real hero.
             Character target = resolveEnemyTarget(hero);
             enemy.decideAction(target, map, session);
         }
@@ -241,7 +241,7 @@ public class GameLoop {
         }
     }
 
-    /** Phase 2: while active, sorcerers treat the shadow clone as the hero target. */
+    /** Phase 2 §17: while active, enemies treat the shadow clone as the hero target. */
     private Character resolveEnemyTarget(Hero hero) {
         ShadowClone clone = session.getShadowClone();
         if (clone != null && clone.isAlive() && !clone.isExpired()) {
@@ -258,13 +258,14 @@ public class GameLoop {
      */
     private List<Enemy> findAllEnemies(Map map) {
         List<Enemy> enemies = new ArrayList<>();
+        Set<Enemy> seen = new HashSet<>();
         for (int x = 0; x < map.getGridWidth(); x++) {
             for (int y = 0; y < map.getGridHeight(); y++) {
                 GridCell cell = map.getCellAt(x, y);
                 if (cell != null) {
                     Character occupant = cell.getOccupyingCharacter();
-                    if (occupant instanceof Enemy) {
-                        enemies.add((Enemy) occupant);
+                    if (occupant instanceof Enemy enemy && seen.add(enemy)) {
+                        enemies.add(enemy);
                     }
                 }
             }
@@ -457,13 +458,15 @@ public class GameLoop {
         ShadowCloneScrollRules.removeExpiredFromMap(map);
 
         long now = System.currentTimeMillis();
-        if (lastShadowCloneScrollSpawnMs == 0) {
-            lastShadowCloneScrollSpawnMs = now;
+        long lastSpawn = session.getLastShadowCloneScrollSpawnMs();
+        if (lastSpawn == 0) {
+            lastSpawn = now;
+            session.setLastShadowCloneScrollSpawnMs(lastSpawn);
         }
-        if (now - lastShadowCloneScrollSpawnMs < ShadowCloneScrollRules.SPAWN_INTERVAL_MS) {
+        if (now - lastSpawn < ShadowCloneScrollRules.SPAWN_INTERVAL_MS) {
             return;
         }
-        lastShadowCloneScrollSpawnMs = now;
+        session.setLastShadowCloneScrollSpawnMs(now);
         spawnShadowCloneScroll(map);
     }
 

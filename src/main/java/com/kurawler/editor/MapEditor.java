@@ -99,7 +99,7 @@ public class MapEditor {
 
         if (cell.getOccupyingCharacter() != null) {
             pushUndoSnapshot();
-            cell.setOccupyingCharacter(null);
+            cell.getOccupyingCharacter().moveToCell(null);
             return true;
         }
 

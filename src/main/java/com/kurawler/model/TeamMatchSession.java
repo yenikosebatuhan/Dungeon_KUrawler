@@ -1,6 +1,7 @@
 package com.kurawler.model;
 
 import com.kurawler.model.character.Character;
+import com.kurawler.model.character.Enemy;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.Sorcerer;
@@ -140,10 +141,16 @@ public class TeamMatchSession extends GameSession {
         }
         Collections.shuffle(free, RNG);
 
+        List<Integer> atkValues = new ArrayList<>();
+        for (int v = MIN_ATK; v <= MAX_ATK; v++) {
+            atkValues.add(v);
+        }
+        Collections.shuffle(atkValues, RNG);
+
         String[] names = {"Dagger", "Axe", "Hammer", "Staff", "Bow", "Sword"};
         for (int i = 0; i < WEAPON_COUNT && i < free.size(); i++) {
-            int atk = MIN_ATK + i;
-            Weapon w = new Weapon(names[i], "ATK " + atk, atk);
+            int atk = atkValues.get(i);
+            Weapon w = new Weapon(names[i], "+ATK " + atk, atk);
             free.get(i).addObject(w);
             matchWeapons.add(w);
         }
@@ -156,6 +163,18 @@ public class TeamMatchSession extends GameSession {
         int leftCount = collectWalkableCells(0, halfCol).size();
         int rightCount = collectWalkableCells(halfCol, map.getWidth()).size();
         return leftCount >= TEAM_SIZE && rightCount >= TEAM_SIZE;
+    }
+
+    public String describeValidationFailure() {
+        Map map = getMap();
+        if (map == null) {
+            return "No map is loaded.";
+        }
+        int halfCol = map.getWidth() / 2;
+        int leftCount = collectWalkableCells(0, halfCol).size();
+        int rightCount = collectWalkableCells(halfCol, map.getWidth()).size();
+        return "Need at least " + TEAM_SIZE + " walkable tiles on each half of the map.\n"
+                + "Left half: " + leftCount + "  |  Right half: " + rightCount + ".";
     }
 
     @Override
@@ -313,4 +332,56 @@ public class TeamMatchSession extends GameSession {
     public Team getTeamB() { return teamB; }
     public List<Weapon> getMatchWeapons() { return Collections.unmodifiableList(matchWeapons); }
     public String getMatchResult() { return matchResult; }
+
+    /** Rebuilds a Team Match session from a deserialized save without re-rolling the map. */
+    public static TeamMatchSession fromLoadedGameSession(GameSession loaded) {
+        TeamMatchSession tm = new TeamMatchSession(loaded.getMap());
+        tm.copyPlayStateFrom(loaded);
+        tm.rebuildTeamsFromSavedState();
+        tm.setCurrentMode("TeamMatch");
+        tm.wireObservers();
+        return tm;
+    }
+
+    private void rebuildTeamsFromSavedState() {
+        Hero hero = getHero();
+        if (hero != null) {
+            teamB.addMember(hero);
+        }
+        int halfCol = getMap().getWidth() / 2;
+        for (Enemy enemy : getEnemies()) {
+            if (enemy instanceof Knight knight) {
+                knight.setUnlimitedVision(true);
+            }
+            String savedTeam = getSavedEnemyTeamName(enemy);
+            if ("Team A".equals(savedTeam)) {
+                teamA.addMember(enemy);
+            } else if ("Team B".equals(savedTeam)) {
+                teamB.addMember(enemy);
+            } else if (enemy.getCol() < halfCol) {
+                teamA.addMember(enemy);
+            } else {
+                teamB.addMember(enemy);
+            }
+        }
+        rebuildMatchWeaponsList();
+    }
+
+    private void rebuildMatchWeaponsList() {
+        matchWeapons.clear();
+        Map map = getMap();
+        for (int r = 0; r < map.getHeight(); r++) {
+            for (int c = 0; c < map.getWidth(); c++) {
+                GridCell cell = map.getCell(r, c);
+                if (cell == null) {
+                    continue;
+                }
+                for (var obj : cell.getObjects()) {
+                    if (obj instanceof Weapon weapon) {
+                        matchWeapons.add(weapon);
+                    }
+                }
+            }
+        }
+    }
 }

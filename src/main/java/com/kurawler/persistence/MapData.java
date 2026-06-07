@@ -34,16 +34,31 @@ public class MapData {
         return height;
     }
 
+    public void setWidth(int width) {
+        this.width = width;
+    }
+
+    public void setHeight(int height) {
+        this.height = height;
+    }
+
+    public void setPlacements(List<ObjectPlacement> placements) {
+        this.placements = placements;
+    }
+
     public List<ObjectPlacement> getPlacements() {
         return placements;
     }
 
     /** Inner class representing a single object placement. */
     public static class ObjectPlacement {
-        private final String objectType;
-        private final String objectName;
-        private final int row;
-        private final int col;
+        private String objectType;
+        private String objectName;
+        private int row;
+        private int col;
+
+        public ObjectPlacement() {
+        }
 
         public ObjectPlacement(String objectType, String objectName, int row, int col) {
             this.objectType = objectType;

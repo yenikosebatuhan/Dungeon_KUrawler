@@ -1,7 +1,6 @@
 package com.kurawler.model.character;
 
 import com.kurawler.model.GameSession;
-import com.kurawler.model.GridCell;
 import com.kurawler.model.Map;
 import java.util.Random;
 
@@ -26,27 +25,15 @@ public class Assassin extends Enemy {
         }
         double euclid = Math.sqrt(dRow * dRow + dCol * dCol);
         if (euclid <= SIGHT_RADIUS) {
-            if (!tryStep(Integer.signum(dRow), Integer.signum(dCol), map)) {
-                if (!tryStep(Integer.signum(dRow), 0, map)) {
-                    tryStep(0, Integer.signum(dCol), map);
+            if (!tryEnemyStep(Integer.signum(dRow), Integer.signum(dCol), map, session)) {
+                if (!tryEnemyStep(Integer.signum(dRow), 0, map, session)) {
+                    tryEnemyStep(0, Integer.signum(dCol), map, session);
                 }
             }
         } else {
             int[][] dirs = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
             int[] d = dirs[RNG.nextInt(dirs.length)];
-            tryStep(d[0], d[1], map);
+            tryEnemyStep(d[0], d[1], map, session);
         }
-    }
-
-    private boolean tryStep(int dRow, int dCol, Map map) {
-        if (dRow == 0 && dCol == 0) {
-            return false;
-        }
-        GridCell cell = map.getCell(getRow() + dRow, getCol() + dCol);
-        if (cell == null || cell.isBlocked()) {
-            return false;
-        }
-        moveToCell(cell);
-        return true;
     }
 }
