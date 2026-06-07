@@ -1,14 +1,13 @@
 package com.kurawler.persistence;
 
+import com.google.gson.Gson;
 import com.kurawler.model.GameSession;
 import com.kurawler.model.GridCell;
 import com.kurawler.model.Inventory;
 import com.kurawler.model.Map;
 import com.kurawler.model.achievement.Achievement;
 import com.kurawler.model.achievement.AchievementManager;
-import com.kurawler.model.character.Assassin;
 import com.kurawler.model.character.Enemy;
-import com.kurawler.model.character.Guard;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.Knight;
 import com.kurawler.model.character.ShadowClone;
@@ -17,26 +16,27 @@ import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.GameObject;
 import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Key;
+import com.kurawler.model.object.MapPortal;
 import com.kurawler.model.object.PortableContainer;
 import com.kurawler.model.object.Scroll;
 import com.kurawler.model.object.StaticContainer;
-import com.kurawler.model.object.MapPortal;
+import com.kurawler.model.object.ShadowCloneScroll;
 import com.kurawler.model.object.StaticObject;
 import com.kurawler.model.object.Weapon;
 import com.kurawler.model.object.Wearable;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 
+/** Serializes game state and maps to JSON using Gson (Phase 2 requirement). */
 public class MapSerializer {
+
+    private final Gson gson = JsonPersistence.gson();
 
     public boolean saveGameState(GameSession session, String filename) {
         String saveName = deriveSaveName(filename);
@@ -46,11 +46,8 @@ public class MapSerializer {
     public boolean saveGameState(GameSession session, String filename, String saveName) {
         try {
             ensureParentDirectory(filename);
-            // Phase 2 spec: save files must be produced via Gson (§Phase2 Save/Load).
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            JsonElement element = JsonParser.parseString(buildStateJson(session, saveName));
             try (FileWriter writer = new FileWriter(filename)) {
-                gson.toJson(element, writer);
+                writer.write(gson.toJson(buildStateMap(session, saveName)));
             }
             System.out.println("[Persistence] Saved game state to " + filename);
             return true;
@@ -65,44 +62,92 @@ public class MapSerializer {
         return base.endsWith(".json") ? base.substring(0, base.length() - 5) : base;
     }
 
-    private String buildStateJson(GameSession session, String saveName) {
-        Map map = session.getMap();
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\n");
-        sb.append("  \"saveName\": \"").append(escape(saveName)).append("\",\n");
-        sb.append("  \"savedAt\": \"").append(Instant.now()).append("\",\n");
-        sb.append("  \"width\": ").append(map.getWidth()).append(",\n");
-        sb.append("  \"height\": ").append(map.getHeight()).append(",\n");
-        sb.append("  \"playDurationTimer\": ").append(session.getPlayDurationTimer()).append(",\n");
-        sb.append("  \"currentMode\": \"").append(escape(session.getCurrentMode())).append("\",\n");
-        sb.append("  \"difficulty\": \"").append(escape(session.getDifficulty())).append("\",\n");
-        sb.append("  \"enemiesDefeatedCount\": ").append(session.getEnemiesDefeatedCount()).append(",\n");
-        sb.append("  \"itemsCollectedCount\": ").append(session.getItemsCollectedCount()).append(",\n");
-        sb.append("  \"floorsClearedCount\": ").append(session.getFloorsClearedCount()).append(",\n");
-        sb.append("  \"targetObjective\": ").append(session.getTargetObjective() != null
-                ? buildObjectJson(session.getTargetObjective()) : "null").append(",\n");
-        sb.append("  \"hero\": ").append(buildHeroJson(session.getHero())).append(",\n");
-        sb.append("  \"shadowClone\": ").append(buildShadowCloneJson(session.getShadowClone())).append(",\n");
-        sb.append("  \"achievements\": ").append(buildAchievementsJson(session.getAchievementManager())).append(",\n");
-        sb.append("  \"enemies\": ").append(buildEnemiesJson(session)).append(",\n");
-        sb.append("  \"cells\": [");
+    /** Persists the underlying game mode (TeamMatch / Play), not transient UI states like Paused. */
+    private String resolveGameType(GameSession session) {
+        if (session instanceof com.kurawler.model.TeamMatchSession) {
+            return "TeamMatch";
+        }
+        String mode = session.getCurrentMode();
+        if ("Play".equals(mode) || "Design".equals(mode)) {
+            return mode;
+        }
+        return "Play";
+    }
 
-        List<String> entries = new ArrayList<>();
+    private LinkedHashMap<String, Object> buildStateMap(GameSession session, String saveName) {
+        syncActiveMapIntoWorld(session);
+        Map map = session.getMap();
+        LinkedHashMap<String, Object> root = new LinkedHashMap<>();
+        root.put("saveName", saveName);
+        root.put("savedAt", Instant.now().toString());
+        root.put("width", map.getWidth());
+        root.put("height", map.getHeight());
+        root.put("playDurationTimer", session.getPlayDurationTimer());
+        root.put("gameType", resolveGameType(session));
+        root.put("currentMode", session.getCurrentMode());
+        root.put("difficulty", session.getDifficulty());
+        root.put("enemiesDefeatedCount", session.getEnemiesDefeatedCount());
+        root.put("itemsCollectedCount", session.getItemsCollectedCount());
+        root.put("floorsClearedCount", session.getFloorsClearedCount());
+        root.put("lastShadowCloneScrollSpawnMs", session.getLastShadowCloneScrollSpawnMs());
+        root.put("enemySpawnAccumulatorMs", session.getEnemySpawnAccumulatorMs());
+        if (session.getCurrentMapId() != null && !session.getCurrentMapId().isBlank()) {
+            root.put("currentMapId", session.getCurrentMapId());
+        }
+        root.put("targetObjective", session.getTargetObjective() != null
+                ? buildObjectMap(session.getTargetObjective()) : null);
+        root.put("hero", buildHeroMap(session.getHero()));
+        root.put("shadowClone", buildShadowCloneMap(session.getShadowClone()));
+        root.put("achievements", buildAchievementsMap(session.getAchievementManager()));
+        root.put("enemies", buildEnemiesList(session));
+        root.put("cells", buildCellsList(map));
+        if (session.getWorldMaps().size() > 1) {
+            root.put("worldMaps", buildWorldMapsMap(session));
+        }
+        return root;
+    }
+
+    private void syncActiveMapIntoWorld(GameSession session) {
+        String mapId = session.getCurrentMapId();
+        if (mapId != null && !mapId.isBlank() && session.getMap() != null) {
+            session.registerWorldMap(mapId, session.getMap());
+        }
+    }
+
+    private LinkedHashMap<String, Object> buildWorldMapsMap(GameSession session) {
+        LinkedHashMap<String, Object> worlds = new LinkedHashMap<>();
+        for (java.util.Map.Entry<String, Map> entry : session.getWorldMaps().entrySet()) {
+            worlds.put(entry.getKey(), buildMapSnapshotMap(entry.getValue()));
+        }
+        return worlds;
+    }
+
+    private LinkedHashMap<String, Object> buildMapSnapshotMap(Map map) {
+        LinkedHashMap<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("width", map.getWidth());
+        snapshot.put("height", map.getHeight());
+        snapshot.put("cells", buildCellsList(map));
+        return snapshot;
+    }
+
+    private List<LinkedHashMap<String, Object>> buildCellsList(Map map) {
+        List<LinkedHashMap<String, Object>> entries = new ArrayList<>();
         for (int row = 0; row < map.getHeight(); row++) {
             for (int col = 0; col < map.getWidth(); col++) {
                 GridCell cell = map.getCell(row, col);
-                StaticObject so = cell.getStaticObject();
-                if (so != null || cell.hasObjects()) {
-                    entries.add(buildCellJson(cell, row, col));
+                if (shouldSerializeCell(cell)) {
+                    entries.add(buildCellMap(cell, row, col));
                 }
             }
         }
+        return entries;
+    }
 
-        if (!entries.isEmpty()) {
-            sb.append("\n    ").append(String.join(",\n    ", entries)).append("\n  ");
-        }
-        sb.append("]\n}");
-        return sb.toString();
+    /** Include any tile with a static object (open doors/portals too), floor loot, or a character. */
+    private boolean shouldSerializeCell(GridCell cell) {
+        return cell.getStaticObject() != null
+                || cell.hasObjects()
+                || cell.getOccupyingCharacter() != null;
     }
 
     private void ensureParentDirectory(String filename) throws IOException {
@@ -112,25 +157,26 @@ public class MapSerializer {
         }
     }
 
-    private String buildEnemiesJson(GameSession session) {
-        List<String> entries = new ArrayList<>();
+    private List<LinkedHashMap<String, Object>> buildEnemiesList(GameSession session) {
+        List<LinkedHashMap<String, Object>> entries = new ArrayList<>();
         List<Enemy> enemies = new ArrayList<>(session.getEnemies());
         collectMapEnemies(session.getMap(), enemies);
         for (Enemy enemy : enemies) {
             if (enemy != null && enemy.isAlive()) {
-                entries.add(buildEnemyJson(enemy));
+                entries.add(buildEnemyMap(enemy, session));
             }
         }
-        return "[" + String.join(", ", entries) + "]";
+        return entries;
     }
 
     private void collectMapEnemies(Map map, List<Enemy> enemies) {
-        if (map == null) return;
+        if (map == null) {
+            return;
+        }
         for (int row = 0; row < map.getHeight(); row++) {
             for (int col = 0; col < map.getWidth(); col++) {
                 GridCell cell = map.getCell(row, col);
-                if (cell != null && cell.getOccupyingCharacter() instanceof Enemy) {
-                    Enemy enemy = (Enemy) cell.getOccupyingCharacter();
+                if (cell != null && cell.getOccupyingCharacter() instanceof Enemy enemy) {
                     if (!enemies.contains(enemy)) {
                         enemies.add(enemy);
                     }
@@ -139,116 +185,103 @@ public class MapSerializer {
         }
     }
 
-    private String buildEnemyJson(Enemy enemy) {
+    private LinkedHashMap<String, Object> buildEnemyMap(Enemy enemy, GameSession session) {
         String type = enemy instanceof Sorcerer ? "Sorcerer"
-                : enemy instanceof Knight ? "Knight"
-                : enemy instanceof Guard ? "Guard"
-                : enemy instanceof Assassin ? "Assassin" : enemy.getClass().getSimpleName();
-        return "{ \"type\": \"" + type + "\""
-                + ", \"name\": \"" + jsonEscape(enemy.getName()) + "\""
-                + ", \"row\": " + enemy.getRow()
-                + ", \"col\": " + enemy.getCol()
-                + ", \"hp\": " + enemy.getHealth()
-                + ", \"atk\": " + enemy.getAttackPower()
-                + ", \"mana\": " + enemy.getMana()
-                + ", \"energy\": " + enemy.getEnergy()
-                + ", \"str\": " + enemy.getStrength()
-                + ", \"def\": " + enemy.getDefensePower()
-                + " }";
-    }
-
-    private String jsonEscape(String value) {
-        if (value == null) {
-            return "";
+                : enemy instanceof Knight ? "Knight" : enemy.getClass().getSimpleName();
+        LinkedHashMap<String, Object> json = new LinkedHashMap<>();
+        json.put("type", type);
+        json.put("row", enemy.getRow());
+        json.put("col", enemy.getCol());
+        json.put("hp", enemy.getHealth());
+        json.put("mana", enemy.getMana());
+        json.put("energy", enemy.getEnergy());
+        json.put("str", enemy.getStrength());
+        json.put("def", enemy.getDefensePower());
+        if (session instanceof com.kurawler.model.TeamMatchSession tm) {
+            com.kurawler.model.Team team = tm.getTeamForCharacter(enemy);
+            if (team != null) {
+                json.put("team", team.getName());
+            }
         }
-        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+        if (enemy instanceof Knight knight && knight.getEquippedMatchWeapon() != null) {
+            json.put("matchWeapon", buildObjectMap(knight.getEquippedMatchWeapon()));
+        }
+        if (enemy instanceof Sorcerer sorcerer) {
+            json.put("spellAttackTimerMs", sorcerer.getSpellAttackTimerMs());
+            json.put("teleportTimerMs", sorcerer.getTeleportTimerMs());
+            json.put("ringDropped", sorcerer.isRingDropped());
+        }
+        return json;
     }
 
-    private String buildShadowCloneJson(ShadowClone shadowClone) {
+    private LinkedHashMap<String, Object> buildShadowCloneMap(ShadowClone shadowClone) {
         if (shadowClone == null) {
-            return "null";
+            return null;
         }
-
-        return "{ \"row\": " + shadowClone.getRow()
-                + ", \"col\": " + shadowClone.getCol()
-                + ", \"hp\": " + shadowClone.getHealth()
-                + ", \"remainingMs\": " + shadowClone.getRemainingMs()
-                + " }";
+        LinkedHashMap<String, Object> json = new LinkedHashMap<>();
+        json.put("row", shadowClone.getRow());
+        json.put("col", shadowClone.getCol());
+        json.put("hp", shadowClone.getHealth());
+        json.put("remainingMs", shadowClone.getRemainingMs());
+        return json;
     }
 
-    private String buildAchievementsJson(AchievementManager manager) {
+    private LinkedHashMap<String, Object> buildAchievementsMap(AchievementManager manager) {
         if (manager == null) {
-            return "null";
+            return null;
         }
-
         List<String> unlocked = new ArrayList<>();
         for (Achievement achievement : manager.getAchievements()) {
             if (achievement.isUnlocked()) {
-                unlocked.add("\"" + escape(achievement.getName()) + "\"");
+                unlocked.add(achievement.getName());
             }
         }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("{ ");
-        sb.append("\"totalMoves\": ").append(manager.getTotalMoves());
-        sb.append(", \"shadowCloneMoves\": ").append(manager.getShadowCloneMoves());
-        sb.append(", \"enemiesKilled\": ").append(manager.getEnemiesKilled());
-        sb.append(", \"itemsCollected\": ").append(manager.getItemsCollected());
-        sb.append(", \"damageTaken\": ").append(manager.getDamageTaken());
-        sb.append(", \"unlocked\": [").append(String.join(", ", unlocked)).append("]");
-        sb.append(" }");
-        return sb.toString();
+        LinkedHashMap<String, Object> json = new LinkedHashMap<>();
+        json.put("totalMoves", manager.getTotalMoves());
+        json.put("shadowCloneMoves", manager.getShadowCloneMoves());
+        json.put("enemiesKilled", manager.getEnemiesKilled());
+        json.put("itemsCollected", manager.getItemsCollected());
+        json.put("damageTaken", manager.getDamageTaken());
+        json.put("unlocked", unlocked);
+        return json;
     }
 
-    private String buildHeroJson(Hero hero) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{ ");
-        sb.append("\"name\": \"").append(escape(hero.getName())).append("\"");
-        sb.append(", \"row\": ").append(hero.getRow());
-        sb.append(", \"col\": ").append(hero.getCol());
-        sb.append(", \"hp\": ").append(hero.getHealth());
-        sb.append(", \"maxHp\": ").append(hero.getMaxHealth());
-        sb.append(", \"mana\": ").append(hero.getMana());
-        sb.append(", \"energy\": ").append(hero.getEnergy());
-        sb.append(", \"maxEnergy\": ").append(hero.getMaxEnergy());
-        sb.append(", \"str\": ").append(hero.getStrength());
-        sb.append(", \"def\": ").append(hero.getDefensePower());
+    private LinkedHashMap<String, Object> buildHeroMap(Hero hero) {
+        LinkedHashMap<String, Object> json = new LinkedHashMap<>();
+        json.put("name", hero.getName());
+        json.put("row", hero.getRow());
+        json.put("col", hero.getCol());
+        json.put("hp", hero.getHealth());
+        json.put("maxHp", hero.getMaxHealth());
+        json.put("mana", hero.getMana());
+        json.put("energy", hero.getEnergy());
+        json.put("maxEnergy", hero.getMaxEnergy());
+        json.put("str", hero.getStrength());
+        json.put("def", hero.getDefensePower());
+        json.put("equippedWeapon", hero.getEquippedWeapon() != null ? hero.getEquippedWeapon().getName() : "");
+        json.put("equippedWearable", hero.getEquippedArmor() != null ? hero.getEquippedArmor().getName() : "");
+        json.put("equippedShield", hero.getEquippedShield() != null ? hero.getEquippedShield().getName() : "");
+        json.put("equippedRing", hero.getEquippedRing() != null ? hero.getEquippedRing().getName() : "");
 
-        String wpnName = hero.getEquippedWeapon() != null ? hero.getEquippedWeapon().getName() : "";
-        sb.append(", \"equippedWeapon\": \"").append(escape(wpnName)).append("\"");
-        String armorName = hero.getEquippedArmor() != null ? hero.getEquippedArmor().getName() : "";
-        String shieldName = hero.getEquippedShield() != null ? hero.getEquippedShield().getName() : "";
-        String ringName = hero.getEquippedRing() != null ? hero.getEquippedRing().getName() : "";
-        sb.append(", \"equippedWearable\": \"").append(escape(armorName)).append("\"");
-        sb.append(", \"equippedShield\": \"").append(escape(shieldName)).append("\"");
-        sb.append(", \"equippedRing\": \"").append(escape(ringName)).append("\"");
-
-        // Inventory — collect all non-null items
         Inventory inv = hero.getInventory();
-        List<String> items = new ArrayList<>();
+        List<LinkedHashMap<String, Object>> items = new ArrayList<>();
         for (int r = 0; r < 2; r++) {
             for (int c = 0; c < 4; c++) {
                 Item item = inv.getItem(r, c);
                 if (item != null) {
-                    items.add(buildObjectJson(item));
+                    items.add(buildObjectMap(item));
                 }
             }
         }
-        sb.append(", \"inventory\": [");
-        if (!items.isEmpty()) {
-            sb.append(String.join(", ", items));
-        }
-        sb.append("]");
-        sb.append(" }");
-        return sb.toString();
+        json.put("inventory", items);
+        return json;
     }
 
-    // kept for callers that only need map serialization (no hero)
     public boolean saveMapToFile(Map map, String filename) {
         try {
             ensureParentDirectory(filename);
             try (FileWriter writer = new FileWriter(filename)) {
-                writer.write(buildMapJson(map));
+                writer.write(gson.toJson(buildMapMap(map)));
             }
             System.out.println("[Persistence] Saved map to " + filename);
             return true;
@@ -260,34 +293,17 @@ public class MapSerializer {
 
     /** JSON snapshot for editor undo / in-memory round-trip. */
     public String mapToJson(Map map) {
-        return buildMapJson(map);
-    }
-
-    /** Serialise multiple maps as a single world JSON file. */
-    public String worldToJson(java.util.Map<String, Map> maps, String startMapId) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\n");
-        sb.append("  \"format\": \"world\",\n");
-        sb.append("  \"startMapId\": \"").append(escape(startMapId)).append("\",\n");
-        sb.append("  \"maps\": {\n");
-        List<String> mapEntries = new ArrayList<>();
-        for (java.util.Map.Entry<String, Map> entry : maps.entrySet()) {
-            mapEntries.add("    \"" + escape(entry.getKey()) + "\": " + buildMapJson(entry.getValue()));
-        }
-        sb.append(String.join(",\n", mapEntries));
-        sb.append("\n  }\n}");
-        return sb.toString();
+        return gson.toJson(buildMapMap(map));
     }
 
     /** Save world JSON to the maps directory. Returns true on success. */
     public boolean saveWorldToFile(java.util.Map<String, Map> maps, String startMapId, String filename) {
-        Path dir = Paths.get("maps");
         try {
-            java.nio.file.Files.createDirectories(dir);
-            String json = worldToJson(maps, startMapId);
-            try (FileWriter fw = new FileWriter(dir.resolve(filename).toFile())) {
-                fw.write(json);
+            ensureParentDirectory(filename);
+            try (FileWriter writer = new FileWriter(filename)) {
+                writer.write(gson.toJson(buildWorldRootMap(maps, startMapId)));
             }
+            System.out.println("[Persistence] Saved world to " + filename);
             return true;
         } catch (IOException e) {
             e.printStackTrace();
@@ -295,130 +311,137 @@ public class MapSerializer {
         }
     }
 
-    private String buildMapJson(Map map) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\n");
-        sb.append("  \"width\": ").append(map.getWidth()).append(",\n");
-        sb.append("  \"height\": ").append(map.getHeight()).append(",\n");
-        sb.append("  \"cells\": [");
-
-        List<String> entries = new ArrayList<>();
-        for (int row = 0; row < map.getHeight(); row++) {
-            for (int col = 0; col < map.getWidth(); col++) {
-                GridCell cell = map.getCell(row, col);
-                StaticObject so = cell.getStaticObject();
-                if (so != null || cell.hasObjects()) {
-                    entries.add(buildCellJson(cell, row, col));
-                }
-            }
-        }
-
-        if (!entries.isEmpty()) {
-            sb.append("\n    ").append(String.join(",\n    ", entries)).append("\n  ");
-        }
-        sb.append("]\n}");
-        return sb.toString();
+    public String worldToJson(java.util.Map<String, Map> maps, String startMapId) {
+        return gson.toJson(buildWorldRootMap(maps, startMapId));
     }
 
-    private String buildCellJson(GridCell cell, int row, int col) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{ \"row\": ").append(row);
-        sb.append(", \"col\": ").append(col);
-        sb.append(", \"walkable\": ").append(cell.isWalkable());
+    private LinkedHashMap<String, Object> buildWorldRootMap(java.util.Map<String, Map> maps, String startMapId) {
+        LinkedHashMap<String, Object> root = new LinkedHashMap<>();
+        root.put("format", "world");
+        root.put("startMapId", startMapId != null ? startMapId : "");
+        LinkedHashMap<String, Object> mapEntries = new LinkedHashMap<>();
+        for (java.util.Map.Entry<String, Map> entry : maps.entrySet()) {
+            mapEntries.put(entry.getKey(), buildMapMap(entry.getValue()));
+        }
+        root.put("maps", mapEntries);
+        return root;
+    }
+
+    private LinkedHashMap<String, Object> buildMapMap(Map map) {
+        LinkedHashMap<String, Object> json = new LinkedHashMap<>();
+        json.put("width", map.getWidth());
+        json.put("height", map.getHeight());
+        json.put("cells", buildCellsList(map));
+        return json;
+    }
+
+    private LinkedHashMap<String, Object> buildCellMap(GridCell cell, int row, int col) {
+        LinkedHashMap<String, Object> json = new LinkedHashMap<>();
+        json.put("row", row);
+        json.put("col", col);
+        json.put("walkable", terrainWalkable(cell));
 
         StaticObject so = cell.getStaticObject();
+        com.kurawler.model.character.Character occupant = cell.getOccupyingCharacter();
         if (so != null) {
-            sb.append(", \"staticObject\": {");
-            if (so instanceof MapPortal) {
-                MapPortal portal = (MapPortal) so;
-                sb.append(" \"type\": \"MapPortal\"");
-                sb.append(", \"name\": \"").append(escape(portal.getName())).append("\"");
-                sb.append(", \"description\": \"").append(escape(portal.getDescription())).append("\"");
-                String tid = portal.getTargetMapId();
-                sb.append(", \"targetMapId\": \"").append(escape(tid != null ? tid : "")).append("\"");
-                sb.append(", \"targetRow\": ").append(portal.getTargetRow());
-                sb.append(", \"targetCol\": ").append(portal.getTargetCol());
-                if (portal.getRequiredKeyId() != null) {
-                    sb.append(", \"requiredKeyId\": \"").append(escape(portal.getRequiredKeyId())).append("\"");
-                }
-                sb.append(", \"unlocked\": ").append(portal.isUnlocked());
-                sb.append(", \"stairsMode\": ").append(portal.isStairsMode());
-                if (portal.getRotation() != 0)
-                    sb.append(", \"rotation\": ").append(portal.getRotation());
-            } else {
-                sb.append(" \"name\": \"").append(escape(so.getName())).append("\"");
-                sb.append(", \"description\": \"").append(escape(so.getDescription())).append("\"");
-                sb.append(", \"passable\": ").append(so.isPassable());
-                sb.append(", \"searchable\": ").append(so.isSearchable());
-                if (so.getRotation() != 0)
-                    sb.append(", \"rotation\": ").append(so.getRotation());
-                if (so.getHiddenItem() != null) {
-                    sb.append(", \"hiddenItem\": ").append(buildObjectJson(so.getHiddenItem()));
-                }
-            }
-            sb.append(" }");
+            json.put("staticObject", buildStaticObjectMap(so));
         }
 
         List<GameObject> objects = cell.getObjects();
         if (!objects.isEmpty()) {
-            List<String> objEntries = new ArrayList<>();
+            List<LinkedHashMap<String, Object>> objEntries = new ArrayList<>();
             for (GameObject obj : objects) {
-                objEntries.add(buildObjectJson(obj));
+                objEntries.add(buildObjectMap(obj));
             }
-            sb.append(", \"objects\": [").append(String.join(", ", objEntries)).append("]");
+            json.put("objects", objEntries);
         }
-        sb.append(" }");
-        return sb.toString();
+
+        if (occupant != null) {
+            json.put("character", buildMapCharacterMap(occupant));
+        }
+        return json;
     }
 
-    private String buildObjectJson(GameObject obj) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{ \"type\": \"").append(obj.getClass().getSimpleName()).append("\"");
-        sb.append(", \"name\": \"").append(escape(obj.getName())).append("\"");
-        sb.append(", \"description\": \"").append(escape(obj.getDescription())).append("\"");
-
-        if (obj instanceof Weapon) {
-            sb.append(", \"damage\": ").append(((Weapon) obj).getDamage());
-        } else if (obj instanceof Consumable) {
-            Consumable consumable = (Consumable) obj;
-            sb.append(", \"healAmount\": ").append(consumable.getHealAmount());
-            sb.append(", \"manaAmount\": ").append(consumable.getManaAmount());
-            sb.append(", \"energyAmount\": ").append(consumable.getEnergyAmount());
-        } else if (obj instanceof Key) {
-            sb.append(", \"keyId\": \"").append(escape(((Key) obj).getKeyId())).append("\"");
-        } else if (obj instanceof Wearable) {
-            sb.append(", \"defenseBonus\": ").append(((Wearable) obj).getDefenseBonus());
-        } else if (obj instanceof Scroll) {
-            Scroll scroll = (Scroll) obj;
-            sb.append(", \"text\": \"").append(escape(scroll.getText())).append("\"");
-            sb.append(", \"healAmount\": ").append(scroll.getHealAmount());
-            sb.append(", \"manaAmount\": ").append(scroll.getManaAmount());
-            sb.append(", \"energyAmount\": ").append(scroll.getEnergyAmount());
-        } else if (obj instanceof PortableContainer) {
-            PortableContainer container = (PortableContainer) obj;
-            sb.append(", \"capacity\": ").append(container.getCapacity());
-            sb.append(", \"contents\": ").append(buildItemListJson(container.getContents()));
-        } else if (obj instanceof StaticContainer) {
-            StaticContainer container = (StaticContainer) obj;
-            sb.append(", \"contents\": ").append(buildItemListJson(container.getContents()));
+    private LinkedHashMap<String, Object> buildStaticObjectMap(StaticObject so) {
+        LinkedHashMap<String, Object> json = new LinkedHashMap<>();
+        json.put("name", so.getName());
+        json.put("description", so.getDescription());
+        json.put("passable", so.isPassable());
+        json.put("searchable", so.isSearchable());
+        if (so instanceof MapPortal portal) {
+            json.put("kind", "MapPortal");
+            json.put("targetMapId", portal.getTargetMapId());
+            json.put("targetRow", portal.getTargetRow());
+            json.put("targetCol", portal.getTargetCol());
+            json.put("requiredKeyId", portal.getRequiredKeyId());
+            json.put("unlocked", portal.isUnlocked());
+            json.put("stairsMode", portal.isStairsMode());
         }
-        if (obj.getRotation() != 0)
-            sb.append(", \"rotation\": ").append(obj.getRotation());
-        sb.append(" }");
-        return sb.toString();
+        if (so.getHiddenItem() != null) {
+            json.put("hiddenItem", buildObjectMap(so.getHiddenItem()));
+        }
+        return json;
     }
 
-    private String buildItemListJson(List<Item> items) {
-        List<String> entries = new ArrayList<>();
+    /** Tile terrain walkability without treating the occupying character as blocking. */
+    private boolean terrainWalkable(GridCell cell) {
+        StaticObject so = cell.getStaticObject();
+        if (so == null) {
+            return true;
+        }
+        if (!so.isPassable()) {
+            return false;
+        }
+        return !so.isSearchable();
+    }
+
+    private LinkedHashMap<String, Object> buildMapCharacterMap(com.kurawler.model.character.Character character) {
+        LinkedHashMap<String, Object> json = new LinkedHashMap<>();
+        json.put("type", character.getClass().getSimpleName());
+        json.put("name", character.getName());
+        if (character.getRotation() != 0) {
+            json.put("rotation", character.getRotation());
+        }
+        return json;
+    }
+
+    private LinkedHashMap<String, Object> buildObjectMap(GameObject obj) {
+        LinkedHashMap<String, Object> json = new LinkedHashMap<>();
+        json.put("type", obj.getClass().getSimpleName());
+        json.put("name", obj.getName());
+        json.put("description", obj.getDescription());
+
+        if (obj instanceof Weapon weapon) {
+            json.put("damage", weapon.getDamage());
+        } else if (obj instanceof Consumable consumable) {
+            json.put("healAmount", consumable.getHealAmount());
+        } else if (obj instanceof Key key) {
+            json.put("keyId", key.getKeyId());
+        } else if (obj instanceof Wearable wearable) {
+            json.put("defenseBonus", wearable.getDefenseBonus());
+        } else if (obj instanceof ShadowCloneScroll scroll) {
+            json.put("text", scroll.getText());
+            json.put("healAmount", scroll.getHealAmount());
+            json.put("manaAmount", scroll.getManaAmount());
+            json.put("energyAmount", scroll.getEnergyAmount());
+            json.put("spawnedAtMs", scroll.getSpawnedAtMs());
+        } else if (obj instanceof Scroll scroll) {
+            json.put("text", scroll.getText());
+            json.put("healAmount", scroll.getHealAmount());
+        } else if (obj instanceof PortableContainer container) {
+            json.put("capacity", container.getCapacity());
+            json.put("contents", buildItemList(container.getContents()));
+        } else if (obj instanceof StaticContainer container) {
+            json.put("contents", buildItemList(container.getContents()));
+        }
+        return json;
+    }
+
+    private List<LinkedHashMap<String, Object>> buildItemList(List<Item> items) {
+        List<LinkedHashMap<String, Object>> entries = new ArrayList<>();
         for (Item item : items) {
-            entries.add(buildObjectJson(item));
+            entries.add(buildObjectMap(item));
         }
-        return "[" + String.join(", ", entries) + "]";
-    }
-
-    private String escape(String s) {
-        if (s == null) return "";
-        return s.replace("\\", "\\\\").replace("\"", "\\\"")
-                .replace("\n", "\\n").replace("\t", "\\t");
+        return entries;
     }
 }

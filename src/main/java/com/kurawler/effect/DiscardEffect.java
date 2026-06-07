@@ -1,6 +1,7 @@
 package com.kurawler.effect;
 
 import com.kurawler.model.GameSession;
+import com.kurawler.model.GridCell;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Wearable;
@@ -8,13 +9,13 @@ import com.kurawler.model.object.Weapon;
 
 /**
  * Effect: removes an Item from the hero's inventory (§2.4.2 DISCARD).
- * Safely unequips the item first if it is the currently equipped weapon or wearable.
- * Discarded items are permanently lost — they are not placed on the map.
+ * Safely unequips the item first if it is the currently equipped weapon or wearable,
+ * then drops it on the hero's current cell.
  *
  * @requires session != null && session.getHero() != null && item != null
- * @modifies hero.inventory, hero.equippedWeapon, hero.equippedWearable
- * @effects Removes item from inventory. If item was equipped, unequips it
- *          (restoring the relevant stat). The item is irretrievably lost.
+ * @modifies hero.inventory, hero.equippedWeapon, hero.equippedWearable, hero cell objects
+ * @effects Removes item from inventory, unequips if needed, places item on the map
+ *          at the hero's row/col.
  */
 public class DiscardEffect implements Effect {
 
@@ -46,6 +47,11 @@ public class DiscardEffect implements Effect {
         }
 
         hero.getInventory().removeItem(item);
+
+        GridCell cell = session.getMap().getCell(hero.getRow(), hero.getCol());
+        if (cell != null) {
+            cell.addObject(item);
+        }
     }
 
     @Override

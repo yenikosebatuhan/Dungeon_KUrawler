@@ -50,6 +50,11 @@ public class ScreenManager {
     private String pendingEditorStatus;
     private String lastGameType = "Default";
     private String lastDifficulty = "Normal";
+    /** Map chosen for the next main-menu Team Match launch (not reused from other modes). */
+    private com.kurawler.model.Map pendingTeamMatchMap;
+    /** Last map file saved from the level editor — used for Team Match. */
+    private Path lastSavedEditorMapPath;
+    private String lastSavedEditorWorldStartId;
 
     public ScreenManager(Stage stage) {
         this.stage = stage;
@@ -70,6 +75,7 @@ public class ScreenManager {
 
     public void showMainMenu() {
         shutdownActiveGameView();
+        pendingTeamMatchMap = null;
         AudioManager.getInstance().playMusic("menu", true);
         MainMenuScreen menu = new MainMenuScreen(this);
         stage.setScene(menu.createScene());
@@ -116,19 +122,17 @@ public class ScreenManager {
                     + "Save a map (.json) or world (.world.json) in the level editor first.");
             return null;
         }
-        List<String> labels = new ArrayList<>();
-        for (MapFileEntry entry : entries) {
-            labels.add(entry.label);
-        }
-        Optional<Integer> picked = EditorStyledDialog.chooseIndex(
+        Optional<MapFileEntry> picked = EditorStyledDialog.chooseDeletableItem(
                 stage,
                 "Custom Map",
                 "Pick a dungeon to play.",
-                labels);
+                entries,
+                MapFileEntry::toString,
+                entry -> deleteFileQuiet(entry.path));
         if (!picked.isPresent()) {
             return null;
         }
-        return entries.get(picked.get());
+        return picked.get();
     }
 
     private GameSession loadSessionFromMapFile(Path path) {
@@ -215,37 +219,127 @@ public class ScreenManager {
     }
 
     public boolean showLoadDialogAndStart() {
+        return showLoadDialogAndStart(null);
+    }
+
+    /** In-game load menu: Team Match sessions only list Team Match saves. */
+    public String resolveLoadFilterForSession(GameSession session) {
+        if (session instanceof TeamMatchSession) {
+            return "TeamMatch";
+        }
+        String saved = session != null ? session.getSavedGameType() : null;
+        if ("TeamMatch".equals(saved)) {
+            return "TeamMatch";
+        }
+        return null;
+    }
+
+    public boolean showLoadDialogAndStart(String requiredGameType) {
         List<SaveEntry> saves = listSaves();
+        if (requiredGameType != null) {
+            saves = filterSavesByGameType(saves, requiredGameType);
+        }
         if (saves.isEmpty()) {
-            showInfo("Load Game", "No saves found in the saves folder.");
+            if ("TeamMatch".equals(requiredGameType)) {
+                showInfo("Load Game", "No Team Match saves found.\nSave your match from the in-game menu first.");
+            } else {
+                showInfo("Load Game", "No saves found in the saves folder.");
+            }
             return false;
         }
 
-        List<String> labels = new ArrayList<>();
-        for (SaveEntry entry : saves) {
-            labels.add(entry.toString());
-        }
-        Optional<Integer> picked = EditorStyledDialog.chooseIndex(
+        Optional<SaveEntry> picked = EditorStyledDialog.chooseDeletableItem(
                 stage,
                 "Load Game",
-                "Choose a saved game to continue.",
-                labels);
+                "TeamMatch".equals(requiredGameType)
+                        ? "Choose a Team Match save to continue."
+                        : "Choose a saved game to continue.",
+                saves,
+                SaveEntry::toString,
+                entry -> deleteFileQuiet(entry.path));
         if (!picked.isPresent()) {
             return false;
         }
-        return loadSavedGame(saves.get(picked.get()).path);
+        return loadSavedGame(picked.get().path);
     }
 
     public boolean loadSavedGame(Path path) {
+        String gameType = deserializer.readGameType(path.toString());
         GameSession loadedSession = new GameSession();
         if (!deserializer.loadGameState(path.toString(), loadedSession)) {
             showInfo("Load Game", "Could not load the selected save.");
             return false;
         }
-        currentSession = loadedSession;
-        lastGameType = loadedSession.getCurrentMode();
-        lastDifficulty = loadedSession.getDifficulty();
+        if (gameType == null || gameType.isBlank()) {
+            gameType = inferGameType(loadedSession);
+        }
+        GameSession sessionToPlay;
+        if ("TeamMatch".equals(gameType)) {
+            sessionToPlay = TeamMatchSession.fromLoadedGameSession(loadedSession);
+        } else {
+            sessionToPlay = loadedSession;
+            if ("Paused".equals(sessionToPlay.getCurrentMode())) {
+                sessionToPlay.setCurrentMode("Play");
+            }
+        }
+        currentSession = sessionToPlay;
+        lastGameType = gameType;
+        lastDifficulty = sessionToPlay.getDifficulty();
         showPlayMode(currentSession);
+        return true;
+    }
+
+    private List<SaveEntry> filterSavesByGameType(List<SaveEntry> saves, String requiredGameType) {
+        List<SaveEntry> filtered = new ArrayList<>();
+        for (SaveEntry entry : saves) {
+            String gameType = deserializer.readGameType(entry.path.toString());
+            if (requiredGameType.equals(gameType)) {
+                filtered.add(entry);
+                continue;
+            }
+            if (gameType == null && "TeamMatch".equals(requiredGameType) && isLegacyTeamMatchSave(entry.path)) {
+                filtered.add(entry);
+            }
+        }
+        return filtered;
+    }
+
+    private boolean isLegacyTeamMatchSave(Path path) {
+        GameSession probe = new GameSession();
+        if (!deserializer.loadGameState(path.toString(), probe)) {
+            return false;
+        }
+        return "TeamMatch".equals(inferGameType(probe));
+    }
+
+    private String inferGameType(GameSession session) {
+        if (session instanceof TeamMatchSession || "TeamMatch".equals(session.getCurrentMode())) {
+            return "TeamMatch";
+        }
+        if (looksLikeTeamMatchSave(session)) {
+            return "TeamMatch";
+        }
+        if ("Paused".equals(session.getCurrentMode())) {
+            return "Play";
+        }
+        String mode = session.getCurrentMode();
+        return mode != null && !mode.isBlank() ? mode : "Play";
+    }
+
+    private boolean looksLikeTeamMatchSave(GameSession session) {
+        if (session.getHero() == null || session.getMap() == null) {
+            return false;
+        }
+        List<com.kurawler.model.character.Enemy> enemies = session.getEnemies();
+        if (enemies.size() < 6 || enemies.size() > 8) {
+            return false;
+        }
+        for (com.kurawler.model.character.Enemy enemy : enemies) {
+            if (!(enemy instanceof com.kurawler.model.character.Knight)
+                    && !(enemy instanceof com.kurawler.model.character.Sorcerer)) {
+                return false;
+            }
+        }
         return true;
     }
 
@@ -268,20 +362,30 @@ public class ScreenManager {
     }
 
     public void startTeamMatch() {
-        com.kurawler.model.Map map;
-        if (currentSession != null && currentSession.getMap() != null) {
-            map = currentSession.getMap();
-        } else {
-            map = MapFactory.createDefaultMap().getMap();
-        }
-
-        TeamMatchSession tmSession = new TeamMatchSession(map);
-        if (!tmSession.validateMap()) {
-            EditorStyledDialog.showMessage(stage, "Team Match Error",
-                    "Map does not have enough open space for Team Match.");
+        shutdownActiveGameView();
+        pendingTeamMatchMap = null;
+        com.kurawler.model.Map map = resolveTeamMatchMap();
+        if (map == null) {
+            EditorStyledDialog.showMessage(stage, "Team Match",
+                    "Save a map in the level editor first.\nUse Save in the editor toolbar.");
             return;
         }
 
+        com.kurawler.model.Map playMap = cloneMapForPlay(map);
+        if (playMap == null) {
+            EditorStyledDialog.showMessage(stage, "Team Match Error",
+                    "Could not load the saved editor map for Team Match.");
+            return;
+        }
+
+        TeamMatchSession tmSession = new TeamMatchSession(playMap);
+        if (!tmSession.validateMap()) {
+            EditorStyledDialog.showMessage(stage, "Team Match Error",
+                    tmSession.describeValidationFailure());
+            return;
+        }
+
+        pendingTeamMatchMap = playMap;
         showDifficultyScreen("TeamMatch");
     }
 
@@ -307,6 +411,7 @@ public class ScreenManager {
 
     public void showBuildMode() {
         shutdownActiveGameView();
+        pendingTeamMatchMap = null;
         AudioManager.getInstance().playMusic("menu", true);
         if (currentSession == null) {
             currentSession = MapFactory.createDefaultMap();
@@ -371,20 +476,104 @@ public class ScreenManager {
         showPlayMode(session);
     }
 
-    public void playEditedMapAsTeamMatch(com.kurawler.model.Map map) {
+    /** Team Match from the level editor — uses the last map saved via Save. */
+    public void playEditedMapAsTeamMatch() {
+        pendingTeamMatchMap = null;
+        com.kurawler.model.Map map = resolveTeamMatchMap();
         if (map == null) {
+            EditorStyledDialog.showMessage(stage, "Team Match",
+                    "Save your map first (Save button), then start Team Match.");
             return;
         }
-        TeamMatchSession tmSession = new TeamMatchSession(map);
+        launchTeamMatchOnMap(map, true);
+    }
+
+    private void launchTeamMatchOnMap(com.kurawler.model.Map map, boolean editorTestPlay) {
+        shutdownActiveGameView();
+        com.kurawler.model.Map playMap = cloneMapForPlay(map);
+        if (playMap == null) {
+            EditorStyledDialog.showMessage(stage, "Team Match Error",
+                    "Could not prepare the saved map for Team Match.");
+            return;
+        }
+
+        TeamMatchSession tmSession = new TeamMatchSession(playMap);
         if (!tmSession.validateMap()) {
             EditorStyledDialog.showMessage(stage, "Team Match Error",
-                    "Map does not have enough open space for Team Match.");
+                    tmSession.describeValidationFailure());
             return;
         }
         tmSession.initializeMatch();
-        tmSession.setEditorTestPlay(true);
-        prepareSessionForPlay(tmSession);
+        tmSession.setEditorTestPlay(editorTestPlay);
+        tmSession.setAchievementManager(new AchievementManager());
+        tmSession.wireObservers();
         showPlayMode(tmSession);
+    }
+
+    private com.kurawler.model.Map resolveTeamMatchMap() {
+        if (lastSavedEditorMapPath != null && Files.isRegularFile(lastSavedEditorMapPath)) {
+            com.kurawler.model.Map map =
+                    loadEditorMapFile(lastSavedEditorMapPath, lastSavedEditorWorldStartId);
+            if (map != null) {
+                return map;
+            }
+        }
+        return loadMostRecentEditorMapFile();
+    }
+
+    private com.kurawler.model.Map loadEditorMapFile(Path path, String preferredWorldStartId) {
+        String name = path.getFileName().toString();
+        if (name.endsWith(".world.json")) {
+            MapDeserializer.WorldData data = deserializer.loadWorldFromFile(path.toString());
+            if (data == null || data.maps == null || data.maps.isEmpty()) {
+                return null;
+            }
+            String startId = preferredWorldStartId;
+            if (startId == null || !data.maps.containsKey(startId)) {
+                startId = data.startMapId;
+            }
+            if (startId == null || !data.maps.containsKey(startId)) {
+                startId = data.maps.keySet().iterator().next();
+            }
+            return data.maps.get(startId);
+        }
+        if (name.endsWith(".json")) {
+            return deserializer.loadMapFromFile(path.toString());
+        }
+        return null;
+    }
+
+    private com.kurawler.model.Map loadMostRecentEditorMapFile() {
+        List<MapFileEntry> entries = new ArrayList<>();
+        entries.addAll(listWorldFiles());
+        entries.addAll(listSingleMapFiles());
+        if (entries.isEmpty()) {
+            return null;
+        }
+        entries.sort(Comparator.comparing((MapFileEntry e) -> lastModifiedSafe(e.path)).reversed());
+        MapFileEntry latest = entries.get(0);
+        lastSavedEditorMapPath = latest.path;
+        if (latest.path.getFileName().toString().endsWith(".world.json")) {
+            MapDeserializer.WorldData data = deserializer.loadWorldFromFile(latest.path.toString());
+            lastSavedEditorWorldStartId = data != null ? data.startMapId : null;
+        } else {
+            lastSavedEditorWorldStartId = null;
+        }
+        return loadEditorMapFile(latest.path, lastSavedEditorWorldStartId);
+    }
+
+    private void rememberEditorSaveForTeamMatch(Path path, String worldStartMapId) {
+        lastSavedEditorMapPath = path;
+        lastSavedEditorWorldStartId = worldStartMapId;
+    }
+
+    private com.kurawler.model.Map cloneMapForPlay(com.kurawler.model.Map source) {
+        if (source == null) {
+            return null;
+        }
+        String json = serializer.mapToJson(source);
+        com.kurawler.model.Map cloned = deserializer.loadMapFromJson(json);
+        return cloned != null ? cloned : source;
     }
 
     /** Save world JSON (all editor maps) to maps/<name>.world.json. */
@@ -408,7 +597,14 @@ public class ScreenManager {
             showInfo("Save World", "Could not create maps folder.");
             return false;
         }
-        return serializer.saveWorldToFile(maps, startMapId, MAPS_DIR.resolve(name).toString());
+        Path target = MAPS_DIR.resolve(name);
+        boolean saved = serializer.saveWorldToFile(maps, startMapId, target.toString());
+        if (!saved) {
+            showInfo("Save World", "Could not save world file.");
+        } else {
+            rememberEditorSaveForTeamMatch(target, startMapId);
+        }
+        return saved;
     }
 
     /** Load a world JSON file into the editor. Returns null on cancel/failure. */
@@ -419,17 +615,17 @@ public class ScreenManager {
                     "No world files found.\nSave a world first — files end in .world.json.");
             return null;
         }
-        List<String> labels = new ArrayList<>();
-        for (MapFileEntry e : files) {
-            labels.add(e.label);
-        }
-        Optional<Integer> picked = EditorStyledDialog.chooseIndex(stage, "Load World",
-                "Pick a world file to open.", labels);
+        Optional<MapFileEntry> picked = EditorStyledDialog.chooseDeletableItem(
+                stage, "Load World",
+                "Pick a world file to open.",
+                files,
+                MapFileEntry::toString,
+                entry -> deleteFileQuiet(entry.path));
         if (!picked.isPresent()) {
             return null;
         }
         MapDeserializer.WorldData data =
-                deserializer.loadWorldFromFile(files.get(picked.get()).path.toString());
+                deserializer.loadWorldFromFile(picked.get().path.toString());
         if (data == null) {
             EditorStyledDialog.showMessage(stage, "Load World", "Could not load the world file.");
         }
@@ -438,18 +634,25 @@ public class ScreenManager {
 
     private List<MapFileEntry> listWorldFiles() {
         List<MapFileEntry> entries = new ArrayList<>();
-        if (Files.isDirectory(MAPS_DIR)) {
-            try (Stream<Path> paths = Files.list(MAPS_DIR)) {
-                paths
-                        .filter(p -> p.getFileName().toString().endsWith(".world.json"))
-                        .sorted(Comparator.comparing(this::lastModifiedSafe).reversed())
-                        .forEach(p -> entries.add(new MapFileEntry(
-                                p, "[World] " + p.getFileName().toString())));
-            } catch (IOException ignored) {
-                // empty list
-            }
-        }
+        collectWorldFiles(MAPS_DIR, "", entries);
+        // Older builds saved to maps/maps/ by mistake — still list those for Load.
+        collectWorldFiles(MAPS_DIR.resolve("maps"), "maps/", entries);
+        entries.sort(Comparator.comparing((MapFileEntry e) -> lastModifiedSafe(e.path)).reversed());
         return entries;
+    }
+
+    private void collectWorldFiles(Path dir, String labelPrefix, List<MapFileEntry> entries) {
+        if (!Files.isDirectory(dir)) {
+            return;
+        }
+        try (Stream<Path> paths = Files.list(dir)) {
+            paths
+                    .filter(p -> p.getFileName().toString().endsWith(".world.json"))
+                    .forEach(p -> entries.add(new MapFileEntry(
+                            p, "[World] " + labelPrefix + p.getFileName().toString())));
+        } catch (IOException ignored) {
+            // empty list
+        }
     }
 
     public boolean saveEditedMap(com.kurawler.model.Map map, String filename) {
@@ -479,7 +682,12 @@ public class ScreenManager {
             showInfo("Save Map", "Could not create maps folder.");
             return false;
         }
-        return serializer.saveMapToFile(map, MAPS_DIR.resolve(name).toString());
+        Path target = MAPS_DIR.resolve(name);
+        boolean saved = serializer.saveMapToFile(map, target.toString());
+        if (saved) {
+            rememberEditorSaveForTeamMatch(target, null);
+        }
+        return saved;
     }
 
     /** Load a map JSON into the level editor (PDF §4.2). */
@@ -491,19 +699,17 @@ public class ScreenManager {
             return null;
         }
 
-        List<String> labels = new ArrayList<>();
-        for (MapFileEntry entry : maps) {
-            labels.add(entry.label);
-        }
-        Optional<Integer> picked = EditorStyledDialog.chooseIndex(
+        Optional<MapFileEntry> picked = EditorStyledDialog.chooseDeletableItem(
                 stage,
                 "Load Map",
                 "Pick a saved dungeon to open in the editor.",
-                labels);
+                maps,
+                MapFileEntry::toString,
+                entry -> deleteFileQuiet(entry.path));
         if (!picked.isPresent()) {
             return null;
         }
-        MapFileEntry chosen = maps.get(picked.get());
+        MapFileEntry chosen = picked.get();
         if (chosen.path.getFileName().toString().endsWith(".world.json")) {
             EditorStyledDialog.showMessage(stage, "Load Map",
                     "This is a world file (.world.json).\n"
@@ -571,26 +777,13 @@ public class ScreenManager {
     }
 
     private void prepareSessionForPlay(GameSession session) {
-        com.kurawler.model.Map map = session.getMap();
         session.clearEnemies();
-        Hero hero = null;
-        for (int row = 0; row < map.getHeight(); row++) {
-            for (int col = 0; col < map.getWidth(); col++) {
-                GridCell cell = map.getCell(row, col);
-                if (cell == null) {
-                    continue;
-                }
-                Character occupant = cell.getOccupyingCharacter();
-                if (occupant instanceof Hero) {
-                    hero = (Hero) occupant;
-                    hero.moveToCell(cell);
-                    session.setHero(hero);
-                } else if (occupant instanceof Enemy) {
-                    Enemy enemy = (Enemy) occupant;
-                    enemy.moveToCell(cell);
-                    session.addEnemy(enemy);
-                }
-            }
+        Hero hero = adoptPlacedHero(session);
+        com.kurawler.model.Map map = session.getMap();
+        if (hero == null) {
+            hero = collectEnemiesFromMap(map, session);
+        } else {
+            collectEnemiesFromMap(map, session);
         }
 
         if (hero == null) {
@@ -612,6 +805,72 @@ public class ScreenManager {
         // Scroll (auto-spawned every 15 s), not at game start.
         session.setAchievementManager(new AchievementManager());
         session.wireObservers();
+    }
+
+    /** Uses the hero tile placed in the level editor / map JSON, including multi-map worlds. */
+    private Hero adoptPlacedHero(GameSession session) {
+        Hero hero = findHeroOnMap(session.getMap());
+        String heroMapId = null;
+        if (hero == null && session.getWorldMaps() != null) {
+            for (java.util.Map.Entry<String, com.kurawler.model.Map> entry : session.getWorldMaps().entrySet()) {
+                hero = findHeroOnMap(entry.getValue());
+                if (hero != null) {
+                    heroMapId = entry.getKey();
+                    break;
+                }
+            }
+        }
+        if (hero == null) {
+            return null;
+        }
+        if (heroMapId != null && !heroMapId.equals(session.getCurrentMapId())) {
+            session.setCurrentMapId(heroMapId);
+            session.setMap(session.getWorldMaps().get(heroMapId));
+        }
+        GridCell cell = hero.getCurrentCell();
+        if (cell != null) {
+            hero.moveToCell(cell);
+        }
+        session.setHero(hero);
+        return hero;
+    }
+
+    private Hero findHeroOnMap(com.kurawler.model.Map map) {
+        if (map == null) {
+            return null;
+        }
+        for (int row = 0; row < map.getHeight(); row++) {
+            for (int col = 0; col < map.getWidth(); col++) {
+                GridCell cell = map.getCell(row, col);
+                if (cell != null && cell.getOccupyingCharacter() instanceof Hero placed) {
+                    return placed;
+                }
+            }
+        }
+        return null;
+    }
+
+    private Hero collectEnemiesFromMap(com.kurawler.model.Map map, GameSession session) {
+        Hero hero = null;
+        for (int row = 0; row < map.getHeight(); row++) {
+            for (int col = 0; col < map.getWidth(); col++) {
+                GridCell cell = map.getCell(row, col);
+                if (cell == null) {
+                    continue;
+                }
+                Character occupant = cell.getOccupyingCharacter();
+                if (occupant instanceof Hero placed) {
+                    hero = placed;
+                    placed.moveToCell(cell);
+                    session.setHero(placed);
+                } else if (occupant instanceof Enemy) {
+                    Enemy enemy = (Enemy) occupant;
+                    enemy.moveToCell(cell);
+                    session.addEnemy(enemy);
+                }
+            }
+        }
+        return hero;
     }
 
     private GridCell firstWalkableCell(com.kurawler.model.Map map) {
@@ -655,10 +914,27 @@ public class ScreenManager {
             currentSession = generator.generate();
         } else if ("TeamMatch".equals(gameType)) {
             com.kurawler.model.Map map;
-            if (currentSession != null && currentSession.getMap() != null) {
+            if (pendingTeamMatchMap != null) {
+                map = pendingTeamMatchMap;
+                pendingTeamMatchMap = null;
+            } else if (currentSession instanceof TeamMatchSession
+                    && currentSession.getMap() != null) {
                 map = currentSession.getMap();
             } else {
-                map = MapFactory.createDefaultMap().getMap();
+                com.kurawler.model.Map saved = resolveTeamMatchMap();
+                if (saved == null) {
+                    EditorStyledDialog.showMessage(stage, "Team Match",
+                            "Save a map in the level editor first.\nUse Save in the editor toolbar.");
+                    showMainMenu();
+                    return;
+                }
+                map = cloneMapForPlay(saved);
+                if (map == null) {
+                    EditorStyledDialog.showMessage(stage, "Team Match Error",
+                            "Could not load the saved editor map for Team Match.");
+                    showMainMenu();
+                    return;
+                }
             }
             TeamMatchSession tmSession = new TeamMatchSession(map);
             tmSession.initializeMatch();
@@ -797,6 +1073,15 @@ public class ScreenManager {
 
     private void showInfo(String title, String message) {
         EditorStyledDialog.showMessage(stage, title, message);
+    }
+
+    private boolean deleteFileQuiet(Path path) {
+        try {
+            return Files.deleteIfExists(path);
+        } catch (IOException e) {
+            showInfo("Delete", "Could not delete the file.");
+            return false;
+        }
     }
 
     private static class MapFileEntry {

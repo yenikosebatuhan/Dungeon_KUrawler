@@ -122,6 +122,7 @@ public class EditorView {
     private int hoverCol = -1;
     private int lastPaintRow = -1;
     private int lastPaintCol = -1;
+    private boolean suppressCanvasPaint;
     private String lastEditMessage;
     private int currentRotation = 0; // unused placeholder kept for compat
 
@@ -303,17 +304,22 @@ public class EditorView {
         // ── Save / Load / Play ─────────────────────────────────────────────
         Button save = stoneButton("Save", 70);
         save.setOnAction(e -> {
+            resetPaintStateAfterModal();
             boolean saved = screenManager.showSaveWorldDialog(editor.getWorldMaps(), editor.getCurrentMapId());
+            resetPaintStateAfterModal();
             setStatus(saved ? "World saved under maps/." : "Save cancelled or failed.");
         });
 
         Button load = stoneButton("Load", 70);
         load.setOnAction(e -> {
+            resetPaintStateAfterModal();
             com.kurawler.persistence.MapDeserializer.WorldData data = screenManager.showLoadWorldDialog();
+            resetPaintStateAfterModal();
             if (data != null) {
                 editor.loadWorld(data.maps, data.startMapId);
                 mapSelector.getItems().setAll(editor.getWorldMaps().keySet());
                 mapSelector.setValue(editor.getCurrentMapId());
+                rebuildPaletteCards();
                 render();
                 setStatus("Loaded world with " + data.maps.size() + " map(s).");
             }
@@ -323,7 +329,11 @@ public class EditorView {
         play.setOnAction(e -> screenManager.playEditedWorld(editor.getWorldMaps(), editor.getCurrentMapId()));
 
         Button teamMatch = stoneButton("Team Match", 104);
-        teamMatch.setOnAction(e -> screenManager.playEditedMapAsTeamMatch(editor.getMap()));
+        teamMatch.setOnAction(e -> {
+            resetPaintStateAfterModal();
+            editor.syncCurrentMapToWorld();
+            screenManager.playEditedMapAsTeamMatch();
+        });
 
         Button random = stoneButton("Random", 84);
         random.setOnAction(e -> {
@@ -430,6 +440,13 @@ public class EditorView {
         return panel;
     }
 
+    private void resetPaintStateAfterModal() {
+        lastPaintRow = -1;
+        lastPaintCol = -1;
+        suppressCanvasPaint = true;
+        javafx.application.Platform.runLater(() -> suppressCanvasPaint = false);
+    }
+
     private void selectCategory(String category) {
         activeCategory = category;
         // Picking a category exits search mode.
@@ -475,6 +492,7 @@ public class EditorView {
             empty.setPadding(new Insets(10, 4, 4, 4));
             paletteGrid.getChildren().add(empty);
         }
+        ensureToolMatchesShownAssets(shown);
         refreshSelectionHighlight();
         if (paletteScroll != null) {
             paletteScroll.setVvalue(0);
@@ -516,6 +534,28 @@ public class EditorView {
     }
 
     // ---------- SELECTION ----------
+
+    private void ensureToolMatchesShownAssets(List<EditorAsset> shown) {
+        if (shown == null || shown.isEmpty()) {
+            return;
+        }
+        for (EditorAsset asset : shown) {
+            if (asset.name.equals(selectedToolId)) {
+                return;
+            }
+        }
+        EditorAsset first = shown.get(0);
+        boolean isCharacter = first.kind == AssetKind.HERO
+                || first.kind == AssetKind.KNIGHT
+                || first.kind == AssetKind.GUARD
+                || first.kind == AssetKind.SORCERER
+                || first.kind == AssetKind.ASSASSIN;
+        if (isCharacter) {
+            selectCharacterTool(first.name);
+        } else {
+            selectObjectTool(first.name);
+        }
+    }
 
     private void applyDragSelection(String payload) {
         if (payload.startsWith(DRAG_OBJECT)) {
@@ -658,6 +698,9 @@ public class EditorView {
 
     /** Paints the current selection at the cursor, interpolating across skipped cells. */
     private void paintAt(MouseEvent e) {
+        if (suppressCanvasPaint) {
+            return;
+        }
         int row = tileRow(e);
         int col = tileCol(e);
         if (row == lastPaintRow && col == lastPaintCol) {

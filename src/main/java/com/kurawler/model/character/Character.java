@@ -58,9 +58,11 @@ public abstract class Character {
     /**
      * @requires none
      * @modifies none
-     * @effects Returns the character's raw damage output (attackPower + strength).
+     * @effects Returns generated melee damage: (STR / 2) + ATK (PDF §3, before DEF).
      */
-    public int calculateDamage() { return attackPower + strength; }
+    public int calculateDamage() {
+        return (strength / 2) + attackPower;
+    }
 
     /**
      * @requires amount >= 0
@@ -279,7 +281,9 @@ public abstract class Character {
      */
     public void moveToCell(GridCell newCell) {
         if (currentCell != null) {
-            currentCell.setOccupyingCharacter(null);
+            if (currentCell.getOccupyingCharacter() == this) {
+                currentCell.setOccupyingCharacter(null);
+            }
         }
         this.currentCell = newCell;
         if (newCell != null) {

@@ -5,11 +5,13 @@ import com.kurawler.model.GridCell;
 import com.kurawler.model.Map;
 import com.kurawler.model.character.Hero;
 import com.kurawler.model.character.ShadowClone;
+import com.kurawler.model.object.Consumable;
 import com.kurawler.model.object.Item;
 import com.kurawler.model.object.Scroll;
 
 /**
- * Effect: Consumes a scroll, applying its specific magical properties.
+ * Effect: Applies scroll magic. Most scrolls are consumed; spell books are reusable
+ * and spend mana on each cast (PDF §2.4).
  */
 public class ReadScrollEffect implements Effect {
     private final Scroll scroll;
@@ -25,16 +27,18 @@ public class ReadScrollEffect implements Effect {
             return;
         }
 
-        Scroll toConsume = resolveScrollInInventory(hero, scroll);
-        if (toConsume == null || !hero.getInventory().removeItem(toConsume)) {
+        Scroll target = resolveScrollInInventory(hero, scroll);
+        if (target == null) {
             return;
         }
 
-        String name = toConsume.getName() == null ? "" : toConsume.getName().toLowerCase();
-        int heal = toConsume.getHealAmount();
+        String name = target.getName() == null ? "" : target.getName().toLowerCase();
         int hpBefore = hero.getHealth();
 
         if (name.contains("shadow") || name.contains("clone")) {
+            if (!hero.getInventory().removeItem(target)) {
+                return;
+            }
             int[] spawn = findCloneSpawnCell(session.getMap(), hero.getRow(), hero.getCol());
             ShadowClone clone = new ShadowClone(spawn[0], spawn[1], session.getMap());
             session.setShadowClone(clone);
@@ -42,19 +46,26 @@ public class ReadScrollEffect implements Effect {
             return;
         }
 
-        if (name.contains("spell book") || name.contains("spell")) {
-            int manaGain = Math.max(15, heal);
-            hero.heal(heal);
-            hero.restoreMana(manaGain);
-            int healed = hero.getHealth() - hpBefore;
-            if (healed > 0) {
-                session.setLastPortalMessage("Spell Book: +" + healed + " HP, +" + manaGain + " MP.");
-            } else {
-                session.setLastPortalMessage("Spell Book: restored " + manaGain + " MP.");
+        if (target.isSpellBook()) {
+            int manaCost = Scroll.SPELL_BOOK_MANA_COST;
+            if (hero.getMana() < manaCost) {
+                session.setLastPortalMessage(
+                        "Not enough mana to cast! (Need " + manaCost + " MP)");
+                return;
             }
+            hero.useMana(manaCost);
+            int healAmount = Consumable.HEALTH_POTION_HEAL + 2;
+            hero.heal(healAmount);
+            int healed = hero.getHealth() - hpBefore;
+            session.setLastPortalMessage("Spell Book: -" + manaCost + " MP, +" + healed + " HP.");
             return;
         }
 
+        if (!hero.getInventory().removeItem(target)) {
+            return;
+        }
+
+        int heal = target.getHealAmount();
         if (heal > 0) {
             hero.heal(heal);
             int healed = hero.getHealth() - hpBefore;
@@ -62,7 +73,7 @@ public class ReadScrollEffect implements Effect {
             return;
         }
 
-        session.setLastPortalMessage("Read " + toConsume.getName() + " — the runes fade.");
+        session.setLastPortalMessage("Read " + target.getName() + " — the runes fade.");
     }
 
     /** Prefer an adjacent walkable tile so the clone is visible beside the hero. */

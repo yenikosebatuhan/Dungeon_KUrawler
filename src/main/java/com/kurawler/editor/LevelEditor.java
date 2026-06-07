@@ -128,7 +128,11 @@ public class LevelEditor {
     }
 
     public boolean undo() {
-        return mapEditor.undo();
+        if (!mapEditor.undo()) {
+            return false;
+        }
+        worldMaps.put(currentMapId, mapEditor.getCurrentMap());
+        return true;
     }
 
     public boolean canUndo() {
@@ -141,6 +145,11 @@ public class LevelEditor {
 
     public Map getMap() {
         return mapEditor.getCurrentMap();
+    }
+
+    /** Keeps the world registry pointing at the map currently shown in the editor. */
+    public void syncCurrentMapToWorld() {
+        worldMaps.put(currentMapId, mapEditor.getCurrentMap());
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

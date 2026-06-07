@@ -15,6 +15,24 @@ public class Weapon extends Item {
         return damage;
     }
 
+    /** Inventory/detail text: base description plus {@code +ATK} when the weapon has damage. */
+    public String getInventoryDescription() {
+        String base = getDescription();
+        if (damage <= 0) {
+            return base != null ? base : "";
+        }
+        if (base != null && base.contains("+ATK")) {
+            return base;
+        }
+        if (base != null && base.matches("(?s).*\\bATK \\d+\\b.*")) {
+            return base.replaceAll("\\bATK (\\d+)\\b", "+ATK $1");
+        }
+        if (base == null || base.isBlank()) {
+            return "+ATK " + damage;
+        }
+        return base.trim() + "\n+ATK " + damage;
+    }
+
     @Override
     public List<ItemAction> getActions() {
         return List.of(ItemAction.TAKE, ItemAction.EQUIP);

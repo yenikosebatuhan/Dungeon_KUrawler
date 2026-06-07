@@ -21,13 +21,17 @@ public class ShadowCloneScroll extends Scroll {
     private final long spawnedAtMs;
 
     public ShadowCloneScroll() {
+        this(System.currentTimeMillis());
+    }
+
+    public ShadowCloneScroll(long spawnedAtMs) {
         super(
             "Shadow Clone Scroll",
             "A flickering parchment. Reading it conjures a shadow of yourself.",
             "The ink shifts as you read — a dark mirror peels away from you.",
             0   // no direct heal effect; clone summon handled separately
         );
-        this.spawnedAtMs = System.currentTimeMillis();
+        this.spawnedAtMs = spawnedAtMs;
     }
 
     public long getSpawnedAtMs() {

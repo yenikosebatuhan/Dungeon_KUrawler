@@ -65,7 +65,7 @@ import javafx.scene.paint.Stop;
 import javafx.scene.paint.CycleMethod;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import javafx.scene.text.TextAlignment;
+import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -846,7 +846,8 @@ public class GameView {
         // Combat Stats (Dynamic reading ensures correct values)
         addStatRow(grid, 4, "Strength (STR):", String.valueOf(hero.getStrength()));
         addStatRow(grid, 5, "Defense (DEF):", String.valueOf(hero.getDefensePower()));
-        addStatRow(grid, 6, "Total Damage:", String.valueOf(hero.calculateDamage()));
+        addStatRow(grid, 6, "Attack (ATK):", String.valueOf(hero.getMeleeAttackPower()));
+        addStatRow(grid, 7, "Total Damage:", String.valueOf(hero.calculateDamage()));
 
         // Equipment
         String wpnName = formatEquippedWeaponLine(hero);
@@ -854,10 +855,10 @@ public class GameView {
         String shieldName = hero.getEquippedShield() != null ? hero.getEquippedShield().getName() : "None";
         String ringName = hero.getEquippedRing() != null ? hero.getEquippedRing().getName() : "None";
 
-        addStatRow(grid, 7, "Weapon:", wpnName);
-        addStatRow(grid, 8, "Armor:", armorName);
-        addStatRow(grid, 9, "Shield:", shieldName);
-        addStatRow(grid, 10, "Ring:", ringName);
+        addStatRow(grid, 8, "Weapon:", wpnName);
+        addStatRow(grid, 9, "Armor:", armorName);
+        addStatRow(grid, 10, "Shield:", shieldName);
+        addStatRow(grid, 11, "Ring:", ringName);
 
         Button closeBtn = popupButton("Close", "#a09070");
         closeBtn.setOnAction(e -> popup.close());
@@ -1125,6 +1126,11 @@ public class GameView {
                 }
             }
             if (hitEnemy != null && !hitEnemy.isAlive()) {
+                GridCell deadCell = map.getCell(hitEnemy.getRow(), hitEnemy.getCol());
+                if (deadCell != null && deadCell.getOccupyingCharacter() == hitEnemy) {
+                    deadCell.setOccupyingCharacter(null);
+                }
+                session.decrementEnemyCount();
                 AudioManager.getInstance().play("enemyDown");
                 showGameMessage(hitEnemy.getName() + " defeated!");
             } else if (hitEnemy != null) {
@@ -1181,8 +1187,27 @@ public class GameView {
         }
     }
 
+    /** 3×3 click / E attack — direct hit on the chosen adjacent enemy (not Space reach). */
+    private void performInteractionGridAttack(Enemy enemy, GridCell cell, GameSession session) {
+        Hero hero = session.getHero();
+        if (!hero.attackInInteractionGrid(enemy, session)) {
+            showGameMessage("Not enough energy to attack!");
+            AudioManager.getInstance().play("error");
+            return;
+        }
+        if (!enemy.isAlive()) {
+            cell.setOccupyingCharacter(null);
+            session.decrementEnemyCount();
+            AudioManager.getInstance().play("enemyDown");
+            showGameMessage(enemy.getName() + " defeated!");
+        } else {
+            AudioManager.getInstance().play("attack");
+            showGameMessage("Hit " + enemy.getName() + "! HP:" + enemy.getHealth());
+        }
+    }
+
     /**
-     * E key: melee attack the first adjacent enemy (same as ATTACK in the click menu).
+     * E key: attack the first enemy in the 3×3 interaction grid.
      */
     private boolean tryAttackAdjacentEnemy() {
         GameSession session = controller.getSession();
@@ -1203,7 +1228,11 @@ public class GameView {
                 continue;
             }
             if (cell.getOccupyingCharacter() instanceof Enemy enemy && enemy.isAlive()) {
-                executeInteraction("attack", row, col, enemy.getName(), session);
+                if (session instanceof TeamMatchSession tm && !tm.canDamage(hero, enemy)) {
+                    continue;
+                }
+                performInteractionGridAttack(enemy, cell, session);
+                render();
                 return true;
             }
         }
@@ -1551,27 +1580,13 @@ public class GameView {
                 AudioManager.getInstance().play(breakRoll.succeeded() ? "break" : "error");
                 break;
             case "attack":
-                if (cell.getOccupyingCharacter() instanceof Enemy) {
-                    Enemy enemy = (Enemy) cell.getOccupyingCharacter();
+                if (cell.getOccupyingCharacter() instanceof Enemy enemy) {
                     if (session instanceof TeamMatchSession tm && !tm.canDamage(hero, enemy)) {
                         showGameMessage("You cannot attack allies.");
                         AudioManager.getInstance().play("error");
                         break;
                     }
-                    if (!hero.attack(enemy, session)) {
-                        showGameMessage("Not enough energy to attack!");
-                        AudioManager.getInstance().play("error");
-                        break;
-                    }
-                    if (!enemy.isAlive()) {
-                        cell.setOccupyingCharacter(null);
-                        session.decrementEnemyCount();
-                        AudioManager.getInstance().play("enemyDown");
-                        showGameMessage(enemy.getName() + " defeated!");
-                    } else {
-                        AudioManager.getInstance().play("attack");
-                        showGameMessage("Hit " + enemy.getName() + "! HP:" + enemy.getHealth());
-                    }
+                    performInteractionGridAttack(enemy, cell, session);
                 }
                 break;
             case "open_bookshelf":
@@ -1668,13 +1683,14 @@ public class GameView {
         });
         loadBtn.setOnAction(e -> {
             AudioManager.getInstance().play("button");
-            boolean loaded = screenManager.showLoadDialogAndStart();
+            String gameTypeFilter = screenManager.resolveLoadFilterForSession(controller.getSession());
+            boolean loaded = screenManager.showLoadDialogAndStart(gameTypeFilter);
             if (loaded) {
                 leavePlay[0] = true;
                 animationTimer = null;
                 closePopup.run();
             } else {
-                showGameMessage("No save file found.");
+                showGameMessage("Load cancelled or failed.");
             }
         });
         mainMenuBtn.setOnAction(e -> {
@@ -1707,7 +1723,12 @@ public class GameView {
             closePopup.run();
             boolean ok = com.kurawler.model.MapFactory.restartCurrentFloor(controller.getSession());
             if (ok) {
-                if (gameLoop != null) gameLoop.refreshMap();
+                if (gameLoop != null) {
+                    gameLoop.refreshMap();
+                    gameLoop.resetForLevelRestart();
+                }
+                lastHeroHp = Integer.MAX_VALUE;
+                smoothPositions.clear();
                 render();
                 showGameMessage("Level restarted.");
             }
@@ -1845,6 +1866,13 @@ public class GameView {
                         } else {
                             renderer.drawFloor(gc, sx, sy);
                         }
+                    } else if (so != null && so.getName() != null
+                            && so.getName().toLowerCase().contains("door")) {
+                        if (!so.isPassable()) {
+                            renderer.drawWall(gc, sx, sy);
+                        } else {
+                            renderer.drawFloor(gc, sx, sy);
+                        }
                     } else if (so != null && so.isSearchable()) {
                         renderer.drawFloor(gc, sx, sy);
                     } else if (so != null && !so.isPassable()) {
@@ -1873,6 +1901,9 @@ public class GameView {
                     if (isPortal) {
                         MapPortal portal = (MapPortal) so;
                         renderer.drawPortalOrNavSprite(gc, sx, sy, portal);
+                    } else if (so != null && so.getName() != null
+                            && so.getName().toLowerCase().contains("door")) {
+                        renderer.drawPortal(gc, sx, sy, so.isPassable(), so.getName());
                     }
                 });
 
@@ -1899,6 +1930,13 @@ public class GameView {
 
                 Character occupant = cell.getOccupyingCharacter();
                 if (occupant != null && occupant.isAlive() && !(occupant instanceof Hero)) {
+                    if (occupant.getCurrentCell() != cell) {
+                        // Ghost occupant left on a tile after teleport/moveToCell.
+                        if (cell.getOccupyingCharacter() == occupant) {
+                            cell.setOccupyingCharacter(null);
+                        }
+                        continue;
+                    }
                     if (occupant.getRow() != r || occupant.getCol() != c) {
                         occupant.moveToCell(cell);
                         smoothPositions.remove(occupant);
@@ -2114,7 +2152,7 @@ public class GameView {
             gc.fillText("\u2756  STR " + hero.getStrength(), tx, ty);
             ty += lineStep;
             gc.setFill(hero.getEquippedWeapon() != null ? Color.web("#ffd54f") : Color.web("#e8c84a"));
-            gc.fillText("\u2694  ATK " + hero.calculateDamage(), tx, ty);
+            gc.fillText("\u2694  ATK " + hero.getMeleeAttackPower(), tx, ty);
             ty += lineStep;
             gc.setFill(Color.web("#ffffff", 0.95));
             gc.fillText("\u26E8  DEF " + hero.getDefensePower(), tx, ty);
@@ -2542,7 +2580,7 @@ public class GameView {
 
         final double closeBtnY = 498;
         final double closeBtnH = 32;
-        final double detailH = 108;
+        final double detailH = 122;
         final double detailGap = 12;
         final double detailY = closeBtnY - detailGap - detailH;
 
@@ -2555,7 +2593,7 @@ public class GameView {
         countLabel.setLayoutY(158);
 
         VBox detailPane = new VBox(4);
-        detailPane.setAlignment(Pos.CENTER);
+        detailPane.setAlignment(Pos.TOP_CENTER);
         detailPane.setPrefSize(304, detailH);
         detailPane.setMinSize(304, detailH);
         detailPane.setMaxSize(304, detailH);
@@ -2754,12 +2792,14 @@ public class GameView {
         typeLabel.setFont(Font.font("Serif", 11));
         typeLabel.setTextFill(Color.web("#aaa090"));
 
-        Label descLabel = new Label(item.getDescription());
-        descLabel.setFont(Font.font("Serif", 11));
-        descLabel.setTextFill(Color.web("#c8b880"));
-        descLabel.setWrapText(true);
-        descLabel.setMaxWidth(290);
-        descLabel.setMaxHeight(32);
+        String detailText = item instanceof Weapon weapon
+                ? weapon.getInventoryDescription()
+                : item.getDescription();
+        Text descText = new Text(detailText != null ? detailText : "");
+        descText.setFont(Font.font("Serif", 11));
+        descText.setFill(Color.web("#c8b880"));
+        descText.setWrappingWidth(276);
+        descText.setTextAlignment(TextAlignment.CENTER);
 
         HBox actionRow = new HBox(8);
         actionRow.setAlignment(Pos.CENTER);
@@ -2859,7 +2899,7 @@ public class GameView {
         });
         actionRow.getChildren().add(discardBtn);
 
-        pane.getChildren().addAll(nameLabel, typeLabel, descLabel, actionRow);
+        pane.getChildren().addAll(nameLabel, typeLabel, descText, actionRow);
     }
 
     private Button invActionButton(String text, String hexColor) {
@@ -3007,7 +3047,6 @@ public class GameView {
 
         Button discardBtn = popupButton("Discard", "#e74c3c");
         discardBtn.setOnAction(e -> {
-            // Use DiscardAction pipeline
             com.kurawler.action.Action action = new com.kurawler.action.DiscardAction(item);
             for (com.kurawler.effect.Effect eff : action.resolve(session)) {
                 eff.apply(session);

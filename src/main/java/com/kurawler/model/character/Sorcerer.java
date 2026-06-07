@@ -44,6 +44,18 @@ public class Sorcerer extends Enemy {
 
     public void markRingDropped() { this.ringDropped = true; }
 
+    public long getSpellAttackTimerMs() { return spellAttackTimerMs; }
+
+    public void setSpellAttackTimerMs(long spellAttackTimerMs) {
+        this.spellAttackTimerMs = Math.max(0L, spellAttackTimerMs);
+    }
+
+    public long getTeleportTimerMs() { return teleportTimerMs; }
+
+    public void setTeleportTimerMs(long teleportTimerMs) {
+        this.teleportTimerMs = Math.max(0L, teleportTimerMs);
+    }
+
     public boolean isCastAnimActive() {
         return System.currentTimeMillis() < castAnimUntilMs;
     }
@@ -92,7 +104,7 @@ public class Sorcerer extends Enemy {
     /**
      * §2.5.2: every 7 s, 50% chance to teleport to a random empty floor cell.
      */
-    public void tickTeleport(long deltaMs, Map map, Character avoid) {
+    public void tickTeleport(long deltaMs, Map map, Character avoid, GameSession session) {
         if (deltaMs <= 0 || map == null || !isAlive()) {
             return;
         }
@@ -100,7 +112,7 @@ public class Sorcerer extends Enemy {
         while (teleportTimerMs >= TELEPORT_INTERVAL_MS) {
             teleportTimerMs -= TELEPORT_INTERVAL_MS;
             if (RNG.nextFloat() < TELEPORT_CHANCE) {
-                teleportToRandomEmptyCell(map, avoid);
+                teleportToRandomEmptyCell(map, avoid, session);
             }
         }
     }
@@ -125,7 +137,7 @@ public class Sorcerer extends Enemy {
         return p;
     }
 
-    private void teleportToRandomEmptyCell(Map map, Character avoid) {
+    private void teleportToRandomEmptyCell(Map map, Character avoid, GameSession session) {
         List<GridCell> candidates = new ArrayList<>();
         for (int r = 0; r < map.getHeight(); r++) {
             for (int c = 0; c < map.getWidth(); c++) {
@@ -136,13 +148,27 @@ public class Sorcerer extends Enemy {
                 if (avoid != null && avoid.getRow() == r && avoid.getCol() == c) {
                     continue;
                 }
+                if (session != null && session.isActiveShadowCloneAt(r, c)) {
+                    continue;
+                }
                 candidates.add(cell);
             }
         }
         if (candidates.isEmpty()) {
             return;
         }
-        moveToCell(candidates.get(RNG.nextInt(candidates.size())));
+        int oldRow = getRow();
+        int oldCol = getCol();
+        GridCell dest = candidates.get(RNG.nextInt(candidates.size()));
+        moveToCell(dest);
+        // Editor/load paths can leave a stale occupant on the old tile when currentCell
+        // was not wired; without this, GameView snaps the sorcerer back every frame.
+        if (oldRow >= 0 && oldCol >= 0) {
+            GridCell stale = map.getCell(oldRow, oldCol);
+            if (stale != null && stale != dest && stale.getOccupyingCharacter() == this) {
+                stale.setOccupyingCharacter(null);
+            }
+        }
     }
 
     public float getTeleportChance() { return TELEPORT_CHANCE; }
