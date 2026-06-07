@@ -41,3 +41,10 @@ replay_pid*
 # OS files
 .DS_Store
 Thumbs.db
+
+# User-generated map and save files
+maps/*.world.json
+!maps/MY_CUSTOM_MAP_LATEST.world.json
+maps/*.json
+!maps/my_dungeon.json
+saves/
